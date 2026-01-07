@@ -1,0 +1,91 @@
+const mongoose = require('mongoose');
+
+const projectSchema = new mongoose.Schema({
+  projectName: {
+    type: String,
+    required: [true, 'Please provide a project name'],
+    trim: true,
+    unique: true
+  },
+  projectType: {
+    type: String,
+    enum: ['villa-renovation', 'commercial-building', 'interior-design', 'structural', 'other'],
+    required: [true, 'Please specify project type']
+  },
+  description: {
+    type: String,
+    required: [true, 'Please provide project description'],
+    trim: true
+  },
+  clientName: {
+    type: String,
+    required: [true, 'Please provide client name'],
+    trim: true
+  },
+  clientEmail: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      },
+      message: props => `${props.value} is not a valid email!`
+    }
+  },
+  clientPhone: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        return /^[0-9]{10}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
+  startDate: {
+    type: Date,
+    required: [true, 'Please provide start date']
+  },
+  endDate: {
+    type: Date,
+    required: [true, 'Please provide end date']
+  },
+  status: {
+    type: String,
+    enum: ['planning', 'in-progress', 'on-hold', 'completed', 'cancelled'],
+    default: 'planning'
+  },
+  budget: {
+    type: Number,
+    min: [0, 'Budget cannot be negative']
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  manager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Please assign a project manager']
+  },
+  teamMembers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  files: [{
+    type: String
+  }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  progress: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  }
+}, {
+  timestamps: true
+});
+
+module.exports = mongoose.model('Project', projectSchema);

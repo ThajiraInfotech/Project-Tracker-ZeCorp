@@ -1,0 +1,168 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
+
+// API base URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Async thunk for getting dashboard data
+export const getDashboardData = createAsyncThunk(
+  'reports/getDashboardData',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get dashboard data');
+    }
+  }
+);
+
+// Async thunk for getting admin dashboard data
+export const getAdminDashboardData = createAsyncThunk(
+  'reports/getAdminDashboardData',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/dashboard/admin`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get admin dashboard data');
+    }
+  }
+);
+
+// Async thunk for getting project performance report
+export const getProjectPerformanceReport = createAsyncThunk(
+  'reports/getProjectPerformanceReport',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/admin/project-performance`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get project performance report');
+    }
+  }
+);
+
+// Async thunk for getting manager performance report
+export const getManagerPerformanceReport = createAsyncThunk(
+  'reports/getManagerPerformanceReport',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/admin/manager-performance`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get manager performance report');
+    }
+  }
+);
+
+// Async thunk for getting staff productivity report
+export const getStaffProductivityReport = createAsyncThunk(
+  'reports/getStaffProductivityReport',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/admin/staff-productivity`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get staff productivity report');
+    }
+  }
+);
+
+// Async thunk for getting attendance report
+export const getAttendanceReport = createAsyncThunk(
+  'reports/getAttendanceReport',
+  async (params, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/admin/attendance`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        params
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get attendance report');
+    }
+  }
+);
+
+// Async thunk for getting delay and risk analysis report
+export const getDelayRiskAnalysisReport = createAsyncThunk(
+  'reports/getDelayRiskAnalysisReport',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/reports/admin/delay-risk`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get delay risk analysis report');
+    }
+  }
+);
+
+const reportSlice = createSlice({
+  name: 'reports',
+  initialState: {
+    reports: [],
+    dashboardData: null,
+    adminDashboardData: null,
+    projectPerformance: null,
+    managerPerformance: null,
+    staffProductivity: null,
+    attendanceReport: null,
+    delayRiskAnalysis: null,
+    loading: false,
+    error: null
+  },
+  reducers: {
+    // Reducers will be added as needed
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(getDashboardData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getDashboardData.fulfilled, (state, action) => {
+        state.loading = false;
+        state.dashboardData = action.payload;
+      })
+      .addCase(getDashboardData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  }
+});
+
+export default reportSlice.reducer;
