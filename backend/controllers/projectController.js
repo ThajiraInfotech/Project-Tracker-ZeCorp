@@ -110,7 +110,8 @@ exports.getProjectById = async (req, res) => {
     const project = await Project.findById(req.params.id)
       .populate('manager', 'username fullName email')
       .populate('teamMembers', 'username fullName email')
-      .populate('createdBy', 'username fullName email');
+      .populate('createdBy', 'username fullName email')
+      .populate('comments.user', 'username fullName profileImage');
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -660,5 +661,79 @@ exports.adminGetDelayedAndAtRiskProjects = async (req, res) => {
   } catch (error) {
     console.error('Admin get delayed and at-risk projects error:', error);
     res.status(500).json({ message: 'Failed to get delayed and at-risk projects' });
+  }
+};
+
+// Add comment to project
+exports.addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check authorization - staff can only comment if they're team members
+    if (req.user.role === 'staff') {
+      const isTeamMember = project.teamMembers.some(member => member.toString() === req.user._id.toString());
+      const isManager = project.manager?.toString() === req.user._id.toString();
+      if (!isTeamMember && !isManager) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    // Add comment
+    project.comments.push({
+      user: req.user._id,
+      text
+    });
+
+    await project.save();
+
+    // Populate the new comment with user info
+    const populatedProject = await Project.findById(req.params.id)
+      .populate('comments.user', 'username fullName profileImage');
+
+    const newComment = populatedProject.comments[populatedProject.comments.length - 1];
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      comment: newComment,
+      project: populatedProject
+    });
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({ message: 'Failed to add comment' });
+  }
+};
+
+// Get project comments
+exports.getComments = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id)
+      .populate('comments.user', 'username fullName profileImage');
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check authorization - staff can only view if they're team members
+    if (req.user.role === 'staff') {
+      const isTeamMember = project.teamMembers.some(member => member.toString() === req.user._id.toString());
+      const isManager = project.manager?.toString() === req.user._id.toString();
+      if (!isTeamMember && !isManager) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    res.json({
+      success: true,
+      comments: project.comments
+    });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ message: 'Failed to get comments' });
   }
 };

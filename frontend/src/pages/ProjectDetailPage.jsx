@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import TaskCreateModal from '../components/TaskCreateModal';
+import ChatSidebar from '../components/ChatSidebar';
 
 const ProjectDetailPage = () => {
   const { id } = useParams();
@@ -19,6 +20,7 @@ const ProjectDetailPage = () => {
   const [showTaskActionsModal, setShowTaskActionsModal] = useState(false);
   const [selectedTaskForActions, setSelectedTaskForActions] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
 
   // Filter states for tasks tab
   const [taskFilters, setTaskFilters] = useState({
@@ -1059,6 +1061,15 @@ const ProjectDetailPage = () => {
         {/* Action Buttons */}
         <div className="flex justify-end gap-4">
           <button
+            onClick={() => setShowChatSidebar(true)}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Chat
+          </button>
+          <button
             onClick={() => setShowTaskModal(true)}
             className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
           >
@@ -1133,6 +1144,15 @@ const ProjectDetailPage = () => {
 
       {/* Task Actions Modal */}
       <TaskActionsModal />
+
+      {/* Chat Sidebar */}
+      <ChatSidebar
+        isOpen={showChatSidebar}
+        onClose={() => setShowChatSidebar(false)}
+        entityType="project"
+        entityId={project?._id}
+        entityTitle={project?.projectName || 'Project'}
+      />
     </div>
   );
 };

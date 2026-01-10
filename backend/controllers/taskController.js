@@ -405,10 +405,17 @@ exports.addComment = async (req, res) => {
 
     await task.save();
 
+    // Populate the new comment with user info
+    const populatedTask = await Task.findById(req.params.id)
+      .populate('comments.user', 'username fullName profileImage');
+
+    const newComment = populatedTask.comments[populatedTask.comments.length - 1];
+
     res.json({
       success: true,
       message: 'Comment added successfully',
-      task
+      comment: newComment,
+      task: populatedTask
     });
   } catch (error) {
     console.error('Add comment error:', error);

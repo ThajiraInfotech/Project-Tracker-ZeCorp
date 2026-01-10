@@ -22,6 +22,10 @@ router.delete('/:id/files/:fileId', authMiddleware, projectController.deleteProj
 // Project progress
 router.get('/:id/progress', authMiddleware, projectController.getProjectProgress);
 
+// Project comments
+router.post('/:id/comments', authMiddleware, projectController.addComment);
+router.get('/:id/comments', authMiddleware, projectController.getComments);
+
 // Admin project routes
 router.post('/:id/assign-manager', authMiddleware, adminMiddleware, projectController.adminAssignManager);
 router.get('/admin/all-with-analytics', authMiddleware, adminMiddleware, projectController.adminGetAllProjectsWithAnalytics);

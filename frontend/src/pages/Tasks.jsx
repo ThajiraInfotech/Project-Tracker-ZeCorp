@@ -41,6 +41,7 @@ import { fetchProjects } from '../store/projectSlice';
 import { toast } from 'react-toastify';
 import TaskCreateModal from '../components/TaskCreateModal';
 import KanbanBoard from '../components/KanbanBoard';
+import ChatSidebar from '../components/ChatSidebar';
 
 ChartJS.register(
   ArcElement,
@@ -65,6 +66,7 @@ const Tasks = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [updateForm, setUpdateForm] = useState({
     status: '',
     progress: 0,
@@ -746,6 +748,17 @@ const Tasks = () => {
 
           <div className="mt-6 flex justify-end gap-3">
             <button
+              onClick={() => {
+                setShowChatSidebar(true);
+              }}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+            </button>
+            <button
               onClick={() => onEditTask(selectedTask)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
@@ -827,14 +840,25 @@ const Tasks = () => {
               <div className="bg-white/90 backdrop-blur-sm rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                   <h3 className="text-xl font-semibold text-gray-900">Task Details</h3>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowChatSidebar(true)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      Chat
+                    </button>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6 space-y-6">
                   {/* Header Section */}
@@ -1672,6 +1696,15 @@ const Tasks = () => {
           fetchTasks();
           setEditingTask(null);
         }}
+      />
+
+      {/* Chat Sidebar */}
+      <ChatSidebar
+        isOpen={showChatSidebar}
+        onClose={() => setShowChatSidebar(false)}
+        entityType="task"
+        entityId={selectedTask?._id}
+        entityTitle={selectedTask?.title || 'Task'}
       />
     </div>
   );
