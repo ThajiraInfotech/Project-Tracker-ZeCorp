@@ -1152,6 +1152,7 @@ const ProjectDetailPage = () => {
         entityType="project"
         entityId={project?._id}
         entityTitle={project?.projectName || 'Project'}
+        entityData={project}
       />
     </div>
   );

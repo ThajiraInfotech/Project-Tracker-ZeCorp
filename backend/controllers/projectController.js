@@ -4,6 +4,7 @@ const User = require('../models/User');
 const emailService = require('../utils/emailService');
 const cloudinaryService = require('../utils/cloudinaryService');
 const { calculateProjectProgress } = require('../utils/projectProgressUtils');
+const { createMentionNotifications } = require('../utils/mentionParser');
 
 // Create a new project
 exports.createProject = async (req, res) => {
@@ -696,6 +697,19 @@ exports.addComment = async (req, res) => {
       .populate('comments.user', 'username fullName profileImage');
 
     const newComment = populatedProject.comments[populatedProject.comments.length - 1];
+
+    // Create notifications for @mentions (async, don't wait)
+    createMentionNotifications({
+      text,
+      entityType: 'project',
+      entityId: req.params.id,
+      entityTitle: project.projectName,
+      mentionedBy: req.user._id,
+      excludeUserIds: [req.user._id.toString()]
+    }).catch(err => {
+      console.error('Failed to create mention notifications:', err);
+      // Don't fail comment creation if notification fails
+    });
 
     res.json({
       success: true,

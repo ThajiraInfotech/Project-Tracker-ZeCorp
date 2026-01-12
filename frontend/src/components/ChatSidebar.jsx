@@ -3,14 +3,75 @@ import api from '../store/api';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
 
-const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => {
+const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entityData }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionPosition, setMentionPosition] = useState(null);
+  const [mentionUsers, setMentionUsers] = useState([]);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const commentsEndRef = useRef(null);
   const sidebarRef = useRef(null);
+  const textareaRef = useRef(null);
+  const mentionDropdownRef = useRef(null);
   const auth = useSelector((state) => state.auth);
+
+  // Get available users for mentions
+  const getMentionableUsers = () => {
+    if (!entityData || !entityId) return [];
+    
+    const users = [];
+    
+    if (entityType === 'project') {
+      // Add manager
+      if (entityData.manager) {
+        users.push({
+          ...entityData.manager,
+          role: 'Manager'
+        });
+      }
+      // Add team members
+      if (entityData.teamMembers && entityData.teamMembers.length > 0) {
+        entityData.teamMembers.forEach(member => {
+          if (member._id !== auth.user?._id) {
+            users.push({
+              ...member,
+              role: 'Team Member'
+            });
+          }
+        });
+      }
+    } else if (entityType === 'task') {
+      // For tasks, include assigned user and project team
+      if (entityData.assignedTo && entityData.assignedTo._id !== auth.user?._id) {
+        users.push({
+          ...entityData.assignedTo,
+          role: 'Assigned To'
+        });
+      }
+      if (entityData.project?.manager && entityData.project.manager._id !== auth.user?._id) {
+        users.push({
+          ...entityData.project.manager,
+          role: 'Project Manager'
+        });
+      }
+      if (entityData.project?.teamMembers) {
+        entityData.project.teamMembers.forEach(member => {
+          if (member._id !== auth.user?._id && !users.find(u => u._id === member._id)) {
+            users.push({
+              ...member,
+              role: 'Team Member'
+            });
+          }
+        });
+      }
+    }
+    
+    return users;
+  };
 
   // Fetch comments when sidebar opens or entity changes
   useEffect(() => {
@@ -22,6 +83,8 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => 
     } else {
       setComments([]);
       setNewComment('');
+      setShowMentionDropdown(false);
+      setMentionQuery('');
     }
   }, [isOpen, entityId, entityType]);
 
@@ -57,6 +120,87 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => 
     }
   };
 
+  // Handle text input change and detect @mentions
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    const cursorPosition = e.target.selectionStart;
+    setNewComment(value);
+
+    // Check for @ mention
+    const textBeforeCursor = value.substring(0, cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (mentionMatch) {
+      const query = mentionMatch[1].toLowerCase();
+      setMentionQuery(query);
+      setMentionPosition(cursorPosition);
+      
+      // Filter users based on query
+      const allUsers = getMentionableUsers();
+      const filtered = allUsers.filter(user => {
+        const username = (user.username || '').toLowerCase();
+        const fullName = (user.fullName || '').toLowerCase();
+        return username.includes(query) || fullName.includes(query);
+      });
+      
+      setMentionUsers(filtered);
+      setShowMentionDropdown(filtered.length > 0);
+      setSelectedMentionIndex(0);
+    } else {
+      setShowMentionDropdown(false);
+      setMentionQuery('');
+      setMentionPosition(null);
+    }
+  };
+
+  // Insert mention into text
+  const insertMention = (user) => {
+    if (!mentionPosition) return;
+    
+    const textBefore = newComment.substring(0, mentionPosition - mentionQuery.length - 1);
+    const textAfter = newComment.substring(mentionPosition);
+    const mentionText = `@${user.username} `;
+    
+    const newText = textBefore + mentionText + textAfter;
+    setNewComment(newText);
+    setShowMentionDropdown(false);
+    setMentionQuery('');
+    setMentionPosition(null);
+    
+    // Focus textarea and set cursor position
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newPosition = textBefore.length + mentionText.length;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
+  };
+
+  // Handle keyboard navigation in mention dropdown
+  const handleKeyDown = (e) => {
+    if (showMentionDropdown && mentionUsers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => 
+          prev < mentionUsers.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => prev > 0 ? prev - 1 : 0);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(mentionUsers[selectedMentionIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionDropdown(false);
+      }
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -73,6 +217,8 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => 
           // Refresh comments to get the complete data from backend
           await fetchComments();
           setNewComment('');
+          setShowMentionDropdown(false);
+          setMentionQuery('');
           toast.success('Message sent');
         }
     } catch (error) {
@@ -215,22 +361,65 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => 
         </div>
 
         {/* Input Form */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-4">
+        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-4 relative">
           <form onSubmit={handleSubmit} className="flex gap-2">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Type a message..."
-              rows={2}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-sm"
-              disabled={submitting}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-            />
+            <div className="flex-1 relative">
+              <textarea
+                ref={textareaRef}
+                value={newComment}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message... (use @ to mention)"
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-sm"
+                disabled={submitting}
+              />
+              
+              {/* Mention Dropdown */}
+              {showMentionDropdown && mentionUsers.length > 0 && (
+                <div
+                  ref={mentionDropdownRef}
+                  className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50"
+                >
+                  {mentionUsers.map((user, index) => {
+                    const userName = user.fullName || user.username || 'Unknown';
+                    const userInitials = userName.charAt(0).toUpperCase();
+                    
+                    return (
+                      <div
+                        key={user._id || index}
+                        onClick={() => insertMention(user)}
+                        className={`px-4 py-2 cursor-pointer flex items-center gap-3 hover:bg-gray-50 ${
+                          index === selectedMentionIndex ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                          {user.profileImage ? (
+                            <img
+                              src={user.profileImage}
+                              alt={userName}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-primary-700">
+                              {userInitials}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {userName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            @{user.username} • {user.role}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <button
               type="submit"
               disabled={!newComment.trim() || submitting}
@@ -245,7 +434,9 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle }) => 
               )}
             </button>
           </form>
-          <p className="text-xs text-gray-500 mt-2 text-center">Press Enter to send, Shift+Enter for new line</p>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Press Enter to send, Shift+Enter for new line • Use @ to mention users
+          </p>
         </div>
       </div>
     </>

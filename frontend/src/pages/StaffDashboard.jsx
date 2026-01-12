@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import KanbanBoard from '../components/KanbanBoard';
+import ChatSidebar from '../components/ChatSidebar';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -42,6 +43,7 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTimeModal, setShowTimeModal] = useState(false);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [timeEntry, setTimeEntry] = useState({
     taskId: '',
     hours: '',
@@ -764,14 +766,25 @@ const StaffDashboard = () => {
               <div className="bg-white/90 backdrop-blur-sm rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                   <h3 className="text-xl font-semibold text-gray-900">Task Details</h3>
-                  <button
-                    onClick={() => setShowTaskModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowChatSidebar(true)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      Chat
+                    </button>
+                    <button
+                      onClick={() => setShowTaskModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6 space-y-6">
                   <div>
@@ -850,23 +863,6 @@ const StaffDashboard = () => {
                     </div>
                   </div>
 
-                  {selectedTask.comments && selectedTask.comments.length > 0 && (
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Comments</h5>
-                      <div className="space-y-3">
-                        {selectedTask.comments.map((comment, index) => (
-                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-gray-900">{comment.author?.fullName || 'Unknown'}</span>
-                              <span className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleString()}</span>
-                            </div>
-                            <p className="text-sm text-gray-700">{comment.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {selectedTask.attachments && selectedTask.attachments.length > 0 && (
                     <div>
                       <h5 className="text-lg font-medium text-gray-900 mb-3">Attachments</h5>
@@ -890,6 +886,16 @@ const StaffDashboard = () => {
             </div>
           );
         })()}
+
+        {/* Chat Sidebar */}
+        <ChatSidebar
+          isOpen={showChatSidebar}
+          onClose={() => setShowChatSidebar(false)}
+          entityType="task"
+          entityId={selectedTask?._id}
+          entityTitle={selectedTask?.title || 'Task'}
+          entityData={selectedTask}
+        />
       </div>
     </div>
   );

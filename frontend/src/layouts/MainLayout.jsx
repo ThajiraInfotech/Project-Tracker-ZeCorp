@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { getAdminDashboardData } from '../store/reportSlice';
 import { toast } from 'react-toastify';
+import NotificationBell from '../components/NotificationBell';
+import ChatSidebar from '../components/ChatSidebar';
 import {
   HomeIcon,
   FolderIcon,
@@ -22,6 +24,8 @@ import {
 
 const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
+  const [chatEntity, setChatEntity] = useState(null);
   const { user } = useSelector((state) => state.auth);
   const { adminDashboardData } = useSelector((state) => state.reports);
   const dispatch = useDispatch();
@@ -210,16 +214,26 @@ const MainLayout = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-                <img
-                  className="h-8 w-8 rounded-full"
-                  src={user?.profileImage || 'https://placehold.co/150'}
-                  alt={user?.fullName || 'User'}
-                />
-                <span>{user?.fullName}</span>
-              </button>
-            </div>
+            {/* Notification Bell */}
+            <NotificationBell
+              onNotificationClick={(notification) => {
+                setChatEntity({
+                  entityType: notification.entityType,
+                  entityId: notification.entityId,
+                  entityTitle: notification.entityTitle
+                });
+                setShowChatSidebar(true);
+              }}
+            />
+            
+            <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+              <img
+                className="h-8 w-8 rounded-full"
+                src={user?.profileImage || 'https://placehold.co/150'}
+                alt={user?.fullName || 'User'}
+              />
+              <span>{user?.fullName}</span>
+            </button>
           </div>
         </div>
 
@@ -228,6 +242,20 @@ const MainLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Chat Sidebar (for notifications) */}
+      {chatEntity && (
+        <ChatSidebar
+          isOpen={showChatSidebar}
+          onClose={() => {
+            setShowChatSidebar(false);
+            setChatEntity(null);
+          }}
+          entityType={chatEntity.entityType}
+          entityId={chatEntity.entityId}
+          entityTitle={chatEntity.entityTitle}
+        />
+      )}
     </div>
   );
 };

@@ -961,23 +961,6 @@ const Tasks = () => {
                     </div>
                   </div>
 
-                  {selectedTask.comments && selectedTask.comments.length > 0 && (
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Comments</h5>
-                      <div className="space-y-3">
-                        {selectedTask.comments.map((comment, index) => (
-                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-gray-900">{comment.author?.fullName || 'Unknown'}</span>
-                              <span className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleString()}</span>
-                            </div>
-                            <p className="text-sm text-gray-700">{comment.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {selectedTask.attachments && selectedTask.attachments.length > 0 && (
                     <div>
                       <h5 className="text-lg font-medium text-gray-900 mb-3">Attachments</h5>
@@ -1001,9 +984,20 @@ const Tasks = () => {
             </div>
           );
         })()}
+
+        {/* Chat Sidebar for Staff */}
+        <ChatSidebar
+          isOpen={showChatSidebar}
+          onClose={() => setShowChatSidebar(false)}
+          entityType="task"
+          entityId={selectedTask?._id}
+          entityTitle={selectedTask?.title || 'Task'}
+          entityData={selectedTask}
+        />
       </div>
-    );
-  }
+   
+  );
+}
 
   return (
     <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
@@ -1705,6 +1699,7 @@ const Tasks = () => {
         entityType="task"
         entityId={selectedTask?._id}
         entityTitle={selectedTask?.title || 'Task'}
+        entityData={selectedTask}
       />
     </div>
   );

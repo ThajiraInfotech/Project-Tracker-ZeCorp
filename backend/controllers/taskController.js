@@ -3,6 +3,7 @@ const Project = require('../models/Project');
 const User = require('../models/User');
 const emailService = require('../utils/emailService');
 const cloudinaryService = require('../utils/cloudinaryService');
+const { createMentionNotifications } = require('../utils/mentionParser');
 const { updateProjectProgressAndStatus } = require('../utils/projectProgressUtils');
 
 // Helper function to sync progress based on status
@@ -147,8 +148,15 @@ exports.getMyTasks = async (req, res) => {
 exports.getTaskById = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
-      .populate('project', 'projectName projectType')
-      .populate('assignedTo', 'username fullName email')
+      .populate({
+        path: 'project',
+        select: 'projectName projectType manager teamMembers',
+        populate: [
+          { path: 'manager', select: 'username fullName email profileImage' },
+          { path: 'teamMembers', select: 'username fullName email profileImage' }
+        ]
+      })
+      .populate('assignedTo', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email');
 
     if (!task) {
@@ -410,6 +418,19 @@ exports.addComment = async (req, res) => {
       .populate('comments.user', 'username fullName profileImage');
 
     const newComment = populatedTask.comments[populatedTask.comments.length - 1];
+
+    // Create notifications for @mentions (async, don't wait)
+    createMentionNotifications({
+      text,
+      entityType: 'task',
+      entityId: req.params.id,
+      entityTitle: task.title,
+      mentionedBy: req.user._id,
+      excludeUserIds: [req.user._id.toString()]
+    }).catch(err => {
+      console.error('Failed to create mention notifications:', err);
+      // Don't fail comment creation if notification fails
+    });
 
     res.json({
       success: true,
