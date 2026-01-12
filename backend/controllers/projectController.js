@@ -120,8 +120,8 @@ exports.getProjectById = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -293,8 +293,8 @@ exports.uploadProjectFiles = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -326,8 +326,8 @@ exports.getProjectFiles = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -490,11 +490,11 @@ exports.adminGetAllProjectsWithAnalytics = async (req, res) => {
       const isDelayed = project.status === 'on-hold' || (project.endDate < today && project.status !== 'completed');
 
       const riskLevel = isDelayed ? 'high' :
-                      isAtRisk ? 'medium' :
-                      highPriorityTasks > 2 ? 'low' : 'none';
+        isAtRisk ? 'medium' :
+          highPriorityTasks > 2 ? 'low' : 'none';
 
       const revenueStatus = project.status === 'completed' ? 'realized' :
-                          project.status === 'cancelled' ? 'lost' : 'pending';
+        project.status === 'cancelled' ? 'lost' : 'pending';
 
       return {
         ...project._doc,
@@ -604,8 +604,8 @@ exports.adminGetDelayedAndAtRiskProjects = async (req, res) => {
         }
       ]
     })
-    .populate('manager', 'username fullName email')
-    .populate('teamMembers', 'username fullName');
+      .populate('manager', 'username fullName email')
+      .populate('teamMembers', 'username fullName');
 
     // Get at-risk projects (in progress but low progress and near deadline)
     const atRiskProjects = await Project.find({
@@ -616,8 +616,8 @@ exports.adminGetDelayedAndAtRiskProjects = async (req, res) => {
         $lt: new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000) // Within 2 weeks
       }
     })
-    .populate('manager', 'username fullName email')
-    .populate('teamMembers', 'username fullName');
+      .populate('manager', 'username fullName email')
+      .populate('teamMembers', 'username fullName');
 
     // Calculate detailed risk analysis
     const delayedWithDetails = await Promise.all(delayedProjects.map(async (project) => {
@@ -654,7 +654,7 @@ exports.adminGetDelayedAndAtRiskProjects = async (req, res) => {
         totalDelayed: delayedWithDetails.length,
         totalAtRisk: atRiskWithDetails.length,
         totalPotentialRevenueLoss: delayedWithDetails.reduce((sum, p) => sum + (p.potentialRevenueLoss || 0), 0) +
-                                   atRiskWithDetails.reduce((sum, p) => sum + (p.potentialRevenueAtRisk || 0), 0),
+          atRiskWithDetails.reduce((sum, p) => sum + (p.potentialRevenueAtRisk || 0), 0),
         highImpactDelayed: delayedWithDetails.filter(p => p.impact === 'High').length,
         highRiskAtRisk: atRiskWithDetails.filter(p => p.completionRisk === 'High').length
       }
@@ -668,7 +668,7 @@ exports.adminGetDelayedAndAtRiskProjects = async (req, res) => {
 // Add comment to project
 exports.addComment = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, attachments } = req.body;
 
     const project = await Project.findById(req.params.id);
     if (!project) {
@@ -687,7 +687,8 @@ exports.addComment = async (req, res) => {
     // Add comment
     project.comments.push({
       user: req.user._id,
-      text
+      text,
+      attachments: attachments || []
     });
 
     await project.save();

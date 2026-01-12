@@ -23,18 +23,24 @@ exports.uploadFile = async (req, res) => {
 // Upload multiple files
 exports.uploadMultipleFiles = async (req, res) => {
   try {
+    console.log('Upload multiple files request received');
+    console.log('req.files:', req.files);
+
     if (!req.files || req.files.length === 0) {
+      console.log('No files found in request');
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
     const fileUrls = req.files.map(file => file.path);
+    console.log('File URLs:', fileUrls);
+
     res.json({
       success: true,
       fileUrls
     });
   } catch (error) {
     console.error('Upload multiple files error:', error);
-    res.status(500).json({ message: 'Failed to upload files' });
+    res.status(500).json({ message: 'Failed to upload files', error: error.message });
   }
 };
 

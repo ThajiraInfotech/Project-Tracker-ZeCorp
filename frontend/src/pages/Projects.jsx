@@ -411,7 +411,7 @@ const Projects = () => {
         clientPhone: formData.clientPhone.replace(/\D/g, ''),
         startDate: formData.startDate,
         endDate: formData.endDate,
-        budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        budget: formData.budget ? parseFloat(formData.budget.toString().replace(/,/g, '')) : undefined,
         location: formData.location,
         manager: formData.manager
       };
@@ -719,10 +719,10 @@ const Projects = () => {
                   Recent Tasks
                 </h3>
                 <button className="text-primary-600 hover:text-primary-700 text-sm font-semibold px-3 py-1 rounded-lg hover:bg-primary-50 transition-colors" onClick={() => {
-                navigate(`/projects/${selectedProject._id}`);
-                setShowModal(false);
-                setProjectTasks([]);
-              }}>
+                  navigate(`/projects/${selectedProject._id}`);
+                  setShowModal(false);
+                  setProjectTasks([]);
+                }}>
                   View All Tasks →
                 </button>
               </div>
@@ -739,19 +739,17 @@ const Projects = () => {
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-medium text-gray-900 text-sm">{task.title}</h4>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                            }`}>
                             {task.priority}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                            task.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                            'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                                task.status === 'todo' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-orange-100 text-orange-800'
+                            }`}>
                             {task.status}
                           </span>
                         </div>
@@ -806,11 +804,11 @@ const Projects = () => {
                 Close
               </button>
               <button
-              onClick={() => {
-                navigate(`/projects/${selectedProject._id}`);
-                setShowModal(false);
-                setProjectTasks([]);
-              }}
+                onClick={() => {
+                  navigate(`/projects/${selectedProject._id}`);
+                  setShowModal(false);
+                  setProjectTasks([]);
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-md hover:shadow-lg transition-all duration-200"
               >
                 Edit Project
@@ -837,18 +835,16 @@ const Projects = () => {
             <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
               <button
                 onClick={() => setViewMode('card')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                  }`}
               >
                 <Squares2X2Icon className="w-4 h-4" />
                 Cards
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                  }`}
               >
                 <TableCellsIcon className="w-4 h-4" />
                 Table
@@ -1003,47 +999,45 @@ const Projects = () => {
             {/* Project Basic Info */}
             <div className="bg-white rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Name *
-                </label>
-                <input
-                  type="text"
-                  name="projectName"
-                  value={formData.projectName}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${
-                    formErrors.projectName ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter project name"
-                />
-                {formErrors.projectName && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.projectName}</p>
-                )}
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="projectName"
+                    value={formData.projectName}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${formErrors.projectName ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="Enter project name"
+                  />
+                  {formErrors.projectName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.projectName}</p>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Type *
-                </label>
-                <p className="text-xs text-gray-400 mb-2">Select the primary nature of this project (used for reporting & templates later)</p>
-                <select
-                  name="projectType"
-                  value={formData.projectType}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${
-                    formErrors.projectType ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select project type</option>
-                  {projectTypes.map(type => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
-                {formErrors.projectType && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.projectType}</p>
-                )}
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Type *
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">Select the primary nature of this project (used for reporting & templates later)</p>
+                  <select
+                    name="projectType"
+                    value={formData.projectType}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${formErrors.projectType ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                  >
+                    <option value="">Select project type</option>
+                    {projectTypes.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                  {formErrors.projectType && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.projectType}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1057,9 +1051,8 @@ const Projects = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                  formErrors.description ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.description ? 'border-red-300' : 'border-gray-300'
+                  }`}
                 placeholder="Describe the project scope, objectives, and requirements"
               />
               {formErrors.description && (
@@ -1094,9 +1087,8 @@ const Projects = () => {
                     name="clientName"
                     value={formData.clientName}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.clientName ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientName ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Client full name"
                   />
                   {formErrors.clientName && (
@@ -1113,9 +1105,8 @@ const Projects = () => {
                     name="clientEmail"
                     value={formData.clientEmail}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.clientEmail ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientEmail ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="client@example.com"
                   />
                   {formErrors.clientEmail && (
@@ -1132,9 +1123,8 @@ const Projects = () => {
                     name="clientPhone"
                     value={formData.clientPhone}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.clientPhone ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientPhone ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="10-digit phone number"
                   />
                   {formErrors.clientPhone && (
@@ -1157,9 +1147,8 @@ const Projects = () => {
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.startDate ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.startDate ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   />
                   {formErrors.startDate && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.startDate}</p>
@@ -1175,9 +1164,8 @@ const Projects = () => {
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.endDate ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.endDate ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   />
                   {formErrors.endDate && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.endDate}</p>
@@ -1205,66 +1193,65 @@ const Projects = () => {
             {/* Budget and Location */}
             <div className="bg-white rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Budget
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    name="currency"
-                    value={formData.currency}
-                    onChange={handleInputChange}
-                    className="px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                  >
-                    <option value="INR">INR</option>
-                    <option value="AED">AED</option>
-                  </select>
-                  <input
-                    type="number"
-                    name="budget"
-                    value={formData.budget}
-                    onChange={handleInputChange}
-                    className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      formErrors.budget ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Project budget"
-                    min="0"
-                    step="1000"
-                  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Budget
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={handleInputChange}
+                      className="px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                    >
+                      <option value="INR">INR</option>
+                      <option value="AED">AED</option>
+                    </select>
+                    <input
+                      type="number"
+                      name="budget"
+                      value={formData.budget}
+                      onChange={handleInputChange}
+                      className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.budget ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      placeholder="Project budget"
+                      min="0"
+                      step="1000"
+                    />
+                  </div>
+                  {formErrors.budget && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.budget}</p>
+                  )}
                 </div>
-                {formErrors.budget && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.budget}</p>
-                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country
+                  </label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                  >
+                    <option value="India">India</option>
+                    <option value="UAE">UAE</option>
+                  </select>
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Country
+                  Location
                 </label>
-                <select
-                  name="country"
-                  value={formData.country}
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                >
-                  <option value="India">India</option>
-                  <option value="UAE">UAE</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                placeholder="Project location/address"
-              />
+                  placeholder="Project location/address"
+                />
               </div>
             </div>
 
@@ -1281,9 +1268,8 @@ const Projects = () => {
                   value={formData.manager}
                   onChange={handleInputChange}
                   disabled={managersLoading}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                    formErrors.manager ? 'border-red-300' : 'border-gray-300'
-                  } ${managersLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.manager ? 'border-red-300' : 'border-gray-300'
+                    } ${managersLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
                   <option value="">
                     {managersLoading
@@ -1408,185 +1394,185 @@ const Projects = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'projectName') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('projectName');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Project Name {sortColumn === 'projectName' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'clientName') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('clientName');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Client {sortColumn === 'clientName' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'manager') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('manager');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Manager {sortColumn === 'manager' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'status') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('status');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'progress') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('progress');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Progress {sortColumn === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'startDate') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('startDate');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Start Date {sortColumn === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'endDate') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('endDate');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      End Date {sortColumn === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'budget') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('budget');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Budget {sortColumn === 'budget' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        if (sortColumn === 'risk') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortColumn('risk');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Risk {sortColumn === 'risk' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedProjects.map((project) => (
-                    <tr key={project._id} className="hover:bg-gray-50 group">
-                      <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {project.projectName}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {project.clientName}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {project.manager?.fullName || 'John Doe'}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap">
-                        <StatusBadge status={project.status} />
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                            <div className="bg-primary-600 h-1.5 rounded-full" style={{ width: `${getProgress(project.status)}%` }}></div>
-                          </div>
-                          <span className="text-xs">{getProgress(project.status)}%</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(project.startDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(project.endDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                        ₹{project.budget?.toLocaleString() || 'N/A'}
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskBadge(project).color}`}>
-                          {getRiskBadge(project).text}
-                        </span>
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 relative">
-                        <button className="text-gray-500 hover:text-gray-700">
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                          </svg>
-                        </button>
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden group-hover:block">
-                          <div className="py-1">
-                            <button onClick={() => fetchProjectDetails(project._id)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
-                            <button onClick={() => toast.info('Edit Project feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
-                            <button onClick={() => toast.info('Archive feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Archive</button>
-                          </div>
-                        </div>
-                      </td>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'projectName') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('projectName');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Project Name {sortColumn === 'projectName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'clientName') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('clientName');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Client {sortColumn === 'clientName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'manager') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('manager');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Manager {sortColumn === 'manager' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'status') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('status');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'progress') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('progress');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Progress {sortColumn === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'startDate') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('startDate');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Start Date {sortColumn === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'endDate') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('endDate');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        End Date {sortColumn === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'budget') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('budget');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Budget {sortColumn === 'budget' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => {
+                          if (sortColumn === 'risk') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortColumn('risk');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Risk {sortColumn === 'risk' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {sortedProjects.map((project) => (
+                      <tr key={project._id} className="hover:bg-gray-50 group">
+                        <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {project.projectName}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {project.clientName}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {project.manager?.fullName || 'John Doe'}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap">
+                          <StatusBadge status={project.status} />
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                              <div className="bg-primary-600 h-1.5 rounded-full" style={{ width: `${getProgress(project.status)}%` }}></div>
+                            </div>
+                            <span className="text-xs">{getProgress(project.status)}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(project.startDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(project.endDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                          ₹{project.budget?.toLocaleString() || 'N/A'}
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskBadge(project).color}`}>
+                            {getRiskBadge(project).text}
+                          </span>
+                        </td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 relative">
+                          <button className="text-gray-500 hover:text-gray-700">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                            </svg>
+                          </button>
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden group-hover:block">
+                            <div className="py-1">
+                              <button onClick={() => fetchProjectDetails(project._id)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
+                              <button onClick={() => toast.info('Edit Project feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
+                              <button onClick={() => toast.info('Archive feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Archive</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
           )}
         </>
       )}

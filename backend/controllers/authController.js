@@ -30,7 +30,7 @@ exports.register = async (req, res) => {
       fullName,
       role: role || 'staff',
       phone,
-      department: department || 'construction'
+      department
     });
 
     await user.save();

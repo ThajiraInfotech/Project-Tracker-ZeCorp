@@ -55,9 +55,13 @@ const taskSchema = new mongoose.Schema({
       required: true
     },
     text: {
-      type: String,
-      required: true
+      type: String
     },
+    attachments: [{
+      url: String, // Changed from type: String to url: String for clarity, but keeping simple structure is fine too. Let's stick to the plan: type: String which is the URL
+      name: String,
+      fileType: String
+    }],
     createdAt: {
       type: Date,
       default: Date.now
@@ -77,8 +81,8 @@ const taskSchema = new mongoose.Schema({
 });
 
 // Virtual for isOverdue
-taskSchema.virtual('isOverdue').get(function() {
- return this.status !== 'completed' && this.deadline < new Date();
+taskSchema.virtual('isOverdue').get(function () {
+  return this.status !== 'completed' && this.deadline < new Date();
 });
 
 // Indexes for better query performance

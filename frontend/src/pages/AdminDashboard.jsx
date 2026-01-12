@@ -145,7 +145,7 @@ const AdminDashboard = () => {
     labels: ['Total Revenue', 'Completed Revenue', 'Pending Revenue'],
     datasets: [
       {
-        label: 'Revenue ($)',
+        label: 'Revenue (₹)',
         data: [
           adminDashboard.revenue.totalRevenue,
           adminDashboard.revenue.completedProjectsRevenue,
@@ -276,31 +276,28 @@ const AdminDashboard = () => {
             </button>
             <div className="flex space-x-2">
               <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'overview'
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'overview'
                     ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
                     : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
+                  }`}
                 onClick={() => setActiveTab('overview')}
               >
                 Overview
               </button>
               <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'analytics'
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'analytics'
                     ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
                     : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
+                  }`}
                 onClick={() => setActiveTab('analytics')}
               >
                 Analytics
               </button>
               <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'reports'
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'reports'
                     ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
                     : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
+                  }`}
                 onClick={() => setActiveTab('reports')}
               >
                 Reports
@@ -316,31 +313,28 @@ const AdminDashboard = () => {
           <span className="text-sm font-medium text-gray-700">Time Context:</span>
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'today'
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'today'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
               onClick={() => setTimeContext('today')}
             >
               Today
             </button>
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'week'
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'week'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
               onClick={() => setTimeContext('week')}
             >
               This Week
             </button>
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'month'
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'month'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
-              }`}
+                }`}
               onClick={() => setTimeContext('month')}
             >
               This Month
@@ -618,23 +612,23 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-3 gap-6">
           <div className="text-center bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Total Revenue</p>
-            <p className="text-2xl font-bold text-green-600">${adminDashboard.revenue.totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600">₹{adminDashboard.revenue.totalRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{width: '100%'}}></div>
+              <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
             </div>
           </div>
           <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Completed Revenue</p>
-            <p className="text-2xl font-bold text-blue-600">${adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-600">₹{adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.completedProjectsRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%`}}></div>
+              <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.completedProjectsRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%` }}></div>
             </div>
           </div>
           <div className="text-center bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl border border-yellow-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Pending Revenue</p>
-            <p className="text-2xl font-bold text-yellow-600">${adminDashboard.revenue.pendingRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-yellow-600">₹{adminDashboard.revenue.pendingRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-yellow-200 rounded-full h-2">
-              <div className="bg-yellow-500 h-2 rounded-full" style={{width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.pendingRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%`}}></div>
+              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.pendingRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%` }}></div>
             </div>
           </div>
         </div>
@@ -657,7 +651,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-green-700 font-semibold uppercase tracking-wide">Active Staff</p>
                 <p className="text-3xl font-bold text-green-800 mt-2">{adminDashboard.staff.activeStaffCount}</p>
                 <div className="mt-3 w-full bg-green-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{width: `${adminDashboard.staff.totalStaffCount > 0 ? (adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount * 100) : 0}%`}}></div>
+                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${adminDashboard.staff.totalStaffCount > 0 ? (adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount * 100) : 0}%` }}></div>
                 </div>
               </div>
               <div className="bg-green-100 p-3 rounded-xl">
@@ -673,7 +667,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-gray-700 font-semibold uppercase tracking-wide">Idle Staff</p>
                 <p className="text-3xl font-bold text-gray-800 mt-2">{adminDashboard.staff.totalStaffCount - adminDashboard.staff.activeStaffCount}</p>
                 <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-gray-500 h-2 rounded-full" style={{width: `${adminDashboard.staff.totalStaffCount > 0 ? ((adminDashboard.staff.totalStaffCount - adminDashboard.staff.activeStaffCount) / adminDashboard.staff.totalStaffCount * 100) : 0}%`}}></div>
+                  <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${adminDashboard.staff.totalStaffCount > 0 ? ((adminDashboard.staff.totalStaffCount - adminDashboard.staff.activeStaffCount) / adminDashboard.staff.totalStaffCount * 100) : 0}%` }}></div>
                 </div>
               </div>
               <div className="bg-gray-100 p-3 rounded-xl">
@@ -689,7 +683,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-orange-700 font-semibold uppercase tracking-wide">At-Risk Projects</p>
                 <p className="text-3xl font-bold text-orange-800 mt-2">{adminDashboard.delayedProjects.length}</p>
                 <div className="mt-3 w-full bg-orange-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{width: `${adminDashboard.projects.totalProjects > 0 ? (adminDashboard.delayedProjects.length / adminDashboard.projects.totalProjects * 100) : 0}%`}}></div>
+                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${adminDashboard.projects.totalProjects > 0 ? (adminDashboard.delayedProjects.length / adminDashboard.projects.totalProjects * 100) : 0}%` }}></div>
                 </div>
               </div>
               <div className="bg-orange-100 p-3 rounded-xl">

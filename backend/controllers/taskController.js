@@ -393,7 +393,7 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
 // Add comment to task
 exports.addComment = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, attachments } = req.body;
 
     const task = await Task.findById(req.params.id);
     if (!task) {
@@ -408,7 +408,8 @@ exports.addComment = async (req, res) => {
     // Add comment
     task.comments.push({
       user: req.user._id,
-      text
+      text,
+      attachments: attachments || []
     });
 
     await task.save();

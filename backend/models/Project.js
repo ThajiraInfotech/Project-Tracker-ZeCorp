@@ -25,7 +25,7 @@ const projectSchema = new mongoose.Schema({
   clientEmail: {
     type: String,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
       },
       message: props => `${props.value} is not a valid email!`
@@ -34,7 +34,7 @@ const projectSchema = new mongoose.Schema({
   clientPhone: {
     type: String,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^[0-9]{10}$/.test(v);
       },
       message: props => `${props.value} is not a valid phone number!`
@@ -91,9 +91,13 @@ const projectSchema = new mongoose.Schema({
       required: true
     },
     text: {
-      type: String,
-      required: true
+      type: String
     },
+    attachments: [{
+      url: String,
+      name: String,
+      fileType: String
+    }],
     createdAt: {
       type: Date,
       default: Date.now

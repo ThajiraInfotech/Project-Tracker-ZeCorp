@@ -16,7 +16,8 @@ class CloudinaryService {
       cloudinary: cloudinary,
       params: {
         folder: 'thajira_workflow',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
+        resource_type: 'auto',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'mp4', 'webm', 'ogg', 'avi', 'mov'],
         public_id: (req, file) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
           return file.fieldname + '-' + uniqueSuffix;
