@@ -7,7 +7,30 @@ const { createMentionNotifications } = require('../utils/mentionParser');
 const { updateProjectProgressAndStatus } = require('../utils/projectProgressUtils');
 
 // Helper function to sync progress based on status
+// Helper function to sync progress based on status
 const syncProgressWithStatus = (task) => {
+  // Guard: If subtasks exist, recalculate progress and status from them
+  if (task.subtasks && task.subtasks.length > 0) {
+    const totalSubtasks = task.subtasks.length;
+    const completedSubtasks = task.subtasks.filter(st => st.status === 'completed').length;
+    const inProgressSubtasks = task.subtasks.filter(st => st.status === 'in-progress').length;
+
+    // Calculate progress
+    task.progress = Math.round((completedSubtasks / totalSubtasks) * 100);
+
+    // Calculate status
+    if (completedSubtasks === totalSubtasks) {
+      task.status = 'completed';
+      if (!task.completionDate) task.completionDate = new Date();
+    } else {
+      // If any subtask exists, parent cannot be 'todo' (per rules)
+      task.status = 'in-progress';
+      task.completionDate = undefined;
+    }
+    return; // Exit, do not use manual logic below
+  }
+
+  // Original logic for tasks without subtasks
   if (task.status === 'completed') {
     task.progress = 100;
   } else if (task.status === 'todo') {
@@ -88,7 +111,10 @@ exports.getAllTasks = async (req, res) => {
 
     // Filter by user role
     if (req.user.role === 'staff') {
-      query.assignedTo = req.user._id.toString();
+      query.$or = [
+        { assignedTo: req.user._id.toString() },
+        { 'subtasks.assignedTo': req.user._id.toString() }
+      ];
     } else if (req.user.role === 'manager') {
       // Get projects managed by this user
       const managedProjects = await Project.find({ manager: req.user._id.toString() });
@@ -113,11 +139,20 @@ exports.getAllTasks = async (req, res) => {
       .populate('project', 'projectName projectType')
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email')
       .sort({ deadline: 1 });
+
+    const tasksWithReadOnly = tasks.map(task => {
+      const t = task.toObject();
+      const isParentAssignee = t.assignedTo?._id?.toString() === req.user._id.toString() || t.assignedTo?.toString() === req.user._id.toString();
+      const isManager = ['admin', 'manager'].includes(req.user.role);
+      t.readOnly = !isManager && !isParentAssignee;
+      return t;
+    });
 
     res.json({
       success: true,
-      tasks
+      tasks: tasksWithReadOnly
     });
   } catch (error) {
     console.error('Get all tasks error:', error);
@@ -128,15 +163,29 @@ exports.getAllTasks = async (req, res) => {
 // Get my tasks (for current user)
 exports.getMyTasks = async (req, res) => {
   try {
-    const tasks = await Task.find({ assignedTo: req.user._id.toString() })
+    const tasks = await Task.find({
+      $or: [
+        { assignedTo: req.user._id.toString() },
+        { 'subtasks.assignedTo': req.user._id.toString() }
+      ]
+    })
       .populate('project', 'projectName projectType')
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email')
       .sort({ deadline: 1 });
+
+    const tasksWithReadOnly = tasks.map(task => {
+      const t = task.toObject();
+      const isParentAssignee = t.assignedTo?._id?.toString() === req.user._id.toString() || t.assignedTo?.toString() === req.user._id.toString();
+      const isManager = ['admin', 'manager'].includes(req.user.role);
+      t.readOnly = !isManager && !isParentAssignee;
+      return t;
+    });
 
     res.json({
       success: true,
-      tasks
+      tasks: tasksWithReadOnly
     });
   } catch (error) {
     console.error('Get my tasks error:', error);
@@ -157,20 +206,36 @@ exports.getTaskById = async (req, res) => {
         ]
       })
       .populate('assignedTo', 'username fullName email profileImage')
-      .populate('createdBy', 'username fullName email');
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
     // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
+    // Check authorization
+    if (req.user.role === 'staff') {
+      const assignedToId = task.assignedTo?._id ? task.assignedTo._id.toString() : task.assignedTo?.toString();
+      const isSubtaskAssignee = task.subtasks && task.subtasks.some(st =>
+        (st.assignedTo?._id?.toString() === req.user._id.toString()) ||
+        (st.assignedTo?.toString() === req.user._id.toString())
+      );
+
+      if (assignedToId !== req.user._id.toString() && !isSubtaskAssignee) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
     }
+
+    // Inject readOnly flag
+    const taskObj = task.toObject();
+    const isParentAssignee = task.assignedTo?._id?.toString() === req.user._id.toString() || task.assignedTo?.toString() === req.user._id.toString();
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !isManager && !isParentAssignee;
 
     res.json({
       success: true,
-      task
+      task: taskObj
     });
   } catch (error) {
     console.error('Get task by ID error:', error);
@@ -182,7 +247,7 @@ exports.getTaskById = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress'];
+    let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress', 'subtasks'];
     if (req.user.role === 'admin') {
       allowedUpdates.push('assignedTo');
     }
@@ -274,11 +339,15 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     // Update status
-    task.status = status;
-
-    // If task is completed, set completion date
-    if (status === 'completed') {
-      task.completionDate = new Date();
+    // If subtasks exist, ignore manual status update (it will be recalculated)
+    if (task.subtasks && task.subtasks.length > 0) {
+      // Do nothing to status here, syncProgressWithStatus will handle it
+    } else {
+      task.status = status;
+      // If task is completed, set completion date
+      if (status === 'completed') {
+        task.completionDate = new Date();
+      }
     }
 
     syncProgressWithStatus(task);
@@ -287,10 +356,23 @@ exports.updateTaskStatus = async (req, res) => {
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
 
+    // Populate task before returning
+    const populatedTask = await Task.findById(task._id)
+      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('assignedTo', 'username fullName email profileImage')
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
+
+    // Inject readOnly flag
+    const taskObj = populatedTask.toObject();
+    const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !isManager && !isParentAssignee;
+
     res.json({
       success: true,
       message: 'Task status updated successfully',
-      task
+      task: taskObj
     });
   } catch (error) {
     console.error('Update task status error:', error);
@@ -317,17 +399,37 @@ exports.updateTaskProgress = async (req, res) => {
       return res.status(400).json({ message: 'Progress must be between 0 and 100' });
     }
 
-    task.progress = progress;
-    syncProgressWithStatus(task);
+    // If subtasks exist, ignore manual progress update
+    if (task.subtasks && task.subtasks.length > 0) {
+      // Recalculate to ensure consistency (ignoring req.body.progress)
+      syncProgressWithStatus(task);
+    } else {
+      task.progress = progress;
+      syncProgressWithStatus(task);
+    }
+
     await task.save();
 
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
 
+    // Populate task before returning
+    const populatedTask = await Task.findById(task._id)
+      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('assignedTo', 'username fullName email profileImage')
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
+
+    // Inject readOnly flag
+    const taskObj = populatedTask.toObject();
+    const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !isManager && !isParentAssignee;
+
     res.json({
       success: true,
       message: 'Task progress updated successfully',
-      task
+      task: taskObj
     });
   } catch (error) {
     console.error('Update task progress error:', error);
@@ -362,27 +464,47 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     }
 
     // Update fields if provided
-    if (status !== undefined) {
-      task.status = status;
-      // If task is completed, set completion date
-      if (status === 'completed') {
-        task.completionDate = new Date();
-      }
-    }
-    if (progress !== undefined) {
-      task.progress = progress;
-    }
+    if (task.subtasks && task.subtasks.length > 0) {
+      // If subtasks exist, IGNORE status and progress updates from request
+      // We only allow other fields if any (but this endpoint is specific to status/progress)
 
-    syncProgressWithStatus(task);
+      // Force recalculation
+      syncProgressWithStatus(task);
+    } else {
+      if (status !== undefined) {
+        task.status = status;
+        // If task is completed, set completion date
+        if (status === 'completed') {
+          task.completionDate = new Date();
+        }
+      }
+      if (progress !== undefined) {
+        task.progress = progress;
+      }
+      syncProgressWithStatus(task);
+    }
     await task.save();
 
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
 
+    // Populate task before returning
+    const populatedTask = await Task.findById(task._id)
+      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('assignedTo', 'username fullName email profileImage')
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
+
+    // Inject readOnly flag
+    const taskObj = populatedTask.toObject();
+    const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !isManager && !isParentAssignee;
+
     res.json({
       success: true,
       message: 'Task updated successfully',
-      task
+      task: taskObj
     });
   } catch (error) {
     console.error('Update task status and progress error:', error);
@@ -741,6 +863,75 @@ exports.adminReassignStuckTasks = async (req, res) => {
   }
 };
 
+// Update subtask status
+exports.updateSubtaskStatus = async (req, res) => {
+  try {
+    const { id, subtaskId } = req.params;
+    const { status } = req.body;
+
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const subtask = task.subtasks.id(subtaskId);
+    if (!subtask) {
+      return res.status(404).json({ message: 'Subtask not found' });
+    }
+
+    // Check authorization
+    // Staff can only update if assigned to the subtask
+    if (req.user.role === 'staff') {
+      const assignedToId = subtask.assignedTo ? subtask.assignedTo.toString() : null;
+      if (assignedToId !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied: You can only update your assigned subtasks' });
+      }
+    }
+
+    // Update status
+    if (status) {
+      if (!['todo', 'in-progress', 'completed'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+      subtask.status = status;
+      if (status === 'completed') {
+        subtask.completedAt = new Date();
+      } else {
+        subtask.completedAt = undefined;
+      }
+    }
+
+    // Recalculate parent task progress/status
+    syncProgressWithStatus(task);
+    await task.save();
+
+    // Update project progress
+    await updateProjectProgressAndStatus(task.project);
+
+    // Populate task before returning
+    const populatedTask = await Task.findById(task._id)
+      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('assignedTo', 'username fullName email profileImage')
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
+
+    // Inject readOnly flag
+    const taskObj = populatedTask.toObject();
+    const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !isManager && !isParentAssignee;
+
+    res.json({
+      success: true,
+      message: 'Subtask status updated successfully',
+      task: taskObj
+    });
+  } catch (error) {
+    console.error('Update subtask status error:', error);
+    res.status(500).json({ message: 'Failed to update subtask status' });
+  }
+};
+
 // Get tasks by project ID (with authorization)
 exports.getTasksByProject = async (req, res) => {
   try {
@@ -769,6 +960,7 @@ exports.getTasksByProject = async (req, res) => {
     const tasks = await Task.find({ project: projectId })
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email')
       .sort({ deadline: 1 });
 
     res.json({

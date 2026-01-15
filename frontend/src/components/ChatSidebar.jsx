@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
+import UserAvatar from './UserAvatar';
 
 const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entityData }) => {
   const [comments, setComments] = useState([]);
@@ -405,16 +406,14 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
                     className={`flex gap-4 ${isCurrentUser ? 'flex-row-reverse' : ''} group`}
                   >
                     {/* Avatar */}
-                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-sm border border-black/5 ${isCurrentUser
+                    <UserAvatar
+                      user={commentUser}
+                      size="custom"
+                      className={`w-9 h-9 text-sm shadow-sm border border-black/5 ${isCurrentUser
                         ? 'bg-[#700606] text-white order-last'
                         : 'bg-white text-[#700606]'
-                      }`}>
-                      {commentUser?.avatar ? (
-                        <img src={commentUser.avatar} alt={authorName} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        authorInitials
-                      )}
-                    </div>
+                        }`}
+                    />
 
                     {/* Message Content */}
                     <div className={`flex-1 flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[85%]`}>
@@ -424,8 +423,8 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
                       </div>
 
                       <div className={`px-4 py-3 shadow-sm text-sm leading-relaxed transition-all duration-200 ${isCurrentUser
-                          ? 'bg-[#700606] text-white rounded-2xl rounded-tr-sm hover:shadow-md'
-                          : 'bg-white text-slate-700 rounded-2xl rounded-tl-sm border border-gray-100 hover:shadow-md'
+                        ? 'bg-[#700606] text-white rounded-2xl rounded-tr-sm hover:shadow-md'
+                        : 'bg-white text-slate-700 rounded-2xl rounded-tl-sm border border-gray-100 hover:shadow-md'
                         }`}>
                         {/* Text */}
                         {comment.text && <p className="whitespace-pre-wrap break-words">{comment.text}</p>}
@@ -553,9 +552,11 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
                           className={`px-4 py-2.5 cursor-pointer flex items-center gap-3 transition-colors ${index === selectedMentionIndex ? 'bg-[#700606]/5 border-l-2 border-[#700606]' : 'hover:bg-gray-50 border-l-2 border-transparent'
                             }`}
                         >
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#700606]/10 text-[#700606] flex items-center justify-center text-xs font-bold">
-                            {userName.charAt(0).toUpperCase()}
-                          </div>
+                          <UserAvatar
+                            user={user}
+                            size="sm"
+                            className="bg-[#700606]/10 text-[#700606]"
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">
                               {userName}

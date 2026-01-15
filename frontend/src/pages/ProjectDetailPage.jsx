@@ -5,6 +5,7 @@ import api from '../store/api';
 import { toast } from 'react-toastify';
 import TaskCreateModal from '../components/TaskCreateModal';
 import ChatSidebar from '../components/ChatSidebar';
+import UserAvatar from '../components/UserAvatar';
 
 const ProjectDetailPage = () => {
   const { id } = useParams();
@@ -282,11 +283,7 @@ const ProjectDetailPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {project.teamMembers.map((member, index) => (
                 <div key={index} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary-700">
-                      {member.fullName?.charAt(0) || 'U'}
-                    </span>
-                  </div>
+                  <UserAvatar user={member} size="md" />
                   <div>
                     <p className="font-semibold text-gray-900">{member.fullName || `Member ${index + 1}`}</p>
                     <p className="text-sm text-gray-500">Team Member</p>
@@ -311,7 +308,7 @@ const ProjectDetailPage = () => {
               type="text"
               placeholder="Search by title or description..."
               value={taskFilters.search}
-              onChange={(e) => setTaskFilters({...taskFilters, search: e.target.value})}
+              onChange={(e) => setTaskFilters({ ...taskFilters, search: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -319,7 +316,7 @@ const ProjectDetailPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={taskFilters.status}
-              onChange={(e) => setTaskFilters({...taskFilters, status: e.target.value})}
+              onChange={(e) => setTaskFilters({ ...taskFilters, status: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Statuses</option>
@@ -333,7 +330,7 @@ const ProjectDetailPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
             <select
               value={taskFilters.priority}
-              onChange={(e) => setTaskFilters({...taskFilters, priority: e.target.value})}
+              onChange={(e) => setTaskFilters({ ...taskFilters, priority: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Priorities</option>
@@ -488,11 +485,11 @@ const ProjectDetailPage = () => {
               {teamList.map((member, index) => (
                 <div key={member._id || index} className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center shadow-sm">
-                      <span className="text-xl font-bold text-primary-700">
-                        {member.fullName?.charAt(0) || 'U'}
-                      </span>
-                    </div>
+                    <UserAvatar
+                      user={member}
+                      size="custom"
+                      className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 text-xl text-primary-700"
+                    />
                     <div>
                       <h4 className="font-bold text-gray-900 text-lg">{member.fullName || `Member ${index + 1}`}</h4>
                       <p className="text-sm text-gray-500 font-medium">{member.role}</p>
@@ -650,11 +647,7 @@ const ProjectDetailPage = () => {
                       className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                     />
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary-700">
-                          {member.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                        </span>
-                      </div>
+                      <UserAvatar user={member} size="sm" />
                       <div>
                         <p className="font-medium text-gray-900">{member.fullName}</p>
                         <p className="text-sm text-gray-500">{member.username}</p>
@@ -717,14 +710,12 @@ const ProjectDetailPage = () => {
                 <p className="text-lg font-semibold">{selectedTaskForActions.title}</p>
                 <p className="text-gray-600">{selectedTaskForActions.description}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>Priority: <span className={`font-medium ${
-                    selectedTaskForActions.priority === 'high' ? 'text-red-600' :
+                  <span>Priority: <span className={`font-medium ${selectedTaskForActions.priority === 'high' ? 'text-red-600' :
                     selectedTaskForActions.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'
-                  }`}>{selectedTaskForActions.priority}</span></span>
-                  <span>Status: <span className={`font-medium ${
-                    selectedTaskForActions.status === 'completed' ? 'text-green-600' :
+                    }`}>{selectedTaskForActions.priority}</span></span>
+                  <span>Status: <span className={`font-medium ${selectedTaskForActions.status === 'completed' ? 'text-green-600' :
                     selectedTaskForActions.status === 'in-progress' ? 'text-blue-600' : 'text-gray-600'
-                  }`}>{selectedTaskForActions.status}</span></span>
+                    }`}>{selectedTaskForActions.status}</span></span>
                   <span>Progress: {selectedTaskForActions.progress || 0}%</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -869,7 +860,7 @@ const ProjectDetailPage = () => {
                 <input
                   type="text"
                   value={editForm.projectName}
-                  onChange={(e) => setEditForm({...editForm, projectName: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, projectName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -879,7 +870,7 @@ const ProjectDetailPage = () => {
                 <input
                   type="number"
                   value={editForm.budget}
-                  onChange={(e) => setEditForm({...editForm, budget: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="0"
                   step="1000"
@@ -891,7 +882,7 @@ const ProjectDetailPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea
                 value={editForm.description}
-                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -905,7 +896,7 @@ const ProjectDetailPage = () => {
                   <input
                     type="text"
                     value={editForm.clientName}
-                    onChange={(e) => setEditForm({...editForm, clientName: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, clientName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -914,7 +905,7 @@ const ProjectDetailPage = () => {
                   <input
                     type="email"
                     value={editForm.clientEmail}
-                    onChange={(e) => setEditForm({...editForm, clientEmail: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, clientEmail: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -923,7 +914,7 @@ const ProjectDetailPage = () => {
                   <input
                     type="tel"
                     value={editForm.clientPhone}
-                    onChange={(e) => setEditForm({...editForm, clientPhone: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, clientPhone: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -938,7 +929,7 @@ const ProjectDetailPage = () => {
                   <input
                     type="date"
                     value={editForm.startDate}
-                    onChange={(e) => setEditForm({...editForm, startDate: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -947,7 +938,7 @@ const ProjectDetailPage = () => {
                   <input
                     type="date"
                     value={editForm.endDate}
-                    onChange={(e) => setEditForm({...editForm, endDate: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -959,7 +950,7 @@ const ProjectDetailPage = () => {
               <input
                 type="text"
                 value={editForm.location}
-                onChange={(e) => setEditForm({...editForm, location: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -1107,11 +1098,10 @@ const ProjectDetailPage = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-8 py-5 text-sm font-semibold border-b-3 transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600 bg-white shadow-sm'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`px-8 py-5 text-sm font-semibold border-b-3 transition-all duration-200 ${activeTab === tab.id
+                  ? 'border-primary-500 text-primary-600 bg-white shadow-sm'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 {tab.label}
               </button>

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
+const { authMiddleware, adminMiddleware, managerMiddleware } = require('../middleware/authMiddleware');
 
 // Authentication routes
 router.post('/register', authController.register);
@@ -10,8 +10,8 @@ router.post('/logout', authMiddleware, authController.logout);
 router.get('/me', authMiddleware, authController.getCurrentUser);
 router.post('/refresh-token', authController.refreshToken);
 
-// User management routes (admin only)
-router.get('/users', authMiddleware, adminMiddleware, authController.getAllUsers);
+// User management routes (admin/manager for list)
+router.get('/users', authMiddleware, managerMiddleware, authController.getAllUsers);
 router.get('/users/by-role', authMiddleware, adminMiddleware, authController.getUsersByRole);
 router.get('/users/:id', authMiddleware, adminMiddleware, authController.getUserById);
 router.put('/users/:id', authMiddleware, adminMiddleware, authController.updateUser);

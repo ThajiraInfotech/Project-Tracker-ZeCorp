@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+
+import UserAvatar from '../../components/UserAvatar';
 import api from '../../store/api';
 import { toast } from 'react-toastify';
 
@@ -408,11 +410,11 @@ const UserManagement = () => {
                     <tr key={user._id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                            <svg className="h-6 w-6 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                            </svg>
-                          </div>
+                          <UserAvatar
+                            user={user}
+                            size="md"
+                            className="mr-4"
+                          />
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
                             <div className="text-sm text-gray-500">{user.username}</div>

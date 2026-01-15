@@ -1,15 +1,16 @@
 import React from 'react';
 import DiscussionForm from './DiscussionForm';
+import UserAvatar from './UserAvatar';
 
-const TeamTab = ({ 
-  project, 
-  discussionContent, 
-  setDiscussionContent, 
-  addingDiscussion, 
-  handleAddDiscussion, 
-  selectedFiles, 
-  setSelectedFiles, 
-  formatDiscussionContent 
+const TeamTab = ({
+  project,
+  discussionContent,
+  setDiscussionContent,
+  addingDiscussion,
+  handleAddDiscussion,
+  selectedFiles,
+  setSelectedFiles,
+  formatDiscussionContent
 }) => {
   // Combine manager and team members
   const teamList = [];
@@ -36,11 +37,11 @@ const TeamTab = ({
             {teamList.map((member, index) => (
               <div key={member._id || index} className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-xl font-bold text-primary-700">
-                      {member.fullName?.charAt(0) || 'U'}
-                    </span>
-                  </div>
+                  <UserAvatar
+                    user={member}
+                    size="xl"
+                    className="bg-gradient-to-br from-primary-100 to-primary-200 shadow-sm"
+                  />
                   <div>
                     <h4 className="font-bold text-gray-900 text-lg">{member.fullName || `Member ${index + 1}`}</h4>
                     <p className="text-sm text-gray-500 font-medium">{member.role}</p>

@@ -40,6 +40,7 @@ import api from '../store/api';
 import { fetchProjects } from '../store/projectSlice';
 import { toast } from 'react-toastify';
 import TaskCreateModal from '../components/TaskCreateModal';
+import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
 import ChatSidebar from '../components/ChatSidebar';
 
@@ -210,11 +211,6 @@ const Tasks = () => {
 
       if (response.data.success && response.data.task) {
         setSelectedTask(response.data.task);
-        setUpdateForm({
-          status: response.data.task.status,
-          progress: response.data.task.progress || 0,
-          comment: ''
-        });
         setShowModal(true);
       }
     } catch (error) {
@@ -269,7 +265,7 @@ const Tasks = () => {
         text: updateForm.comment
       });
       toast.success('Comment added!');
-      setUpdateForm({...updateForm, comment: ''});
+      setUpdateForm({ ...updateForm, comment: '' });
       // Refresh task details
       fetchTaskDetails(selectedTask._id);
     } catch (error) {
@@ -476,9 +472,8 @@ const Tasks = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className={`bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 relative group min-h-[280px] flex flex-col border-2 ${
-          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100'
-        }`}
+        className={`bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 relative group min-h-[280px] flex flex-col border-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100'
+          }`}
       >
         {/* Selection checkbox */}
         <div className="absolute top-3 left-3 z-10">
@@ -589,190 +584,24 @@ const Tasks = () => {
     );
   };
 
-  // Task details modal
-  const TaskDetailsModal = ({ onEditTask }) => {
+  // Task details modal usage in render
+  const renderTaskDetailsModal = () => {
     if (!selectedTask || !showModal) return null;
-
-    const canUpdate = auth.user?.role === 'staff' && selectedTask.assignedTo?._id === auth.user._id;
-
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="mb-4">
-            <p className="text-sm text-gray-500 mb-2">Tasks › {selectedTask.title}</p>
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedTask.title}</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium text-gray-700 mb-2">Description</h3>
-              <p className="text-gray-600">{selectedTask.description}</p>
-            </div>
-
-            {/* Execution Section */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Execution</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1">
-                  <h3 className="font-medium text-gray-700 mb-2">Status</h3>
-                  <div className="scale-110 transform origin-left">
-                    <StatusBadge status={selectedTask.status} />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-1">Assigned To</h3>
-                  <p className="text-gray-600">{selectedTask.assignedTo?.fullName || 'Unassigned'}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-1">
-                    {selectedTask.status === 'completed' ? 'Completed on' : 'Due'}
-                  </h3>
-                  <p className="text-gray-600">
-                    {selectedTask.status === 'completed'
-                      ? (selectedTask.completionDate ? new Date(selectedTask.completionDate).toLocaleDateString() : 'N/A')
-                      : new Date(selectedTask.deadline).toLocaleDateString()
-                    }
-                    {selectedTask.status !== 'completed' && selectedTask.isOverdue && <span className="text-red-600"> • Overdue</span>}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100"></div>
-
-            {/* Progress Section */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Progress</h4>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium text-gray-700">Progress</h3>
-                  <span className="text-lg font-semibold text-gray-900">{selectedTask.progress || 0}%</span>
-                </div>
-                <div className="w-full h-4 bg-gray-200 rounded-full mb-2">
-                  <div
-                    className="h-4 bg-primary-600 rounded-full transition-all duration-300"
-                    style={{ width: `${selectedTask.progress || 0}%` }}
-                  ></div>
-                </div>
-                <p className="text-xs text-gray-500">Progress updated by staff</p>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100"></div>
-
-            {/* Context Section */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Context</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-1">Project</h3>
-                  <p className="text-gray-600">{selectedTask.project?.projectName || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-1">Priority</h3>
-                  <span className="text-sm text-gray-500">{selectedTask.priority} priority</span>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-1">Created By</h3>
-                  <p className="text-gray-600">{selectedTask.createdBy?.fullName || 'Unknown'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Update form for staff */}
-            {canUpdate && (
-              <div className="border-t pt-4">
-                <h3 className="font-medium text-gray-700 mb-4">Update Task</h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      value={updateForm.status}
-                      onChange={(e) => setUpdateForm({...updateForm, status: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="todo">To Do</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="delayed">Delayed</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Progress (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={updateForm.progress}
-                      onChange={(e) => setUpdateForm({...updateForm, progress: parseInt(e.target.value) || 0})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2 mb-4">
-                  <input
-                    type="text"
-                    placeholder="Add a comment (optional)"
-                    value={updateForm.comment}
-                    onChange={(e) => setUpdateForm({...updateForm, comment: e.target.value})}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
-                  <button
-                    onClick={handleAddComment}
-                    disabled={!updateForm.comment.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    Add Comment
-                  </button>
-                </div>
-                <button
-                  onClick={handleUpdateTask}
-                  disabled={updating}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {updating ? 'Updating...' : 'Update Task'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowChatSidebar(true);
-              }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              Chat
-            </button>
-            <button
-              onClick={() => onEditTask(selectedTask)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Edit Task
-            </button>
-            <button
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
+      <TaskDetailsModal
+        taskId={selectedTask._id}
+        onClose={() => setShowModal(false)}
+        onEditTask={() => {
+          setShowModal(false);
+          handleEditTask(selectedTask);
+        }}
+        currentUserRole={auth.user?.role}
+        currentUserId={auth.user?._id}
+        onTaskUpdated={(updatedTask) => {
+          setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+          setSelectedTask(updatedTask);
+        }}
+      />
     );
   };
 
@@ -867,19 +696,17 @@ const Tasks = () => {
                       <div className="flex-1">
                         <h4 className="text-2xl font-bold text-gray-900 mb-3">{selectedTask.title}</h4>
                         <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
                             selectedTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
+                              'bg-green-100 text-green-800'
+                            }`}>
                             {selectedTask.priority} priority
                           </span>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            selectedTask.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedTask.status === 'completed' ? 'bg-green-100 text-green-800' :
                             selectedTask.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                            selectedTask.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                            'bg-orange-100 text-orange-800'
-                          }`}>
+                              selectedTask.status === 'todo' ? 'bg-gray-100 text-gray-800' :
+                                'bg-orange-100 text-orange-800'
+                            }`}>
                             {selectedTask.status}
                           </span>
                         </div>
@@ -995,9 +822,9 @@ const Tasks = () => {
           entityData={selectedTask}
         />
       </div>
-   
-  );
-}
+
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
@@ -1014,27 +841,24 @@ const Tasks = () => {
             <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
               <button
                 onClick={() => setViewMode('card')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                  }`}
               >
                 <Squares2X2Icon className="w-4 h-4" />
                 Cards
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                  }`}
               >
                 <TableCellsIcon className="w-4 h-4" />
                 Table
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'kanban' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'kanban' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                  }`}
               >
                 <ViewColumnsIcon className="w-4 h-4" />
                 Kanban
@@ -1203,14 +1027,14 @@ const Tasks = () => {
                       <input
                         type="date"
                         value={dateRange.start}
-                        onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                        onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm"
                         placeholder="Start"
                       />
                       <input
                         type="date"
                         value={dateRange.end}
-                        onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                        onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm"
                         placeholder="End"
                       />
@@ -1394,9 +1218,8 @@ const Tasks = () => {
                         key={task._id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`bg-white rounded-lg p-3 shadow-sm border-2 ${
-                          selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
-                        }`}
+                        className={`bg-white rounded-lg p-3 shadow-sm border-2 ${selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
+                          }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <input
@@ -1675,7 +1498,23 @@ const Tasks = () => {
       )}
 
       {/* Task details modal */}
-      <TaskDetailsModal onEditTask={handleEditTask} />
+      {/* Task details modal */}
+      {showModal && selectedTask && (
+        <TaskDetailsModal
+          taskId={selectedTask._id}
+          onClose={() => setShowModal(false)}
+          onEditTask={() => {
+            setShowModal(false);
+            handleEditTask(selectedTask);
+          }}
+          currentUserRole={auth.user?.role}
+          currentUserId={auth.user?._id}
+          onTaskUpdated={(updatedTask) => {
+            setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+            setSelectedTask(updatedTask);
+          }}
+        />
+      )}
 
       {/* Task create modal */}
       <TaskCreateModal

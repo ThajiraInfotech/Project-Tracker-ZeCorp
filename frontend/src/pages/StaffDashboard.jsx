@@ -5,6 +5,8 @@ import api from '../store/api';
 import { toast } from 'react-toastify';
 import KanbanBoard from '../components/KanbanBoard';
 import ChatSidebar from '../components/ChatSidebar';
+import TaskDetailsModal from '../components/TaskDetailsModal';
+import UserAvatar from '../components/UserAvatar';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -52,6 +54,7 @@ const StaffDashboard = () => {
   });
   const [viewMode, setViewMode] = useState('kanban');
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showModal, setShowModal] = useState(false); // Add this for consistency with Tasks.jsx props if needed, or just use showTaskModal
 
   useEffect(() => {
     const fetchStaffData = async () => {
@@ -241,11 +244,11 @@ const StaffDashboard = () => {
               <p className="text-sm text-white">Welcome, {user?.fullName}</p>
               <p className="text-xs text-white/80">Staff Member</p>
             </div>
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {user?.fullName?.charAt(0)?.toUpperCase()}
-              </span>
-            </div>
+            <UserAvatar
+              user={user}
+              size="custom"
+              className="w-10 h-10 bg-white/20 text-white ring-2 ring-white/30"
+            />
           </div>
         </div>
       </div>
@@ -257,16 +260,15 @@ const StaffDashboard = () => {
             {[
               { id: 'overview', name: 'Overview', icon: '📊' },
               { id: 'tasks', name: 'My Tasks', icon: '📋' },
-             
+
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-1 py-2 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`flex items-center px-1 py-2 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.name}
@@ -485,11 +487,10 @@ const StaffDashboard = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h4 className="text-lg font-medium text-gray-900">{task.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
                                 task.priority === 'medium' ? 'text-yellow-800 bg-yellow-100' :
-                                'bg-green-100 text-green-800'
-                              }`}>
+                                  'bg-green-100 text-green-800'
+                                }`}>
                                 {task.priority} priority
                               </span>
                             </div>
@@ -499,10 +500,9 @@ const StaffDashboard = () => {
                             )}
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                              <span>Status: <span className={`font-medium ${
-                                task.status === 'in-progress' ? 'text-blue-600' :
+                              <span>Status: <span className={`font-medium ${task.status === 'in-progress' ? 'text-blue-600' :
                                 task.status === 'todo' ? 'text-gray-600' : 'text-green-600'
-                              }`}>{task.status}</span></span>
+                                }`}>{task.status}</span></span>
                             </div>
                           </div>
                           <div className="ml-6 flex flex-col items-end gap-3">
@@ -578,11 +578,10 @@ const StaffDashboard = () => {
                         </div>
                         <div className="flex justify-between text-sm text-gray-500">
                           <span>Due: {new Date(project.endDate).toLocaleDateString()}</span>
-                          <span className={`font-medium ${
-                            project.status === 'completed' ? 'text-green-600' :
+                          <span className={`font-medium ${project.status === 'completed' ? 'text-green-600' :
                             project.status === 'in-progress' ? 'text-blue-600' :
-                            'text-gray-600'
-                          }`}>
+                              'text-gray-600'
+                            }`}>
                             {project.status}
                           </span>
                         </div>
@@ -691,7 +690,7 @@ const StaffDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Task</label>
                   <select
                     value={timeEntry.taskId}
-                    onChange={(e) => setTimeEntry({...timeEntry, taskId: e.target.value})}
+                    onChange={(e) => setTimeEntry({ ...timeEntry, taskId: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                     required
                   >
@@ -712,7 +711,7 @@ const StaffDashboard = () => {
                       min="0.25"
                       max="24"
                       value={timeEntry.hours}
-                      onChange={(e) => setTimeEntry({...timeEntry, hours: e.target.value})}
+                      onChange={(e) => setTimeEntry({ ...timeEntry, hours: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                       required
                     />
@@ -722,7 +721,7 @@ const StaffDashboard = () => {
                     <input
                       type="date"
                       value={timeEntry.date}
-                      onChange={(e) => setTimeEntry({...timeEntry, date: e.target.value})}
+                      onChange={(e) => setTimeEntry({ ...timeEntry, date: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                       required
                     />
@@ -732,7 +731,7 @@ const StaffDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
                   <textarea
                     value={timeEntry.description}
-                    onChange={(e) => setTimeEntry({...timeEntry, description: e.target.value})}
+                    onChange={(e) => setTimeEntry({ ...timeEntry, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                     placeholder="What did you work on?"
@@ -759,133 +758,18 @@ const StaffDashboard = () => {
         )}
 
         {/* Task Details Modal */}
-        {showTaskModal && selectedTask && (() => {
-          const project = projects.find(p => p._id === (selectedTask.project?._id || selectedTask.project));
-          return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Task Details</h3>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowChatSidebar(true)}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Chat
-                    </button>
-                    <button
-                      onClick={() => setShowTaskModal(false)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="p-6 space-y-6">
-                  <div>
-                    <h4 className="text-2xl font-bold text-gray-900 mb-2">{selectedTask.title}</h4>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
-                        selectedTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {selectedTask.priority} priority
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        selectedTask.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        selectedTask.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                        selectedTask.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                        'bg-orange-100 text-orange-800'
-                      }`}>
-                        {selectedTask.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h5 className="text-lg font-medium text-gray-900 mb-2">Description</h5>
-                    <p className="text-gray-700 whitespace-pre-wrap">{selectedTask.description || 'No description provided'}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Task Information</h5>
-                      <div className="space-y-3">
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Project:</span>
-                          <p className="text-sm text-gray-900">{project?.projectName || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Assigned To:</span>
-                          <p className="text-sm text-gray-900">{selectedTask.assignedTo?.fullName || selectedTask.assignedTo?.name || 'Unassigned'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Deadline:</span>
-                          <p className="text-sm text-gray-900">{new Date(selectedTask.deadline).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Created:</span>
-                          <p className="text-sm text-gray-900">{selectedTask.createdAt ? new Date(selectedTask.createdAt).toLocaleDateString() : 'N/A'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Progress</h5>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-medium text-gray-700">Progress</span>
-                            <span className="font-medium text-gray-700">{selectedTask.progress || 0}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
-                              style={{ width: `${selectedTask.progress || 0}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Estimated Hours:</span>
-                          <p className="text-sm text-gray-900">{selectedTask.estimatedHours || 'Not set'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Actual Hours:</span>
-                          <p className="text-sm text-gray-900">{selectedTask.actualHours || 0}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedTask.attachments && selectedTask.attachments.length > 0 && (
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Attachments</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedTask.attachments.map((attachment, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                            </svg>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                              <p className="text-xs text-gray-500">{attachment.size}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {showTaskModal && selectedTask && (
+          <TaskDetailsModal
+            taskId={selectedTask._id}
+            onClose={() => setShowTaskModal(false)}
+            currentUserRole="staff"
+            currentUserId={user?.id}
+            onTaskUpdated={(updatedTask) => {
+              setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+              setSelectedTask(updatedTask);
+            }}
+          />
+        )}
 
         {/* Chat Sidebar */}
         <ChatSidebar

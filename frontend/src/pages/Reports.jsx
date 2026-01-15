@@ -39,6 +39,7 @@ import {
   FaTimesCircle,
   FaHourglassHalf
 } from 'react-icons/fa';
+import UserAvatar from '../components/UserAvatar';
 
 ChartJS.register(
   CategoryScale,
@@ -487,11 +488,10 @@ const Reports = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setReportType(key)}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all ${
-                  reportType === key
-                    ? 'bg-theme-600 text-white shadow-lg'
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all ${reportType === key
+                  ? 'bg-theme-600 text-white shadow-lg'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 <Icon className="text-xl" />
                 <span className="text-sm font-medium">{label}</span>
@@ -665,10 +665,9 @@ const Reports = () => {
                   { action: 'Task deadline approaching', time: '6 hours ago', type: 'warning' }
                 ].map((activity, index) => (
                   <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full ${
-                      activity.type === 'success' ? 'bg-green-500' :
+                    <div className={`w-2 h-2 rounded-full ${activity.type === 'success' ? 'bg-green-500' :
                       activity.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-                    }`}></div>
+                      }`}></div>
                     <div className="flex-1">
                       <p className="text-sm text-gray-900">{activity.action}</p>
                       <p className="text-xs text-gray-500">{activity.time}</p>
@@ -734,9 +733,11 @@ const Reports = () => {
                     className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
                   >
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-theme-100 rounded-full flex items-center justify-center">
-                        <FaUsers className="text-theme-600" />
-                      </div>
+                      <UserAvatar
+                        user={{ fullName: manager.managerName, _id: manager.managerId }}
+                        size="custom"
+                        className="w-12 h-12 bg-theme-100 text-theme-600"
+                      />
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{manager.managerName}</h3>
                         <p className="text-sm text-gray-600">Performance Score: {manager.performanceScore}%</p>
@@ -783,9 +784,11 @@ const Reports = () => {
                     className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
                   >
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-theme-100 rounded-full flex items-center justify-center">
-                        <FaUsers className="text-theme-600" />
-                      </div>
+                      <UserAvatar
+                        user={{ fullName: staff.staffName, _id: staff.staffId }}
+                        size="custom"
+                        className="w-12 h-12 bg-theme-100 text-theme-600"
+                      />
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{staff.staffName}</h3>
                         <p className="text-sm text-gray-600">Productivity: {staff.productivityScore}%</p>

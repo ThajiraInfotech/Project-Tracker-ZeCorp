@@ -16,6 +16,7 @@ router.delete('/:id', authMiddleware, staffMiddleware, taskController.deleteTask
 router.put('/:id/status', authMiddleware, taskController.updateTaskStatus);
 router.put('/:id/progress', authMiddleware, taskController.updateTaskProgress);
 router.patch('/:id/status', authMiddleware, taskController.updateTaskStatusAndProgress);
+router.patch('/:id/subtasks/:subtaskId/status', authMiddleware, taskController.updateSubtaskStatus);
 
 // Task comments
 router.post('/:id/comments', authMiddleware, taskController.addComment);

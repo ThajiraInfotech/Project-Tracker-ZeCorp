@@ -45,6 +45,43 @@ const taskSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  subtasks: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true
+    },
+    status: {
+      type: String,
+      enum: ['todo', 'in-progress', 'completed'],
+      default: 'todo'
+    },
+    startDate: {
+      type: Date
+    },
+    endDate: {
+      type: Date
+    },
+    completedAt: {
+      type: Date
+    },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   files: [{
     type: String
   }],

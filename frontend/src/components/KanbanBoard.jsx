@@ -7,16 +7,20 @@ const Droppable = ({ id, children }) => {
   return <div ref={setNodeRef}>{children}</div>;
 };
 
-const Draggable = ({ id, children, data }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, data });
+const Draggable = ({ id, children, data, disabled }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id,
+    data,
+    disabled // Pass disabled prop to useDraggable
+  });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...(!disabled ? listeners : {})} // Only apply listeners if not disabled
       {...attributes}
-      className={`cursor-grab ${isDragging ? 'opacity-50' : ''}`}
+      className={`${!disabled ? 'cursor-grab' : 'cursor-default'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {children}
     </div>
@@ -29,13 +33,19 @@ const TaskCard = ({ task, onClick }) => {
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab">
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-medium text-gray-900 text-sm leading-tight">{task.title}</h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${
-          task.priority === 'high' ? 'bg-red-100 text-red-800' :
+        <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
           task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-green-100 text-green-800'
-        }`}>
+            'bg-green-100 text-green-800'
+          }`}>
           {task.priority}
         </span>
+        {task.subtasks && task.subtasks.length > 0 && (
+          <span className="text-gray-400 ml-2" title="This task is controlled by subtasks">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+            </svg>
+          </span>
+        )}
       </div>
       {task.description && (
         <p className="text-xs text-gray-600 mb-3 line-clamp-2">{task.description}</p>
@@ -120,7 +130,12 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick }) => {
                 <Droppable id={status.id}>
                   <div className="space-y-2 min-h-[300px] max-h-[60vh] overflow-y-auto">
                     {statusTasks.map(task => (
-                      <Draggable key={task._id} id={task._id} data={{ status: task.status }}>
+                      <Draggable
+                        key={task._id}
+                        id={task._id}
+                        data={{ status: task.status }}
+                        disabled={(task.subtasks && task.subtasks.length > 0) || task.readOnly}
+                      >
                         <TaskCard task={task} onClick={onTaskClick} />
                       </Draggable>
                     ))}

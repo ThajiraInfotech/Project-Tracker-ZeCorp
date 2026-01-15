@@ -13,6 +13,7 @@ import {
   Title,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import UserAvatar from '../components/UserAvatar';
 
 ChartJS.register(
   ArcElement,
@@ -133,7 +134,7 @@ const TeamPerformance = () => {
                       beginAtZero: true,
                       max: 100,
                       ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                           return value + '%';
                         }
                       }
@@ -156,11 +157,11 @@ const TeamPerformance = () => {
               return (
                 <div key={member._id} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-[#700606] to-[#a04040] rounded-full flex items-center justify-center mr-4">
-                      <span className="text-white font-semibold">
-                        {member.fullName?.charAt(0)?.toUpperCase()}
-                      </span>
-                    </div>
+                    <UserAvatar
+                      user={member}
+                      size="custom"
+                      className="w-12 h-12 bg-gradient-to-r from-[#700606] to-[#a04040] text-white mr-4"
+                    />
                     <div>
                       <h3 className="font-semibold text-gray-900">{member.fullName}</h3>
                       <p className="text-sm text-gray-500">{member.username}</p>

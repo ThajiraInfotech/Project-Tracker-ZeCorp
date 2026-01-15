@@ -6,6 +6,7 @@ import { getAdminDashboardData } from '../store/reportSlice';
 import { toast } from 'react-toastify';
 import NotificationBell from '../components/NotificationBell';
 import ChatSidebar from '../components/ChatSidebar';
+import UserAvatar from '../components/UserAvatar';
 import {
   HomeIcon,
   FolderIcon,
@@ -163,11 +164,7 @@ const MainLayout = () => {
             <div className="flex items-center space-x-3 mb-4">
               <div className="flex-shrink-0">
                 <div className="relative">
-                  <div className="h-12 w-12 rounded-full ring-2 ring-slate-200 bg-primary-100 flex items-center justify-center">
-                    <svg className="h-8 w-8 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                  </div>
+                  <UserAvatar user={user} size="lg" className="ring-2 ring-slate-200" />
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-400 border-2 border-white rounded-full"></div>
                 </div>
               </div>
@@ -225,13 +222,9 @@ const MainLayout = () => {
                 setShowChatSidebar(true);
               }}
             />
-            
+
             <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-              <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              </div>
+              <UserAvatar user={user} size="sm" className="ring-2 ring-white" />
               <span>{user?.fullName}</span>
             </button>
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../store/api';
 import { toast } from 'react-toastify';
+import UserAvatar from './UserAvatar';
 
 const NotificationBell = ({ onNotificationClick }) => {
   const [notifications, setNotifications] = useState([]);
@@ -92,7 +93,7 @@ const NotificationBell = ({ onNotificationClick }) => {
   const handleNotificationClick = (notification) => {
     // Mark as read if unread
     if (!notification.isRead) {
-      handleMarkAsRead(notification._id, { stopPropagation: () => {} });
+      handleMarkAsRead(notification._id, { stopPropagation: () => { } });
     }
 
     // Close dropdown
@@ -204,17 +205,16 @@ const NotificationBell = ({ onNotificationClick }) => {
                     <div
                       key={notification._id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        !notification.isRead ? 'bg-blue-50' : ''
-                      }`}
+                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.isRead ? 'bg-blue-50' : ''
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         {/* Avatar */}
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <svg className="h-6 w-6 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                          </svg>
-                        </div>
+                        <UserAvatar
+                          user={mentionedBy}
+                          size="md"
+                          className="bg-primary-100 text-primary-600"
+                        />
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
