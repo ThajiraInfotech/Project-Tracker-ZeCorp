@@ -5,6 +5,7 @@ const emailService = require('../utils/emailService');
 const cloudinaryService = require('../utils/cloudinaryService');
 const { calculateProjectProgress } = require('../utils/projectProgressUtils');
 const { createMentionNotifications } = require('../utils/mentionParser');
+const { publishEvent } = require('../infrastructure/queue');
 
 // Create a new project
 exports.createProject = async (req, res) => {
@@ -43,20 +44,22 @@ exports.createProject = async (req, res) => {
 
     await project.save();
 
-    // Send notification to manager (optional - don't fail if email fails)
-    try {
+    // Send notification event
+    if (manager) {
       const managerUser = await User.findById(manager);
-      if (managerUser && managerUser.email) {
-        await emailService.sendEmail(
-          managerUser.email,
-          `New Project Assigned: ${projectName}`,
-          `<p>You have been assigned as manager for project: ${projectName}</p>
-           <p>Project starts on ${new Date(startDate).toLocaleDateString()}</p>`
-        );
+      if (managerUser) {
+        console.log(`[Project] Publishing PROJECT_ASSIGNED for Manager: ${managerUser._id}`);
+        await publishEvent('PROJECT_ASSIGNED', {
+          entityType: 'project',
+          entityId: project._id,
+          entityTitle: project.projectName,
+          manager: managerUser,
+          triggeredBy: req.user._id, // Add Actor
+          messageSnippet: `You have been assigned as Manager for project: ${projectName}`,
+          relatedLink: `/projects/${project._id}`
+        });
+        console.log('[Project] Event Published');
       }
-    } catch (emailError) {
-      console.warn('Failed to send project assignment email:', emailError.message);
-      // Don't fail project creation due to email error
     }
 
     res.status(201).json({
@@ -222,20 +225,21 @@ exports.addTeamMember = async (req, res) => {
     project.teamMembers.push(userId);
     await project.save();
 
-    // Send notification to user (optional - don't fail if email fails)
+    // Send notification to user
     try {
       const user = await User.findById(userId);
-      if (user && user.email) {
-        await emailService.sendEmail(
-          user.email,
-          `Added to Project: ${project.projectName}`,
-          `<p>You have been added to the project: ${project.projectName}</p>
-           <p>Project manager: ${project.manager.fullName || project.manager.username}</p>`
-        );
+      if (user) {
+        await publishEvent('ADDED_TO_TEAM', {
+          entityType: 'project',
+          entityId: project._id,
+          entityTitle: project.projectName,
+          user: user,
+          messageSnippet: `You have been added to the team for project: ${project.projectName}`,
+          relatedLink: `/projects/${project._id}`
+        });
       }
-    } catch (emailError) {
-      console.warn('Failed to send team member notification email:', emailError.message);
-      // Don't fail team member addition due to email error
+    } catch (evtError) {
+      console.warn('Failed to publish team member event:', evtError);
     }
 
     res.json({
@@ -434,21 +438,18 @@ exports.adminAssignManager = async (req, res) => {
 
     await project.save();
 
-    // Send notification to new manager (optional - don't fail if email fails)
+    // Send notification to new manager
     try {
-      if (manager.email) {
-        await emailService.sendEmail(
-          manager.email,
-          `You've Been Assigned as Project Manager: ${project.projectName}`,
-          `<p>You have been assigned as manager for project: ${project.projectName}</p>
-           <p>Project status: ${project.status}</p>
-           <p>Project deadline: ${new Date(project.endDate).toLocaleDateString()}</p>
-           <p>This assignment was made by admin.</p>`
-        );
-      }
-    } catch (emailError) {
-      console.warn('Failed to send manager assignment email:', emailError.message);
-      // Don't fail manager assignment due to email error
+      await publishEvent('PROJECT_ASSIGNED', {
+        entityType: 'project',
+        entityId: project._id,
+        entityTitle: project.projectName,
+        manager: manager,
+        messageSnippet: `You have been assigned as Manager for project: ${project.projectName}`,
+        relatedLink: `/projects/${project._id}`
+      });
+    } catch (evtError) {
+      console.warn('Failed to publish manager assignment event:', evtError);
     }
 
     res.json({

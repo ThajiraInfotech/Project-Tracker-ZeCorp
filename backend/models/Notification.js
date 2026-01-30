@@ -9,13 +9,24 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['mention'],
+    enum: [
+      'mention', 'MENTION',
+      'comment', 'COMMENT',
+      'user_created', 'USER_CREATED',
+      'project_assigned', 'PROJECT_ASSIGNED',
+      'task_assigned', 'TASK_ASSIGNED',
+      'task_due_soon', 'TASK_DUE_SOON',
+      'task_due_today', 'TASK_DUE_TODAY',
+      'task_overdue', 'TASK_OVERDUE',
+      'project_delayed', 'PROJECT_DELAYED',
+      'added_to_team', 'ADDED_TO_TEAM'
+    ],
     default: 'mention',
     required: true
   },
   entityType: {
     type: String,
-    enum: ['project', 'task'],
+    enum: ['project', 'task', 'user'],
     required: true
   },
   entityId: {
@@ -30,12 +41,16 @@ const notificationSchema = new mongoose.Schema({
   messageSnippet: {
     type: String,
     required: true,
-    maxlength: 200
+    maxlength: 500
+  },
+  relatedLink: {
+    type: String,
+    required: false
   },
   mentionedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Changed from true to false for system notifications
   },
   isRead: {
     type: Boolean,

@@ -1,5 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  FaUsers,
+  FaUserTie,
+  FaUserShield,
+  FaCheckCircle,
+  FaSearch,
+  FaFilter,
+  FaEllipsisV,
+  FaPhone,
+  FaEnvelope,
+  FaBuilding,
+  FaTrash,
+  FaEdit,
+  FaLock,
+  FaUserSlash,
+  FaUserCheck
+} from 'react-icons/fa';
+import { Menu, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 
 import UserAvatar from '../../components/UserAvatar';
 import api from '../../store/api';
@@ -25,7 +44,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,7 +116,7 @@ const UserManagement = () => {
         fullName: selectedUser.fullName,
         role: selectedUser.role,
         phone: selectedUser.phone,
-        department: selectedUser.department
+
       });
 
       if (response.data.success) {
@@ -172,6 +191,27 @@ const UserManagement = () => {
     }
   }, [auth.isAuthenticated]);
 
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      fetchUsers();
+    }
+  }, [auth.isAuthenticated]);
+
+  // Calculate Stats
+  const stats = {
+    total: users.length,
+    managers: users.filter(u => u.role === 'manager').length,
+    staff: users.filter(u => u.role === 'staff').length,
+    active: users.filter(u => u.isActive).length
+  };
+
+  const tabs = [
+    { id: '', label: 'All Users' },
+    { id: 'manager', label: 'Managers' },
+    { id: 'staff', label: 'Staff' },
+    { id: 'admin', label: 'Admins' }
+  ];
+
   // Filtered and paginated users
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -179,8 +219,8 @@ const UserManagement = () => {
       user.username.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = !roleFilter || user.role === roleFilter;
     const matchesStatus = !statusFilter || (statusFilter === 'active' ? user.isActive : !user.isActive);
-    const matchesDepartment = !departmentFilter || user.department === departmentFilter;
-    return matchesSearch && matchesRole && matchesStatus && matchesDepartment;
+
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
@@ -191,7 +231,7 @@ const UserManagement = () => {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Full Name', 'Username', 'Email', 'Role', 'Department', 'Phone', 'Status'];
+    const headers = ['Full Name', 'Username', 'Email', 'Role', 'Phone', 'Status'];
     const csvContent = [
       headers.join(','),
       ...filteredUsers.map(user => [
@@ -199,7 +239,6 @@ const UserManagement = () => {
         `"${user.username}"`,
         `"${user.email}"`,
         `"${user.role}"`,
-        `"${user.department}"`,
         `"${user.phone || ''}"`,
         `"${user.isActive ? 'Active' : 'Inactive'}"`
       ].join(','))
@@ -221,7 +260,7 @@ const UserManagement = () => {
     setSearchTerm('');
     setRoleFilter('');
     setStatusFilter('');
-    setDepartmentFilter('');
+    setStatusFilter('');
     setCurrentPage(1);
   };
 
@@ -250,229 +289,241 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-theme-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">User Management</h1>
-              <p className="text-[#700606]/80 text-sm">Create and manage all users in the system</p>
+    <div className="min-h-screen bg-gray-50/50 pb-12">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white shadow-lg">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-white tracking-tight">User Management</h1>
+                <p className="text-red-100 mt-1">Manage system access and user roles</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={exportToCSV}
+                  className="px-4 py-2.5 bg-white/10 text-white border border-white/20 rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 font-medium backdrop-blur-sm"
+                >
+                  <svg className="w-5 h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-4 py-2.5 bg-white text-[#700606] rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2 font-bold shadow-sm"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add New User
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Total Users</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stats.total}</h3>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
+                <FaUsers size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Managers</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stats.managers}</h3>
+              </div>
+              <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-600">
+                <FaUserTie size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Staff Members</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stats.staff}</h3>
+              </div>
+              <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-600">
+                <FaUserShield size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Active Now</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stats.active}</h3>
+              </div>
+              <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
+                <FaCheckCircle size={24} />
+              </div>
+            </div>
+          </div>
+
+          {/* Controls & Filters */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            {/* Tabs */}
+            <div className="flex overflow-x-auto border-b border-gray-100 px-4 scrollbar-hide">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setRoleFilter(tab.id)}
+                  className={`
+                    py-4 px-6 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200
+                    ${roleFilter === tab.id
+                      ? 'border-[#700606] text-[#700606]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}
+                  `}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={exportToCSV}
-                className="px-4 py-2 bg-white text-[#700606] rounded-md hover:bg-[#700606]/10 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export CSV
-              </button>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-white text-[#700606] rounded-md hover:bg-[#700606]/10 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Create New User
-              </button>
+            {/* Filter Bar */}
+            <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Search */}
+              <div className="md:col-span-12 lg:col-span-5 relative">
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400 transition-all text-sm"
+                />
+                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+
+              {/* Filters */}
+              <div className="md:col-span-12 lg:col-span-7 flex flex-wrap gap-3 justify-start lg:justify-end">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-100 cursor-pointer min-w-[120px]"
+                >
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+
+                <button
+                  onClick={resetFilters}
+                  className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-              <input
-                type="text"
-                placeholder="Search by name, email, username..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-500"
-              >
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-500"
-              >
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-              <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-500"
-              >
-                <option value="">All Departments</option>
-                <option value="construction">Construction</option>
-                <option value="design">Design</option>
-                <option value="electrical">Electrical</option>
-                <option value="plumbing">Plumbing</option>
-                <option value="management">Management</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={resetFilters}
-                className="w-full px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-              >
-                Reset Filters
-              </button>
-            </div>
-          </div>
-        </div>
-
-
-        {/* Loading state */}
-        {loading && (
+        {/* Content Area */}
+        {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-theme-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#700606]"></div>
           </div>
-        )}
-
-        {/* Error state */}
-        {error && !loading && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 101.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+            <p className="text-red-600">{error}</p>
           </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <FaUsers className="w-8 h-8 text-gray-300" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
-            <p className="text-gray-500">There are no users in the system yet.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+            <p className="text-gray-500 mb-6">Try adjusting your search or filters</p>
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="mt-4 px-4 py-2 bg-theme-600 text-white rounded-md hover:bg-theme-700 transition-colors"
+              onClick={resetFilters}
+              className="px-4 py-2 text-sm text-[#700606] font-medium hover:underline"
             >
-              Create First User
+              Clear all filters
             </button>
           </div>
-        )}
-
-        {/* Users table */}
-        {!loading && !error && filteredUsers.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-            <div className="overflow-x-auto">
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {paginatedUsers.map((user) => (
-                    <tr key={user._id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={user._id} className="hover:bg-gray-50/80 transition-colors group">
+                      <td className="px-6 py-4">
                         <div className="flex items-center">
-                          <UserAvatar
-                            user={user}
-                            size="md"
-                            className="mr-4"
-                          />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
-                            <div className="text-sm text-gray-500">{user.username}</div>
+                          <UserAvatar user={user} size="md" className="mr-4 ring-2 ring-white shadow-sm" />
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">{user.fullName}</div>
+                            <div className="text-xs text-gray-500">{user.username}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.email}</div>
-                        <div className="text-sm text-gray-500">{user.phone}</div>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <FaEnvelope className="w-3 h-3 mr-2 text-gray-400" />
+                            {user.email}
+                          </div>
+                          {user.phone && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <FaPhone className="w-3 h-3 mr-2 text-gray-400" />
+                              {user.phone}
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <RoleBadge role={user.role} />
-                        <div className="text-xs text-gray-500 mt-1">{user.department || '—'}</div>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2 items-start">
+                          <RoleBadge role={user.role} />
+
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <StatusBadge isActive={user.isActive} />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => {
                               setSelectedUser(user);
                               setShowEditModal(true);
                             }}
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="Edit user"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit Details"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
+                            <FaEdit />
                           </button>
                           <button
                             onClick={() => toggleUserStatus(user._id, user.isActive)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                            title={user.isActive ? 'Deactivate user' : 'Activate user'}
+                            className={`p-2 rounded-lg transition-colors ${user.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+                            title={user.isActive ? 'Deactivate' : 'Activate'}
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
+                            {user.isActive ? <FaUserSlash /> : <FaUserCheck />}
                           </button>
                           <button
                             onClick={() => resetUserPassword(user._id)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Reset password"
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Reset Password"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                            </svg>
+                            <FaLock />
                           </button>
                           {user.role !== 'admin' && (
                             <button
                               onClick={() => deleteUser(user._id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete user"
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete User"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                              <FaTrash />
                             </button>
                           )}
                         </div>
@@ -481,9 +532,148 @@ const UserManagement = () => {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
 
+              {/* Pagination Desktop */}
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + usersPerPage, filteredUsers.length)}</span> of <span className="font-medium">{filteredUsers.length}</span> results
+                </span>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Card Grid View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {paginatedUsers.map((user) => (
+                <div key={user._id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <UserAvatar user={user} size="md" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{user.fullName}</h4>
+                        <p className="text-xs text-gray-500">{user.username}</p>
+                      </div>
+                    </div>
+                    <Menu as="div" className="relative ml-3">
+                      <Menu.Button className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                        <FaEllipsisV />
+                      </Menu.Button>
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                          <div className="py-1">
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  onClick={() => { setSelectedUser(user); setShowEditModal(true); }}
+                                  className={`${active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'} group flex w-full items-center px-4 py-2 text-sm`}
+                                >
+                                  <FaEdit className="mr-3 h-4 w-4" aria-hidden="true" />
+                                  Edit
+                                </button>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  onClick={() => toggleUserStatus(user._id, user.isActive)}
+                                  className={`${active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'} group flex w-full items-center px-4 py-2 text-sm`}
+                                >
+                                  {user.isActive ? <FaUserSlash className="mr-3 h-4 w-4 text-amber-500" /> : <FaUserCheck className="mr-3 h-4 w-4 text-green-500" />}
+                                  {user.isActive ? 'Deactivate' : 'Activate'}
+                                </button>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  onClick={() => resetUserPassword(user._id)}
+                                  className={`${active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'} group flex w-full items-center px-4 py-2 text-sm`}
+                                >
+                                  <FaLock className="mr-3 text-gray-500 h-4 w-4" />
+                                  Reset Password
+                                </button>
+                              )}
+                            </Menu.Item>
+                            {user.role !== 'admin' && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() => deleteUser(user._id)}
+                                    className={`${active ? 'bg-red-50 text-red-900' : 'text-red-700'} group flex w-full items-center px-4 py-2 text-sm text-red-600`}
+                                  >
+                                    <FaTrash className="mr-3 h-4 w-4" aria-hidden="true" />
+                                    Delete
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            )}
+                          </div>
+                        </Menu.Items>
+                      </Transition>
+                    </Menu>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <span className="text-xs text-gray-500 block mb-1">Role</span>
+                      <RoleBadge role={user.role} />
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <span className="text-xs text-gray-500 block mb-1">Status</span>
+                      <StatusBadge isActive={user.isActive} />
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded-lg col-span-2">
+                      <div className="flex items-center gap-2">
+                        <FaEnvelope className="text-gray-400" />
+                        <span className="text-gray-700 text-xs">{user.email}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {/* Pagination Mobile */}
+              <div className="flex justify-between items-center mt-4">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 shadow-sm"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600 font-medium">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Create User Modal */}
@@ -736,25 +926,7 @@ const UserManagement = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label htmlFor="edit-department" className="block text-sm font-medium text-gray-700 mb-1">
-                    Department
-                  </label>
-                  <select
-                    id="edit-department"
-                    value={selectedUser.department || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    required
-                  >
-                    <option value="construction">Construction</option>
-                    <option value="design">Design</option>
-                    <option value="electrical">Electrical</option>
-                    <option value="plumbing">Plumbing</option>
-                    <option value="management">Management</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+
 
                 <div>
                   <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700 mb-1">
@@ -796,9 +968,10 @@ const UserManagement = () => {
               </form>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        )
+        }
+      </div >
+    </div >
   );
 };
 

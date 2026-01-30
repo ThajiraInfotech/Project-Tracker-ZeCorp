@@ -136,13 +136,8 @@ exports.getSystemSettingsByCategory = async (req, res) => {
 exports.initializeDefaultSettings = async (req, res) => {
   try {
     // Check if settings already exist
-    const existingSettings = await SystemSetting.find();
-    if (existingSettings.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'System settings already initialized'
-      });
-    }
+    // Clear existing settings to force a reset
+    await SystemSetting.deleteMany({});
 
     const defaultSettings = [
       {
@@ -152,51 +147,6 @@ exports.initializeDefaultSettings = async (req, res) => {
         settingType: 'number',
         description: 'Standard daily working hours for employees',
         category: 'working-hours',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Week Start Day',
-        settingKey: 'week_start_day',
-        settingValue: 'Monday',
-        settingType: 'string',
-        description: 'Day considered as start of the work week',
-        category: 'working-hours',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Overtime Threshold',
-        settingKey: 'overtime_threshold',
-        settingValue: 40,
-        settingType: 'number',
-        description: 'Weekly hours threshold for overtime calculation',
-        category: 'working-hours',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Task Overdue Notification',
-        settingKey: 'task_overdue_notification',
-        settingValue: true,
-        settingType: 'boolean',
-        description: 'Enable notifications for overdue tasks',
-        category: 'notification-rules',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Project Delay Alert',
-        settingKey: 'project_delay_alert',
-        settingValue: true,
-        settingType: 'boolean',
-        description: 'Enable alerts for delayed projects',
-        category: 'notification-rules',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Attendance Reminder',
-        settingKey: 'attendance_reminder',
-        settingValue: true,
-        settingType: 'boolean',
-        description: 'Enable daily attendance reminders',
-        category: 'notification-rules',
         createdBy: req.user._id
       },
       {
@@ -224,24 +174,6 @@ exports.initializeDefaultSettings = async (req, res) => {
         settingType: 'number',
         description: 'Maximum allowed failed login attempts before lockout',
         category: 'security',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Company Name',
-        settingKey: 'company_name',
-        settingValue: 'Zeecorp Construction',
-        settingType: 'string',
-        description: 'Official company name',
-        category: 'company-rules',
-        createdBy: req.user._id
-      },
-      {
-        settingName: 'Default Project Budget Currency',
-        settingKey: 'default_currency',
-        settingValue: 'USD',
-        settingType: 'string',
-        description: 'Default currency for project budgets',
-        category: 'company-rules',
         createdBy: req.user._id
       }
     ];

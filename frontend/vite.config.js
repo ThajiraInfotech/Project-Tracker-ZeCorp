@@ -4,7 +4,6 @@ import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -16,29 +15,28 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
       '@store': path.resolve(__dirname, './src/store'),
       '@services': path.resolve(__dirname, './src/services'),
-      '@assets': path.resolve(__dirname, './src/assets')
-    }
+      '@assets': path.resolve(__dirname, './src/assets'),
+    },
   },
   server: {
+    host: true,          // ⭐ THIS IS THE KEY
     port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        secure: false
+        secure: false,
       },
       '/socket.io': {
         target: 'http://localhost:5000',
-        ws: true
-      }
-    }
+        ws: true,
+      },
+    },
   },
   css: {
     postcss: {
-      plugins: [
-        tailwindcss,
-        autoprefixer
-      ]
-    }
-  }
+      plugins: [tailwindcss, autoprefixer],
+    },
+  },
 });

@@ -134,7 +134,7 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick }) => {
                         key={task._id}
                         id={task._id}
                         data={{ status: task.status }}
-                        disabled={(task.subtasks && task.subtasks.length > 0) || task.readOnly}
+                        disabled={(task.subtasks && task.subtasks.some(st => st.status !== 'completed')) || task.readOnly}
                       >
                         <TaskCard task={task} onClick={onTaskClick} />
                       </Draggable>

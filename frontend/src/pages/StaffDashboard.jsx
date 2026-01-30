@@ -52,44 +52,57 @@ const StaffDashboard = () => {
     description: '',
     date: new Date().toISOString().split('T')[0]
   });
-  const [viewMode, setViewMode] = useState('kanban');
+  /* viewMode removed */
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showModal, setShowModal] = useState(false); // Add this for consistency with Tasks.jsx props if needed, or just use showTaskModal
 
-  useEffect(() => {
-    const fetchStaffData = async () => {
-      try {
-        setLoading(true);
+  const fetchStaffData = async (showLoading = true) => {
+    if (!user?.id) return;
 
-        // Fetch tasks assigned to this user
-        const tasksResponse = await api.get('/tasks');
-        const allTasks = tasksResponse.data.tasks;
-        setTasks(allTasks);
+    try {
+      if (showLoading) setLoading(true);
 
-        // Fetch projects for context
-        const projectsResponse = await api.get('/projects');
-        const allProjects = projectsResponse.data.projects;
-        // Filter projects that have tasks assigned to this user
-        const projectIds = allTasks.map(task => task.project?._id || task.project).filter(Boolean);
-        const staffProjects = allProjects.filter(project => projectIds.includes(project._id));
-        setProjects(staffProjects);
+      // Fetch tasks assigned to this user
+      const tasksResponse = await api.get('/tasks');
+      const allTasks = tasksResponse.data.tasks;
+      setTasks(allTasks);
 
-        // Fetch attendance for this user
-        const attendanceResponse = await api.get('/attendance/me');
-        const staffAttendance = attendanceResponse.data.attendance;
-        setAttendance(staffAttendance);
+      // Fetch projects for context
+      const projectsResponse = await api.get('/projects');
+      const allProjects = projectsResponse.data.projects;
+      // Filter projects that have tasks assigned to this user
+      const projectIds = allTasks.map(task => task.project?._id || task.project).filter(Boolean);
+      const staffProjects = allProjects.filter(project => projectIds.includes(project._id));
+      setProjects(staffProjects);
 
-      } catch (err) {
-        console.error('Error fetching staff data:', err);
+      // Fetch attendance for this user
+      const attendanceResponse = await api.get('/attendance/me');
+      const staffAttendance = attendanceResponse.data.attendance;
+      setAttendance(staffAttendance);
+
+    } catch (err) {
+      console.error('Error fetching staff data:', err);
+      if (showLoading) {
         setError(err.response?.data?.message || err.message);
         toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (user?.id) {
-      fetchStaffData();
+      // Initial fetch
+      fetchStaffData(true);
+
+      // Set up polling every 10 seconds
+      const interval = setInterval(() => {
+        fetchStaffData(false);
+      }, 10000);
+
+      // Cleanup on unmount
+      return () => clearInterval(interval);
     }
   }, [user?.id]);
 
@@ -149,7 +162,7 @@ const StaffDashboard = () => {
   const halfDayCount = attendance.filter(a => a.status === 'Half-day').length;
   const absentCount = attendance.filter(a => a.status === 'Absent').length;
 
-  // Chart data
+  // Chart data for Overview Tab
   const taskStatusData = {
     labels: ['Completed', 'In Progress', 'Overdue', 'To Do'],
     datasets: [
@@ -231,12 +244,12 @@ const StaffDashboard = () => {
   }
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-6">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-4 md:p-6">
       {/* Staff Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Staff Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">Staff Dashboard</h1>
             <p className="text-white/80 text-sm">Task Management & Productivity Tracking</p>
           </div>
           <div className="flex items-center space-x-6">
@@ -260,7 +273,6 @@ const StaffDashboard = () => {
             {[
               { id: 'overview', name: 'Overview', icon: '📊' },
               { id: 'tasks', name: 'My Tasks', icon: '📋' },
-
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -281,7 +293,7 @@ const StaffDashboard = () => {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -340,7 +352,7 @@ const StaffDashboard = () => {
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                   <div className="bg-blue-100 p-2 rounded-full mr-3">
@@ -351,7 +363,7 @@ const StaffDashboard = () => {
                   Task Status Distribution
                 </h3>
                 <p className="text-sm text-gray-600 mb-6">{`${completedTasks} completed, ${inProgressTasks} in progress, ${overdueTasks} overdue.`}</p>
-                <div className="h-64 mb-6">
+                <div className="h-64 md:h-80 mb-6">
                   <Doughnut data={taskStatusData} options={{
                     responsive: true,
                     maintainAspectRatio: false,
@@ -398,7 +410,7 @@ const StaffDashboard = () => {
                   Attendance Overview
                 </h3>
                 <p className="text-sm text-gray-600 mb-6">{`${presentDays} present, ${halfDayCount} half-days, ${absentCount} absent.`}</p>
-                <div className="h-64 mb-6">
+                <div className="h-64 md:h-80 mb-6">
                   <Doughnut data={attendanceData} options={{
                     responsive: true,
                     maintainAspectRatio: false,
@@ -440,243 +452,22 @@ const StaffDashboard = () => {
 
         {activeTab === 'tasks' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">My Tasks</h2>
-              <div className="flex items-center gap-4">
-                <button onClick={() => setViewMode(viewMode === 'list' ? 'kanban' : 'list')} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  {viewMode === 'list' ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                      </svg>
-                      Kanban View
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      List View
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-900">My Tasks</h2>
 
-            {/* Task List with Progress Updates */}
-            {viewMode === 'kanban' ? (
-              <KanbanBoard
-                tasks={tasks}
-                onUpdateTaskStatus={(taskId, status, progress) => updateTaskStatusAndProgress(taskId, status, progress)}
-                onTaskClick={(task) => {
-                  setSelectedTask(task);
-                  setShowTaskModal(true);
-                }}
-              />
-            ) : (
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Active Tasks</h3>
-                </div>
-                <div className="divide-y divide-gray-200">
-                  {tasks.filter(task => task.status !== 'completed').map((task) => {
-                    const project = projects.find(p => p._id === (task.project?._id || task.project));
-                    return (
-                      <div key={task._id} className="p-6 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="text-lg font-medium text-gray-900">{task.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                task.priority === 'medium' ? 'text-yellow-800 bg-yellow-100' :
-                                  'bg-green-100 text-green-800'
-                                }`}>
-                                {task.priority} priority
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-3">{task.description}</p>
-                            {project && (
-                              <p className="text-sm text-blue-600 mb-2">Project: {project.projectName}</p>
-                            )}
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                              <span>Status: <span className={`font-medium ${task.status === 'in-progress' ? 'text-blue-600' :
-                                task.status === 'todo' ? 'text-gray-600' : 'text-green-600'
-                                }`}>{task.status}</span></span>
-                            </div>
-                          </div>
-                          <div className="ml-6 flex flex-col items-end gap-3">
-                            <div className="text-right">
-                              <p className="text-sm text-gray-600 mb-1">Status</p>
-                              <select
-                                value={task.status}
-                                onChange={(e) => updateTaskStatusAndProgress(task._id, e.target.value, task.progress || 0)}
-                                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              >
-                                <option value="todo">To Do</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                                <option value="delayed">Delayed</option>
-                              </select>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-600 mb-1">Progress</p>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="100"
-                                  value={task.progress || 0}
-                                  onChange={(e) => updateTaskStatusAndProgress(task._id, task.status, parseInt(e.target.value))}
-                                  className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500"
-                                />
-                                <span className="text-sm font-medium w-12">{task.progress || 0}%</span>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => setShowTimeModal(true)}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                            >
-                              Log Time
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Task List - Kanban View Only */}
+            <KanbanBoard
+              tasks={tasks}
+              onUpdateTaskStatus={(taskId, status, progress) => updateTaskStatusAndProgress(taskId, status, progress)}
+              onTaskClick={(task) => {
+                setSelectedTask(task);
+                setShowTaskModal(true);
+              }}
+            />
           </div>
         )}
 
-        {activeTab === 'projects' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">My Projects</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map((project) => {
-                const projectTasks = tasks.filter(task => task.project?._id === project._id || task.project === project._id);
-                const completedTasks = projectTasks.filter(task => task.status === 'completed').length;
-                const totalProjectTasks = projectTasks.length;
 
-                return (
-                  <div key={project._id} className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-300">
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{project.projectName}</h3>
-                      <p className="text-sm text-gray-600 mb-4">{project.description}</p>
 
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Tasks Completed</span>
-                          <span className="font-medium">{completedTasks}/{totalProjectTasks}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${totalProjectTasks > 0 ? (completedTasks / totalProjectTasks) * 100 : 0}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-500">
-                          <span>Due: {new Date(project.endDate).toLocaleDateString()}</span>
-                          <span className={`font-medium ${project.status === 'completed' ? 'text-green-600' :
-                            project.status === 'in-progress' ? 'text-blue-600' :
-                              'text-gray-600'
-                            }`}>
-                            {project.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'time' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Time Tracking</h2>
-              <button
-                onClick={() => setShowTimeModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Log Time
-              </button>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Time Entries</h3>
-              <div className="text-center text-gray-500 py-8">
-                <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p>Time tracking feature coming soon</p>
-                <p className="text-sm mt-1">Track your work hours and productivity</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'performance' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Performance Analytics</h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <div className="bg-blue-100 p-2 rounded-full mr-3">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  Task Completion Trend
-                </h3>
-                <div className="h-64 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <p>Performance charts coming soon</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <div className="bg-purple-100 p-2 rounded-full mr-3">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  Productivity Metrics
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200/50">
-                    <span className="text-sm text-gray-600">Tasks Completed This Week</span>
-                    <span className="text-sm font-bold text-blue-600">{completedTasks}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200/50">
-                    <span className="text-sm text-gray-600">Average Completion Time</span>
-                    <span className="text-sm font-bold text-green-600">2.3 days</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg border border-yellow-200/50">
-                    <span className="text-sm text-gray-600">On-time Delivery Rate</span>
-                    <span className="text-sm font-bold text-yellow-600">87%</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200/50">
-                    <span className="text-sm text-gray-600">Attendance Rate</span>
-                    <span className="text-sm font-bold text-purple-600">{totalCheckIns > 0 ? Math.round((presentDays / totalCheckIns) * 100) : 0}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Time Tracking Modal */}
         {showTimeModal && (
@@ -781,7 +572,7 @@ const StaffDashboard = () => {
           entityData={selectedTask}
         />
       </div>
-    </div>
+    </div >
   );
 };
 

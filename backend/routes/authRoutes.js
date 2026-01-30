@@ -20,6 +20,9 @@ router.delete('/users/:id', authMiddleware, adminMiddleware, authController.dele
 // Manager routes
 router.get('/staff-for-manager', authMiddleware, authController.getStaffForManager);
 
+// Public (authenticated) routes for mentions
+router.get('/admins', authMiddleware, authController.getAdmins);
+
 // Admin user management routes
 router.post('/users/:id/toggle-status', authMiddleware, adminMiddleware, authController.toggleUserStatus);
 router.post('/users/:id/reset-password', authMiddleware, adminMiddleware, authController.resetUserPassword);

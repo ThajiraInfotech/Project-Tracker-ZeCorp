@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAdminDashboardData } from '../store/reportSlice';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -35,6 +35,7 @@ const AdminDashboard = () => {
   const dispatch = useDispatch();
   const { adminDashboardData, loading, error } = useSelector((state) => state.reports);
   const { user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [timeContext, setTimeContext] = useState('today');
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -184,7 +185,8 @@ const AdminDashboard = () => {
   const projectInsights = adminDashboard.delayedProjects.slice(0, 3).map(p => ({
     name: p.name,
     value: `${p.daysDelayed} days delayed`,
-    link: '/projects'
+    daysDelayed: p.daysDelayed,
+    link: `/projects/${p.id}`
   }));
   const taskInsights = [
     { name: 'Overdue Tasks', value: adminDashboard.tasks.totalTasksOverdue, link: '/tasks' },
@@ -193,14 +195,47 @@ const AdminDashboard = () => {
     { name: 'Completed', value: adminDashboard.tasks.totalTasksCompleted, link: '/tasks' }
   ].filter(item => item.value > 0).slice(0, 3);
   const productivityInsights = [
-    { name: 'Productivity %', value: `${adminDashboard.productivity.productivityPercentage}%`, link: '/admin/reports/staff-productivity' },
-    { name: 'Overtime Hours', value: adminDashboard.productivity.totalOvertimeHours, link: '/admin/reports/staff-productivity' },
-    { name: 'Staff Utilization', value: `${adminDashboard.staff.totalStaffCount > 0 ? Math.round((adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount) * 100) : 0}%`, link: '/admin/reports/staff-productivity' }
+    {
+      name: 'Productivity %',
+      value: `${adminDashboard.productivity.productivityPercentage}%`,
+      rawValue: adminDashboard.productivity.productivityPercentage,
+      link: '/tasks',
+      type: 'percentage'
+    },
+    {
+      name: 'Overtime Hours',
+      value: adminDashboard.productivity.totalOvertimeHours,
+      rawValue: adminDashboard.productivity.totalOvertimeHours,
+      link: '/attendance',
+      type: 'hours'
+    },
+    {
+      name: 'Staff Utilization',
+      value: `${adminDashboard.staff.totalStaffCount > 0 ? Math.round((adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount) * 100) : 0}%`,
+      rawValue: adminDashboard.staff.totalStaffCount > 0 ? Math.round((adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount) * 100) : 0,
+      link: '/admin/users',
+      type: 'utilization'
+    }
   ].slice(0, 3);
   const revenueInsights = [
-    { name: 'Total Revenue', value: `$${adminDashboard.revenue.totalRevenue.toLocaleString()}`, link: '/admin/reports/project-performance' },
-    { name: 'Completed Revenue', value: `$${adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}`, link: '/admin/reports/project-performance' },
-    { name: 'Pending Revenue', value: `$${adminDashboard.revenue.pendingRevenue.toLocaleString()}`, link: '/admin/reports/project-performance' }
+    {
+      name: 'Total Revenue',
+      value: `₹${adminDashboard.revenue.totalRevenue.toLocaleString()}`,
+      link: '/projects',
+      type: 'total'
+    },
+    {
+      name: 'Completed Revenue',
+      value: `₹${adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}`,
+      link: '/projects?status=completed',
+      type: 'completed'
+    },
+    {
+      name: 'Pending Revenue',
+      value: `₹${adminDashboard.revenue.pendingRevenue.toLocaleString()}`,
+      link: '/projects?filter=pending',
+      type: 'pending'
+    }
   ].slice(0, 3);
 
   // Loading state
@@ -277,8 +312,8 @@ const AdminDashboard = () => {
             <div className="flex space-x-2">
               <button
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'overview'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
+                  ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
                   }`}
                 onClick={() => setActiveTab('overview')}
               >
@@ -286,22 +321,14 @@ const AdminDashboard = () => {
               </button>
               <button
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'analytics'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
+                  ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
                   }`}
                 onClick={() => setActiveTab('analytics')}
               >
                 Analytics
               </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${activeTab === 'reports'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                  }`}
-                onClick={() => setActiveTab('reports')}
-              >
-                Reports
-              </button>
+
             </div>
           </div>
         </div>
@@ -314,8 +341,8 @@ const AdminDashboard = () => {
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'today'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
               onClick={() => setTimeContext('today')}
             >
@@ -323,8 +350,8 @@ const AdminDashboard = () => {
             </button>
             <button
               className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'week'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
               onClick={() => setTimeContext('week')}
             >
@@ -332,8 +359,8 @@ const AdminDashboard = () => {
             </button>
             <button
               className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'month'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
               onClick={() => setTimeContext('month')}
             >
@@ -356,7 +383,7 @@ const AdminDashboard = () => {
         <p className="text-sm text-gray-600 mb-6">Critical items requiring immediate attention</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Delayed Projects */}
-          <Link to="/projects" className="bg-white/80 p-6 rounded-xl border border-red-200/50 hover:bg-red-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+          <Link to="/projects?filter=delayed" className="bg-white/80 p-6 rounded-xl border border-red-200/50 hover:bg-red-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm text-red-700 font-semibold uppercase tracking-wide">Delayed Projects</p>
@@ -380,12 +407,16 @@ const AdminDashboard = () => {
           </Link>
 
           {/* At-Risk Projects */}
-          <Link to="/projects" className="bg-white/80 p-6 rounded-xl border border-yellow-200/50 hover:bg-yellow-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+          <Link to="/projects?filter=at-risk" className="bg-white/80 p-6 rounded-xl border border-yellow-200/50 hover:bg-yellow-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm text-yellow-700 font-semibold uppercase tracking-wide">At-Risk Projects</p>
-                <p className="text-3xl font-bold text-yellow-800 mt-2">{adminDashboard.projects.totalProjectsInProgress}</p>
-                {adminDashboard.projects.totalProjectsInProgress === 0 && <p className="text-xs text-yellow-600 mt-2">Stable</p>}
+                <p className="text-3xl font-bold text-yellow-800 mt-2">{adminDashboard.projects.totalProjectsAtRisk || 0}</p>
+                {adminDashboard.projects.totalProjectsAtRisk === 0 ? (
+                  <p className="text-xs text-yellow-600 mt-2">No active projects approaching deadline</p>
+                ) : (
+                  <p className="text-xs text-yellow-600 mt-2">Due within 7 days</p>
+                )}
                 <div className="mt-2 flex items-center">
                   <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Monitor</span>
                 </div>
@@ -404,7 +435,7 @@ const AdminDashboard = () => {
           </Link>
 
           {/* Overdue Tasks */}
-          <Link to="/tasks" className="bg-white/80 p-6 rounded-xl border border-orange-200/50 hover:bg-orange-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+          <Link to="/tasks?filter=overdue" className="bg-white/80 p-6 rounded-xl border border-orange-200/50 hover:bg-orange-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm text-orange-700 font-semibold uppercase tracking-wide">Overdue Tasks</p>
@@ -429,75 +460,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Quick Actions Panel */}
-      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <div className="bg-blue-100 p-2 rounded-full mr-3">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <Link to="/projects?filter=at-risk" className="bg-gradient-to-br from-[#700606]/20 to-[#700606]/30 p-6 rounded-xl border border-[#700606]/30 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-[#700606]/20 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-[#700606]/30 transition-colors">
-              <svg className="w-6 h-6 text-[#700606]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="text-sm text-[#700606] font-semibold">View At-Risk Projects</div>
-            <div className="flex items-center text-[#700606] group-hover:text-[#900808]">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/tasks?filter=overdue" className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-red-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-red-200 transition-colors">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="text-sm text-red-700 font-semibold">Review Overdue Tasks</div>
-            <div className="flex items-center text-red-600 group-hover:text-red-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/admin/attendance" className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-yellow-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-yellow-200 transition-colors">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="text-sm text-yellow-700 font-semibold">Attendance Exceptions</div>
-            <div className="flex items-center text-yellow-600 group-hover:text-yellow-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/admin/reports/staff-productivity" className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-purple-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div className="text-sm text-purple-700 font-semibold">Productivity Report</div>
-            <div className="flex items-center text-purple-600 group-hover:text-purple-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </div>
+
 
       {/* Summary Cards - Enhanced for Admin */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -634,67 +597,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* People Load Snapshot */}
-      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <div className="bg-indigo-100 p-2 rounded-full mr-3">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          People Load Snapshot
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link to="/admin/user-management" className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-green-700 font-semibold uppercase tracking-wide">Active Staff</p>
-                <p className="text-3xl font-bold text-green-800 mt-2">{adminDashboard.staff.activeStaffCount}</p>
-                <div className="mt-3 w-full bg-green-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${adminDashboard.staff.totalStaffCount > 0 ? (adminDashboard.staff.activeStaffCount / adminDashboard.staff.totalStaffCount * 100) : 0}%` }}></div>
-                </div>
-              </div>
-              <div className="bg-green-100 p-3 rounded-xl">
-                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/user-management" className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-gray-700 font-semibold uppercase tracking-wide">Idle Staff</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{adminDashboard.staff.totalStaffCount - adminDashboard.staff.activeStaffCount}</p>
-                <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${adminDashboard.staff.totalStaffCount > 0 ? ((adminDashboard.staff.totalStaffCount - adminDashboard.staff.activeStaffCount) / adminDashboard.staff.totalStaffCount * 100) : 0}%` }}></div>
-                </div>
-              </div>
-              <div className="bg-gray-100 p-3 rounded-xl">
-                <svg className="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 10a6 6 0 00-6-6H3a6 6 0 006 6h6z" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-          <Link to="/projects" className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-orange-700 font-semibold uppercase tracking-wide">At-Risk Projects</p>
-                <p className="text-3xl font-bold text-orange-800 mt-2">{adminDashboard.delayedProjects.length}</p>
-                <div className="mt-3 w-full bg-orange-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${adminDashboard.projects.totalProjects > 0 ? (adminDashboard.delayedProjects.length / adminDashboard.projects.totalProjects * 100) : 0}%` }}></div>
-                </div>
-              </div>
-              <div className="bg-orange-100 p-3 rounded-xl">
-                <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </div>
 
       {/* Charts Section */}
       {activeTab === 'overview' && (
@@ -715,6 +617,16 @@ const AdminDashboard = () => {
                 <Doughnut data={projectStatusData} options={{
                   responsive: true,
                   maintainAspectRatio: false,
+                  onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                      const index = elements[0].index;
+                      const label = projectStatusData.labels[index].toLowerCase().replace(' ', '-');
+                      navigate(`/projects?status=${label}`);
+                    }
+                  },
+                  onHover: (event, chartElement) => {
+                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                  },
                   plugins: {
                     legend: {
                       position: 'bottom',
@@ -736,8 +648,16 @@ const AdminDashboard = () => {
                 <ul className="space-y-2">
                   {projectInsights.map((item, index) => (
                     <li key={index}>
-                      <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <span className="font-medium">{item.name}:</span> {item.value}
+                      <Link to={item.link} className="text-sm text-gray-700 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 border border-transparent hover:border-blue-100 shadow-sm hover:shadow-md bg-white">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">{item.name}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full font-bold ${item.daysDelayed >= 7 ? 'bg-red-100 text-red-700' :
+                            item.daysDelayed >= 3 ? 'bg-orange-100 text-orange-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {item.value}
+                          </span>
+                        </div>
                       </Link>
                     </li>
                   ))}
@@ -847,8 +767,18 @@ const AdminDashboard = () => {
                 <ul className="space-y-2">
                   {productivityInsights.map((item, index) => (
                     <li key={index}>
-                      <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <span className="font-medium">{item.name}:</span> {item.value}
+                      <Link to={item.link} className="text-sm text-gray-700 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 border border-transparent hover:border-blue-100 shadow-sm hover:shadow-md bg-white">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">{item.name}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full font-bold ${item.type === 'percentage'
+                            ? (item.rawValue >= 80 ? 'bg-green-100 text-green-700' : item.rawValue >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700')
+                            : item.type === 'hours'
+                              ? (item.rawValue === 0 ? 'bg-green-100 text-green-700' : item.rawValue > 20 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700')
+                              : (item.rawValue >= 90 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700')
+                            }`}>
+                            {item.value}
+                          </span>
+                        </div>
                       </Link>
                     </li>
                   ))}
@@ -870,6 +800,16 @@ const AdminDashboard = () => {
                 <Doughnut data={revenueData} options={{
                   responsive: true,
                   maintainAspectRatio: false,
+                  onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                      const index = elements[0].index;
+                      const label = index === 0 ? 'completed' : index === 1 ? 'in-progress' : 'delayed';
+                      navigate(`/projects?status=${label}`);
+                    }
+                  },
+                  onHover: (event, chartElement) => {
+                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                  },
                   plugins: {
                     legend: {
                       position: 'bottom',
@@ -891,8 +831,16 @@ const AdminDashboard = () => {
                 <ul className="space-y-2">
                   {revenueInsights.map((item, index) => (
                     <li key={index}>
-                      <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <span className="font-medium">{item.name}:</span> {item.value}
+                      <Link to={item.link} className="text-sm text-gray-700 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 border border-transparent hover:border-blue-100 shadow-sm hover:shadow-md bg-white">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">{item.name}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full font-bold ${item.type === 'total' ? 'bg-blue-100 text-blue-700' :
+                            item.type === 'completed' ? 'bg-green-100 text-green-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {item.value}
+                          </span>
+                        </div>
                       </Link>
                     </li>
                   ))}
@@ -1007,110 +955,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Reports Section */}
-      {activeTab === 'reports' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Link to="/admin/reports/project-performance" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">Project Performance</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Detailed analysis of all projects with performance scores and metrics</p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-100 to-blue-200 p-3 rounded-xl group-hover:from-blue-200 group-hover:to-blue-300 transition-all">
-                <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center text-blue-600 group-hover:text-blue-700">
-              <span className="text-sm font-medium">View Report</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
 
-          <Link to="/admin/reports/manager-performance" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-green-600 transition-colors">Manager Performance</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Evaluate manager effectiveness and project delivery rates</p>
-              </div>
-              <div className="bg-gradient-to-br from-green-100 to-green-200 p-3 rounded-xl group-hover:from-green-200 group-hover:to-green-300 transition-all">
-                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center text-green-600 group-hover:text-green-700">
-              <span className="text-sm font-medium">View Report</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-
-          <Link to="/admin/reports/staff-productivity" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors">Staff Productivity</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Individual performance metrics and productivity analysis</p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-3 rounded-xl group-hover:from-purple-200 group-hover:to-purple-300 transition-all">
-                <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 10a6 6 0 00-6-6H3a6 6 0 006 6h6z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center text-purple-600 group-hover:text-purple-700">
-              <span className="text-sm font-medium">View Report</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-
-          <Link to="/admin/reports/attendance" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-yellow-600 transition-colors">Attendance Analysis</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Comprehensive attendance tracking and patterns</p>
-              </div>
-              <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 p-3 rounded-xl group-hover:from-yellow-200 group-hover:to-yellow-300 transition-all">
-                <svg className="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center text-yellow-600 group-hover:text-yellow-700">
-              <span className="text-sm font-medium">View Report</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-
-          <Link to="/admin/reports/delay-risk" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors">Delay & Risk Analysis</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Identify at-risk projects and potential revenue loss</p>
-              </div>
-              <div className="bg-gradient-to-br from-red-100 to-red-200 p-3 rounded-xl group-hover:from-red-200 group-hover:to-red-300 transition-all">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center text-red-600 group-hover:text-red-700">
-              <span className="text-sm font-medium">View Report</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

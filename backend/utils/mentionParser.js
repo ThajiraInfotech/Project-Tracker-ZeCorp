@@ -8,18 +8,30 @@ const User = require('../models/User');
  */
 exports.extractMentions = (text) => {
   if (!text || typeof text !== 'string') return [];
-  
+
   // Match @username pattern (alphanumeric, underscore, hyphen)
   // Exclude @ at start of line or after whitespace
   const mentionRegex = /@([a-zA-Z0-9_-]+)/g;
   const matches = text.match(mentionRegex);
-  
+
   if (!matches) return [];
-  
+
   // Extract usernames (remove @ symbol) and deduplicate
   const usernames = matches.map(match => match.substring(1));
   return [...new Set(usernames)];
 };
+
+/**
+ * Create notifications for mentioned users
+ * @param {Object} params
+ * @param {string} params.text - The message text
+ * @param {string} params.entityType - 'project' or 'task'
+ * @param {string} params.entityId - Project or Task ID
+ * @param {string} params.entityTitle - Project or Task title
+ * @param {string} params.mentionedBy - User ID who mentioned
+ * @param {Array<string>} params.excludeUserIds - User IDs to exclude (e.g., the sender)
+ */
+const { publishEvent } = require('../infrastructure/queue');
 
 /**
  * Create notifications for mentioned users
@@ -41,7 +53,7 @@ exports.createMentionNotifications = async ({
 }) => {
   try {
     const mentionedUsernames = exports.extractMentions(text);
-    
+
     if (mentionedUsernames.length === 0) {
       return { created: 0 };
     }
@@ -65,25 +77,30 @@ exports.createMentionNotifications = async ({
     }
 
     // Create message snippet (first 200 chars)
-    const messageSnippet = text.length > 200 
-      ? text.substring(0, 197) + '...' 
+    const messageSnippet = text.length > 200
+      ? text.substring(0, 197) + '...'
       : text;
 
-    // Create notifications
-    const notifications = usersToNotify.map(user => ({
-      user: user._id,
-      type: 'mention',
-      entityType,
-      entityId,
-      entityTitle,
-      messageSnippet,
-      mentionedBy,
-      isRead: false
-    }));
+    // Publish event for each user
+    // We do one by one or we could add a RULE that takes an array. 
+    // Given current rulesEngine takes single recipient in some cases, loop is safer.
+    const promises = usersToNotify.map(user => {
+      return publishEvent('MENTION', {
+        mentionedUser: user,
+        entityType,
+        entityId,
+        entityTitle,
+        messageSnippet,
+        triggeredBy: mentionedBy,
+        relatedLink: entityType === 'task'
+          ? `/tasks?taskId=${entityId}&openChat=true`
+          : `/projects/${entityId}?openChat=true`
+      });
+    });
 
-    await Notification.insertMany(notifications);
+    await Promise.all(promises);
 
-    return { created: notifications.length };
+    return { created: usersToNotify.length };
   } catch (error) {
     console.error('Error creating mention notifications:', error);
     // Don't throw - notification failure shouldn't break comment creation

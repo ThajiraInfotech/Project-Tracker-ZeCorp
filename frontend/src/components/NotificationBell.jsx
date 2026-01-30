@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import UserAvatar from './UserAvatar';
+import { socket } from '../App';
 
 const NotificationBell = ({ onNotificationClick }) => {
   const [notifications, setNotifications] = useState([]);
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,11 +35,38 @@ const NotificationBell = ({ onNotificationClick }) => {
   useEffect(() => {
     if (auth.isAuthenticated) {
       fetchNotifications();
-      // Poll for new notifications every 30 seconds
+
+      // 1. Poll for new notifications every 30 seconds (Fallback)
       const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+
+      // 2. Real-time listener
+      let cleanupSocket = () => { };
+
+      if (auth.user?._id) {
+        const channelName = `notification_${auth.user._id}`;
+
+        const handleNewNotification = (newNotification) => {
+          // Toast
+          toast.info(`New Notification: ${newNotification.messageSnippet || 'Check your alerts'}`);
+
+          // Update State Instantly
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        };
+
+        socket.on(channelName, handleNewNotification);
+
+        cleanupSocket = () => {
+          socket.off(channelName, handleNewNotification);
+        };
+      }
+
+      return () => {
+        clearInterval(interval);
+        cleanupSocket();
+      };
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, auth.user?._id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -99,7 +129,13 @@ const NotificationBell = ({ onNotificationClick }) => {
     // Close dropdown
     setIsOpen(false);
 
-    // Call parent handler to open chat
+    // Navigate if link exists
+    if (notification.relatedLink) {
+      navigate(notification.relatedLink);
+      return;
+    }
+
+    // Call parent handler (fallback for mentions/chat)
     if (onNotificationClick) {
       onNotificationClick({
         entityType: notification.entityType,
@@ -220,15 +256,26 @@ const NotificationBell = ({ onNotificationClick }) => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900">
-                                <span className="font-semibold">{mentionedByName}</span>
-                                {' mentioned you in '}
-                                <span className="font-semibold text-primary-600">
-                                  {notification.entityTitle}
-                                </span>
-                              </p>
-                              <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                                {notification.messageSnippet}
+                              <p className="text-sm text-gray-900">
+                                <span className="font-semibold text-gray-900">{mentionedByName}</span>
+                                {notification.type === 'PROJECT_ASSIGNED' && (
+                                  <span> assigned you to project <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
+                                )}
+                                {notification.type === 'TASK_ASSIGNED' && (
+                                  <span> assigned you to task <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
+                                )}
+                                {notification.type === 'ADDED_TO_TEAM' && (
+                                  <span> added you to the team of <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
+                                )}
+                                {notification.type === 'USER_CREATED' && (
+                                  <span> Welcome to ZeCorp! Your account has been created.</span>
+                                )}
+                                {['mention', 'comment'].includes(notification.type) && (
+                                  <span> mentioned you in <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
+                                )}
+                                {!['PROJECT_ASSIGNED', 'TASK_ASSIGNED', 'ADDED_TO_TEAM', 'USER_CREATED', 'mention', 'comment'].includes(notification.type) && (
+                                  <span> {notification.messageSnippet}</span>
+                                )}
                               </p>
                               <p className="mt-1 text-xs text-gray-500">
                                 {formatDate(notification.createdAt)}

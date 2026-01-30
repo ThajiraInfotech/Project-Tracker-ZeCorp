@@ -64,10 +64,10 @@ const Projects = () => {
   const [showMenu, setShowMenu] = useState(null);
 
   // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [startDateFilter, setStartDateFilter] = useState('');
-  const [endDateFilter, setEndDateFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [startDateFilter, setStartDateFilter] = useState(searchParams.get('startDate') || '');
+  const [endDateFilter, setEndDateFilter] = useState(searchParams.get('endDate') || '');
 
   // View and table states
   const [viewMode, setViewMode] = useState('card');
@@ -194,24 +194,8 @@ const Projects = () => {
       const response = await api.get('/projects');
 
       if (response.data.success && response.data.projects) {
-        const allProjects = response.data.projects;
-
-        let filteredProjects = allProjects;
-
-        // Apply URL filter
-        const filter = searchParams.get('filter');
-        if (filter === 'at-risk') {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          filteredProjects = filteredProjects.filter(project =>
-            project.status === 'on-hold' ||
-            (project.endDate < today && project.status !== 'completed') ||
-            project.status === 'delayed'
-          );
-        }
-
-        setProjects(allProjects);
-        setFilteredProjects(filteredProjects);
+        setProjects(response.data.projects);
+        setFilteredProjects(response.data.projects);
       } else {
         throw new Error('No projects data received');
       }
@@ -227,6 +211,42 @@ const Projects = () => {
   // Apply filters
   useEffect(() => {
     let filtered = projects;
+
+    // Apply URL filter
+    const filter = searchParams.get('filter');
+    const statusParam = searchParams.get('status');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (filter === 'at-risk') {
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+
+      // Normalize today to start of day (already done)
+      // Normalize nextWeek to end of day
+      nextWeek.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter(project => {
+        if (!project.endDate || project.status !== 'in-progress') return false;
+
+        const endDate = new Date(project.endDate);
+        // Normalize endDate to local midnight to match 'today' for start check
+        const endDateStart = new Date(endDate);
+        endDateStart.setHours(0, 0, 0, 0);
+
+        return endDate >= today && endDate <= nextWeek;
+      });
+    } else if (filter === 'delayed') {
+      filtered = filtered.filter(project =>
+        project.status === 'on-hold' ||
+        (project.endDate && new Date(project.endDate) < today && project.status !== 'completed') ||
+        project.status === 'delayed'
+      );
+    } else if (filter === 'pending') {
+      filtered = filtered.filter(project => project.status !== 'completed');
+    } else if (statusParam) {
+      filtered = filtered.filter(project => project.status === statusParam);
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(project =>
@@ -250,8 +270,13 @@ const Projects = () => {
       filtered = filtered.filter(project => new Date(project.endDate) <= end);
     }
 
+    if (endDateFilter) {
+      const end = new Date(endDateFilter);
+      filtered = filtered.filter(project => new Date(project.endDate) <= end);
+    }
+
     setFilteredProjects(filtered);
-  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter]);
+  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, searchParams]);
 
   // Apply sorting
   useEffect(() => {
@@ -517,7 +542,6 @@ const Projects = () => {
                 <div className="py-1">
                   <button onClick={() => { fetchProjectDetails(project._id); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
                   <button onClick={() => { toast.info('Edit Project feature coming soon'); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
-                  <button onClick={() => { toast.info('Archive feature coming soon'); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Archive</button>
                 </div>
               </div>
             </div>
@@ -740,15 +764,15 @@ const Projects = () => {
                         <h4 className="font-medium text-gray-900 text-sm">{task.title}</h4>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
+                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
                             }`}>
                             {task.priority}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                                task.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                                  'bg-orange-100 text-orange-800'
+                            task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                              task.status === 'todo' ? 'bg-gray-100 text-gray-800' :
+                                'bg-orange-100 text-orange-800'
                             }`}>
                             {task.status}
                           </span>
@@ -823,14 +847,14 @@ const Projects = () => {
   return (
     <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-4 md:p-6 mb-6 text-white">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Projects Management</h1>
-            <p className="text-emerald-100 text-sm">Manage and track all project initiatives with enterprise-level tools</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">Projects Management</h1>
+            <p className="text-white/80 text-sm">Manage and track all project initiatives with enterprise-level tools</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             {/* View Mode Toggle */}
             <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
               <button
@@ -839,7 +863,7 @@ const Projects = () => {
                   }`}
               >
                 <Squares2X2Icon className="w-4 h-4" />
-                Cards
+                <span className="hidden sm:inline">Cards</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
@@ -847,17 +871,18 @@ const Projects = () => {
                   }`}
               >
                 <TableCellsIcon className="w-4 h-4" />
-                Table
+                <span className="hidden sm:inline">Table</span>
               </button>
             </div>
 
             {auth.user?.role === 'admin' && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium ml-auto lg:ml-0"
               >
                 <PlusIcon className="w-5 h-5" />
-                Add Project
+                <span className="hidden sm:inline">Add Project</span>
+                <span className="sm:hidden">Add</span>
               </button>
             )}
           </div>
@@ -868,39 +893,39 @@ const Projects = () => {
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search projects by name, description, or client..."
+                placeholder="Search projects..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm md:text-base"
               />
             </div>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
             >
               <FunnelIcon className="w-5 h-5" />
               <span className="hidden sm:inline">Filters</span>
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
             >
               <ArrowDownTrayIcon className="w-5 h-5" />
               <span className="hidden sm:inline">Export</span>
             </button>
-            <div className="relative">
+            <div className="relative flex-1 lg:flex-none">
               <button
                 onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
               >
                 <span className="text-sm font-mono">⌨️</span>
                 <span className="hidden sm:inline">Help</span>

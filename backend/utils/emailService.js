@@ -40,12 +40,21 @@ class EmailService {
 
   async sendEmail(to, subject, htmlContent, attachments = []) {
     try {
-      // Temporarily disable email sending to prevent errors
-      console.log('Email sending disabled - would send to:', to, 'subject:', subject);
-      return { messageId: 'disabled', disabled: true };
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || '"Thajira WorkFlow" <noreply@thajiraworkflow.com>',
+        to: to,
+        subject: subject,
+        html: htmlContent,
+        attachments: attachments
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('Email sent: %s', info.messageId);
+      return info;
     } catch (error) {
       console.error('Error sending email:', error);
-      throw error;
+      // Don't throw, just log. We don't want to break the queue worker.
+      return { error: error.message };
     }
   }
 

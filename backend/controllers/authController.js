@@ -3,6 +3,34 @@ const Project = require('../models/Project');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const emailService = require('../utils/emailService');
+const SystemSetting = require('../models/SystemSetting');
+const { publishEvent } = require('../infrastructure/queue');
+
+// Helper: Validate password against system settings
+const validatePassword = async (password) => {
+  let minLength = 8;
+  let requireSpecial = true;
+
+  try {
+    const minLenSetting = await SystemSetting.findOne({ settingKey: 'password_min_length' });
+    if (minLenSetting) minLength = Number(minLenSetting.settingValue);
+
+    const specialCharSetting = await SystemSetting.findOne({ settingKey: 'password_require_special_chars' });
+    if (specialCharSetting) requireSpecial = specialCharSetting.settingValue === true || specialCharSetting.settingValue === 'true';
+  } catch (err) {
+    console.error('Failed to fetch password settings:', err);
+  }
+
+  if (password.length < minLength) {
+    return `Password must be at least ${minLength} characters long`;
+  }
+
+  if (requireSpecial && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return 'Password must contain at least one special character';
+  }
+
+  return null;
+};
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -15,6 +43,12 @@ const generateToken = (userId) => {
 exports.register = async (req, res) => {
   try {
     const { username, email, password, fullName, role, phone, department } = req.body;
+
+    // Validate password
+    const passwordError = await validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
@@ -37,6 +71,14 @@ exports.register = async (req, res) => {
 
     // Generate token
     const token = generateToken(user._id);
+
+    // EMIT EVENT: User Created
+    // This allows the notification service to handle the "Welcome Email" logic
+    await publishEvent('USER_CREATED', {
+      user: user,
+      username: username,
+      password: password // Note: Only for initial welcome email, handled securely
+    });
 
     res.status(201).json({
       success: true,
@@ -69,13 +111,56 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      return res.status(403).json({
+        success: false,
+        message: `Account is locked until ${user.lockUntil.toLocaleTimeString()}`
+      });
+    }
+
+    // Check if user is active
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been deactivated. Please contact an administrator.'
+      });
+    }
+
     // Check password
     const isMatch = await user.comparePassword(password);
+
     if (!isMatch) {
+      // Handle failed attempt
+      let maxAttempts = 5;
+      try {
+        const setting = await SystemSetting.findOne({ settingKey: 'max_failed_login_attempts' });
+        if (setting) maxAttempts = Number(setting.settingValue);
+      } catch (err) { console.error(err); }
+
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+
+      if (user.failedLoginAttempts >= maxAttempts) {
+        user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+        user.failedLoginAttempts = 0; // Reset so they can try again after lock expires
+        await user.save();
+        return res.status(403).json({
+          success: false,
+          message: 'Too many failed login attempts. Account locked for 30 minutes.'
+        });
+      }
+
+      await user.save();
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
+    }
+
+    // Successful login - reset counters
+    if (user.failedLoginAttempts > 0 || user.lockUntil) {
+      user.failedLoginAttempts = 0;
+      user.lockUntil = undefined;
     }
 
     // Generate token
@@ -260,6 +345,13 @@ exports.toggleUserStatus = async (req, res) => {
 exports.resetUserPassword = async (req, res) => {
   try {
     const { newPassword } = req.body;
+
+    // Validate password
+    const passwordError = await validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -422,5 +514,23 @@ exports.getStaffForManager = async (req, res) => {
   } catch (error) {
     console.error('Get staff for manager error:', error);
     res.status(500).json({ message: 'Failed to get staff for manager' });
+  }
+};
+
+// Get all admins for mentions (accessible to all authenticated users)
+exports.getAdmins = async (req, res) => {
+  try {
+    const admins = await User.find({
+      role: 'admin',
+      isActive: true
+    }).select('username fullName email profileImage role');
+
+    res.json({
+      success: true,
+      users: admins
+    });
+  } catch (error) {
+    console.error('Get admins error:', error);
+    res.status(500).json({ message: 'Failed to get admins' });
   }
 };

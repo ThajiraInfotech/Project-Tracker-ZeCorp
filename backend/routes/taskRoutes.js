@@ -31,9 +31,9 @@ router.delete('/:id/files/:fileId', authMiddleware, taskController.deleteTaskFil
 router.post('/:id/notify', authMiddleware, taskController.sendTaskNotification);
 
 // Admin task override routes
-router.put('/:id/admin-override', authMiddleware, adminMiddleware, taskController.adminOverrideTaskAssignment);
-router.post('/admin/reassign-stuck', authMiddleware, adminMiddleware, taskController.adminReassignStuckTasks);
-router.get('/admin/all', authMiddleware, adminMiddleware, taskController.adminGetAllTasks);
-router.post('/:id/force-complete', authMiddleware, adminMiddleware, taskController.adminForceCompleteTask);
+
+
+
+
 
 module.exports = router;

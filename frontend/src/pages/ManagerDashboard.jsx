@@ -40,7 +40,7 @@ const ManagerDashboard = () => {
   const [error, setError] = useState(null);
   const [dataSource, setDataSource] = useState('loading'); // 'api', 'fallback', 'loading'
   const [userLoadingTimeout, setUserLoadingTimeout] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+
   const [timeContext, setTimeContext] = useState('today');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -124,34 +124,34 @@ const ManagerDashboard = () => {
       setLoading(false);
     }
   };
-useEffect(() => {
-  // Clear any existing timeout
-  if (userLoadingTimeout) {
-    clearTimeout(userLoadingTimeout);
-  }
-
-  // If auth is still loading, wait for it to complete
-  if (authLoading) {
-    setLoading(true);
-    return;
-  }
-
-  // Only fetch data if user is loaded and has an ID
-  if (user && user.id) {
-    fetchManagerData();
-  } else {
-    // User is not authenticated or auth check failed
-    setLoading(false);
-    setError('Please log in to access the dashboard');
-  }
-
-  // Cleanup timeout on unmount
-  return () => {
+  useEffect(() => {
+    // Clear any existing timeout
     if (userLoadingTimeout) {
       clearTimeout(userLoadingTimeout);
     }
-  };
-}, [user, authLoading]);
+
+    // If auth is still loading, wait for it to complete
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    // Only fetch data if user is loaded and has an ID
+    if (user && user.id) {
+      fetchManagerData();
+    } else {
+      // User is not authenticated or auth check failed
+      setLoading(false);
+      setError('Please log in to access the dashboard');
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (userLoadingTimeout) {
+        clearTimeout(userLoadingTimeout);
+      }
+    };
+  }, [user, authLoading]);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -319,10 +319,10 @@ useEffect(() => {
   return (
     <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-6">
       {/* Manager Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Manager Dashboard</h1>
+      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-4 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+          <div className="w-full md:w-auto">
+            <h1 className="text-2xl md:text-4xl font-bold mb-2">Manager Dashboard</h1>
             <p className="text-white/80 text-sm">Enterprise Project Management Console</p>
             {dataSource === 'fallback' && (
               <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -341,8 +341,8 @@ useEffect(() => {
               </div>
             )}
           </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-right">
+          <div className="flex items-center justify-between w-full md:w-auto md:space-x-6">
+            <div className="text-left md:text-right">
               <p className="text-sm text-white">Welcome, {user?.fullName}</p>
               <p className="text-xs text-white/80">Project Manager</p>
               {lastUpdated && (
@@ -352,80 +352,46 @@ useEffect(() => {
             <button
               onClick={refreshData}
               disabled={isRefreshing}
-              className="p-2 bg-[#700606]/20 hover:bg-[#700606]/30 rounded-full transition-all duration-300 disabled:opacity-50"
+              className="p-2 bg-[#700606]/20 hover:bg-[#700606]/30 rounded-full transition-all duration-300 disabled:opacity-50 ml-4 md:ml-0"
               title="Refresh Data"
             >
               <svg className={`w-5 h-5 text-[#700606] ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <div className="flex space-x-2">
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'overview'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
-                onClick={() => setActiveTab('overview')}
-              >
-                Overview
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'analytics'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
-                onClick={() => setActiveTab('analytics')}
-              >
-                Analytics
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  activeTab === 'reports'
-                    ? 'bg-gradient-to-r from-[#700606] to-[#900808] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-[#700606]/10 shadow-sm'
-                }`}
-                onClick={() => setActiveTab('reports')}
-              >
-                Reports
-              </button>
-            </div>
+
           </div>
         </div>
       </div>
 
       {/* Time Context Toggle */}
       <div className="bg-white/60 backdrop-blur-sm rounded-lg shadow-sm border border-white/20 p-4">
-        <div className="flex items-center justify-center space-x-4">
+        <div className="flex flex-col md:flex-row items-center justify-center space-y-3 md:space-y-0 md:space-x-4">
           <span className="text-sm font-medium text-gray-700">Time Context:</span>
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 rounded-lg p-1 w-full md:w-auto overflow-x-auto">
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'today'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 whitespace-nowrap ${timeContext === 'today'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
               onClick={() => setTimeContext('today')}
             >
               Today
             </button>
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'week'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 whitespace-nowrap ${timeContext === 'week'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
               onClick={() => setTimeContext('week')}
             >
               This Week
             </button>
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
-                timeContext === 'month'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 whitespace-nowrap ${timeContext === 'month'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
               onClick={() => setTimeContext('month')}
             >
               This Month
@@ -445,7 +411,7 @@ useEffect(() => {
           Action Required
         </h2>
         <p className="text-sm text-gray-600 mb-6">Critical items requiring immediate attention</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Overdue Tasks */}
           <Link to="/tasks?filter=overdue" className="bg-white/80 p-6 rounded-xl border border-red-200/50 hover:bg-red-50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
             <div className="flex items-center justify-between">
@@ -530,7 +496,7 @@ useEffect(() => {
           </div>
           Quick Actions
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <Link to="/projects?filter=active" className="bg-gradient-to-br from-[#700606]/20 to-[#700606]/30 p-6 rounded-xl border border-[#700606]/30 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
             <div className="bg-[#700606]/20 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-[#700606]/30 transition-colors">
               <svg className="w-6 h-6 text-[#700606]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,7 +539,7 @@ useEffect(() => {
               </svg>
             </div>
           </Link>
-          <Link to="/staff" className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
+          <Link to="/team" className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
             <div className="bg-purple-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -681,123 +647,67 @@ useEffect(() => {
       </div>
 
       {/* Charts Section */}
-      {activeTab === 'overview' && (
-        <>
-          {/* Project Status Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <div className="bg-blue-100 p-2 rounded-full mr-3">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                Project Status Distribution
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">{projectInsight}</p>
-              <div className="h-64 mb-6">
-                <Doughnut data={projectStatusData} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        padding: 20,
-                        usePointStyle: true
-                      }
-                    }
-                  }
-                }} />
-              </div>
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200/50">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <svg className="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Top Insights
-                </h4>
-                <ul className="space-y-2">
-                  {projectInsights.map((item, index) => (
-                    <li key={index}>
-                      <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <span className="font-medium">{item.name}:</span> {item.value}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {projectInsights.length === 0 && <p className="text-sm text-gray-500 mt-2">No project insights available.</p>}
-              </div>
-            </div>
+      <div className="space-y-8 mt-8">
 
-            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <div className="bg-green-100 p-2 rounded-full mr-3">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                Task Status Overview
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">{taskInsight}</p>
-              <div className="h-64 mb-6">
-                <Bar data={taskStatusData} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      display: false
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      grid: {
-                        color: 'rgba(0,0,0,0.05)'
-                      }
-                    },
-                    x: {
-                      grid: {
-                        display: false
-                      }
+        {/* Project Status Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <div className="bg-blue-100 p-2 rounded-full mr-3">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              Project Status Distribution
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">{projectInsight}</p>
+            <div className="h-64 mb-6">
+              <Doughnut data={projectStatusData} options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      padding: 20,
+                      usePointStyle: true
                     }
                   }
-                }} />
-              </div>
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200/50">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Top Insights
-                </h4>
-                <ul className="space-y-2">
-                  {taskInsights.map((item, index) => (
-                    <li key={index}>
-                      <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <span className="font-medium">{item.name}:</span> {item.value}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {taskInsights.length === 0 && <p className="text-sm text-gray-500 mt-2">No task insights available.</p>}
-              </div>
+                }
+              }} />
+            </div>
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200/50">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <svg className="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Top Insights
+              </h4>
+              <ul className="space-y-2">
+                {projectInsights.map((item, index) => (
+                  <li key={index}>
+                    <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
+                      <span className="font-medium">{item.name}:</span> {item.value}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {projectInsights.length === 0 && <p className="text-sm text-gray-500 mt-2">No project insights available.</p>}
             </div>
           </div>
 
-          {/* Team Workload Chart */}
           <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
             <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <div className="bg-purple-100 p-2 rounded-full mr-3">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <div className="bg-green-100 p-2 rounded-full mr-3">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              Team Workload Distribution
+              Task Status Overview
             </h3>
-            <p className="text-sm text-gray-600 mb-6">{teamInsight}</p>
+            <p className="text-sm text-gray-600 mb-6">{taskInsight}</p>
             <div className="h-64 mb-6">
-              <Bar data={teamWorkloadData} options={{
+              <Bar data={taskStatusData} options={{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -810,9 +720,6 @@ useEffect(() => {
                     beginAtZero: true,
                     grid: {
                       color: 'rgba(0,0,0,0.05)'
-                    },
-                    ticks: {
-                      stepSize: 1
                     }
                   },
                   x: {
@@ -825,13 +732,13 @@ useEffect(() => {
             </div>
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200/50">
               <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                <svg className="w-4 h-4 text-purple-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Top Insights
               </h4>
               <ul className="space-y-2">
-                {teamInsights.map((item, index) => (
+                {taskInsights.map((item, index) => (
                   <li key={index}>
                     <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
                       <span className="font-medium">{item.name}:</span> {item.value}
@@ -839,13 +746,73 @@ useEffect(() => {
                   </li>
                 ))}
               </ul>
+              {taskInsights.length === 0 && <p className="text-sm text-gray-500 mt-2">No task insights available.</p>}
             </div>
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Team Workload Chart */}
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <div className="bg-purple-100 p-2 rounded-full mr-3">
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            Team Workload Distribution
+          </h3>
+          <p className="text-sm text-gray-600 mb-6">{teamInsight}</p>
+          <div className="h-64 mb-6">
+            <Bar data={teamWorkloadData} options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: 'rgba(0,0,0,0.05)'
+                  },
+                  ticks: {
+                    stepSize: 1
+                  }
+                },
+                x: {
+                  grid: {
+                    display: false
+                  }
+                }
+              }
+            }} />
+          </div>
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200/50">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+              <svg className="w-4 h-4 text-purple-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Top Insights
+            </h4>
+            <ul className="space-y-2">
+              {teamInsights.map((item, index) => (
+                <li key={index}>
+                  <Link to={item.link} className="text-sm text-blue-600 hover:text-blue-800 block p-2 rounded-lg hover:bg-blue-50 transition-colors">
+                    <span className="font-medium">{item.name}:</span> {item.value}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
 
       {/* Reports Section */}
-      {activeTab === 'reports' && (
+      {/* Detailed Reports Section */}
+      <div className="pt-8 border-t border-gray-200/50">
+        <h3 className="text-xl font-bold text-gray-900 mb-6 px-1">Detailed Reports</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <Link to="/projects" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
             <div className="flex justify-between items-start mb-4">
@@ -887,7 +854,7 @@ useEffect(() => {
             </div>
           </Link>
 
-          <Link to="/staff" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
+          <Link to="/team" className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-105 transition-all duration-300 group">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors">Team Performance</h3>
@@ -907,7 +874,7 @@ useEffect(() => {
             </div>
           </Link>
         </div>
-      )}
+      </div>
     </div>
   );
 };

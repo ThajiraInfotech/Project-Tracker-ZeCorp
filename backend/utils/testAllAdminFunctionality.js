@@ -33,7 +33,7 @@ async function testAllAdminFunctionality() {
     await testAdminDashboard();
     await testUserManagement();
     await testProjectManagement();
-    await testTaskManagement();
+
     await testReportingSystem();
     await testSystemSettings();
 
@@ -363,69 +363,7 @@ async function testProjectManagement() {
   console.log('✅ Project marked as delayed successfully');
 }
 
-// Test task management
-async function testTaskManagement() {
-  console.log('📋 Testing task management functionality...');
 
-  // Get all tasks (admin override)
-  const tasksResponse = await axios.get(`${TEST_API_URL}/tasks/admin/all`, {
-    headers: { Authorization: `Bearer ${adminToken}` }
-  });
-
-  if (!tasksResponse.data.success) {
-    throw new Error('Failed to get all tasks');
-  }
-
-  console.log(`✅ Retrieved ${tasksResponse.data.tasks.length} tasks with admin access`);
-
-  // Test task override
-  const overrideResponse = await axios.put(
-    `${TEST_API_URL}/tasks/${testTaskId}/admin-override`,
-    {
-      assignedTo: testManagerId,
-      priority: 'high',
-      status: 'in-progress',
-      deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    },
-    { headers: { Authorization: `Bearer ${adminToken}` } }
-  );
-
-  if (!overrideResponse.data.success) {
-    throw new Error('Failed to override task');
-  }
-
-  console.log('✅ Task override successful');
-
-  // Test force complete task
-  const completeResponse = await axios.post(
-    `${TEST_API_URL}/tasks/${testTaskId}/force-complete`,
-    { completionNotes: 'Admin forced completion for testing' },
-    { headers: { Authorization: `Bearer ${adminToken}` } }
-  );
-
-  if (!completeResponse.data.success) {
-    throw new Error('Failed to force complete task');
-  }
-
-  console.log('✅ Task forced completion successful');
-
-  // Test reassign stuck tasks
-  const reassignResponse = await axios.post(
-    `${TEST_API_URL}/tasks/admin/reassign-stuck`,
-    {
-      fromUserId: testUserId,
-      toUserId: testManagerId,
-      projectId: testProjectId
-    },
-    { headers: { Authorization: `Bearer ${adminToken}` } }
-  );
-
-  if (!reassignResponse.data.success) {
-    throw new Error('Failed to reassign stuck tasks');
-  }
-
-  console.log(`✅ Reassigned ${reassignResponse.data.reassignResults.length} stuck tasks`);
-}
 
 // Test reporting system
 async function testReportingSystem() {

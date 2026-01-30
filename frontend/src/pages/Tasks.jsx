@@ -17,8 +17,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  ArrowDownTrayIcon,
-  AdjustmentsHorizontalIcon
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -54,13 +53,13 @@ ChartJS.register(
   Title
 );
 
-const Tasks = () => {
+const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
-  const [filterProject, setFilterProject] = useState('all');
+  const [filterProject, setFilterProject] = useState(projectId || 'all');
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', or 'kanban'
   const [selectedTask, setSelectedTask] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -80,8 +79,6 @@ const Tasks = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedTasks, setSelectedTasks] = useState([]);
-  const [sortBy, setSortBy] = useState('deadline');
-  const [sortOrder, setSortOrder] = useState('asc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
@@ -118,7 +115,11 @@ const Tasks = () => {
         // Apply URL filter
         const filter = searchParams.get('filter');
         if (filter === 'overdue') {
-          allTasks = allTasks.filter(task => task.isOverdue);
+          const now = new Date();
+          allTasks = allTasks.filter(task =>
+            task.status !== 'completed' &&
+            new Date(task.deadline) < now
+          );
         }
 
         // Apply client-side filters
@@ -140,43 +141,7 @@ const Tasks = () => {
           });
         }
 
-        // Apply sorting
-        allTasks.sort((a, b) => {
-          let aValue, bValue;
-          switch (sortBy) {
-            case 'title':
-              aValue = a.title.toLowerCase();
-              bValue = b.title.toLowerCase();
-              break;
-            case 'deadline':
-              aValue = new Date(a.deadline);
-              bValue = new Date(b.deadline);
-              break;
-            case 'priority':
-              const priorityOrder = { low: 1, medium: 2, high: 3 };
-              aValue = priorityOrder[a.priority] || 0;
-              bValue = priorityOrder[b.priority] || 0;
-              break;
-            case 'progress':
-              aValue = a.progress || 0;
-              bValue = b.progress || 0;
-              break;
-            case 'status':
-              const statusOrder = { todo: 1, 'in-progress': 2, completed: 3, delayed: 4 };
-              aValue = statusOrder[a.status] || 0;
-              bValue = statusOrder[b.status] || 0;
-              break;
-            default:
-              aValue = a.title.toLowerCase();
-              bValue = b.title.toLowerCase();
-          }
 
-          if (sortOrder === 'asc') {
-            return aValue > bValue ? 1 : -1;
-          } else {
-            return aValue < bValue ? 1 : -1;
-          }
-        });
 
         setTasks(allTasks);
       } else {
@@ -360,8 +325,25 @@ const Tasks = () => {
       if (auth.user?.role === 'admin') {
         fetchStaff();
       }
+
+      // Check for deep link to task (e.g. from notification)
+      const taskIdParam = searchParams.get('taskId');
+      const openChatParam = searchParams.get('openChat');
+
+      if (taskIdParam) {
+        fetchTaskDetails(taskIdParam).then(() => {
+          if (openChatParam === 'true') {
+            // Delay slightly to ensure modal/state doesn't conflict? 
+            // Actually, usually we might want chat to open ALONGSIDE or instead of modal?
+            // User said "chat discussion bar should open".
+            // If we rely on TaskDetailsModal, does it block sidebar?
+            // Tasks.jsx renders ChatSidebar explicitly.
+            setShowChatSidebar(true);
+          }
+        });
+      }
     }
-  }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, sortBy, sortOrder]);
+  }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -584,29 +566,10 @@ const Tasks = () => {
     );
   };
 
-  // Task details modal usage in render
-  const renderTaskDetailsModal = () => {
-    if (!selectedTask || !showModal) return null;
-    return (
-      <TaskDetailsModal
-        taskId={selectedTask._id}
-        onClose={() => setShowModal(false)}
-        onEditTask={() => {
-          setShowModal(false);
-          handleEditTask(selectedTask);
-        }}
-        currentUserRole={auth.user?.role}
-        currentUserId={auth.user?._id}
-        onTaskUpdated={(updatedTask) => {
-          setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
-          setSelectedTask(updatedTask);
-        }}
-      />
-    );
-  };
+
 
   // Staff-specific view - same as dashboard My Tasks
-  if (auth.user?.role === 'staff') {
+  if (auth.user?.role?.toLowerCase() === 'staff') {
     return (
       <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-6">
         <div className="flex justify-between items-center">
@@ -662,155 +625,18 @@ const Tasks = () => {
         )}
 
         {/* Task Details Modal */}
-        {showModal && selectedTask && (() => {
-          const project = projects.find(p => p._id === (selectedTask.project?._id || selectedTask.project));
-          return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Task Details</h3>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowChatSidebar(true)}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Chat
-                    </button>
-                    <button
-                      onClick={() => setShowModal(false)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="p-6 space-y-6">
-                  {/* Header Section */}
-                  <div className="border-b border-gray-200 pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-2xl font-bold text-gray-900 mb-3">{selectedTask.title}</h4>
-                        <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
-                            selectedTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                            {selectedTask.priority} priority
-                          </span>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${selectedTask.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            selectedTask.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                              selectedTask.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                                'bg-orange-100 text-orange-800'
-                            }`}>
-                            {selectedTask.status}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span className="text-gray-600">Assigned to:</span>
-                            <span className="font-medium text-gray-900">{selectedTask.assignedTo?.fullName || selectedTask.assignedTo?.name || 'Unassigned'}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-gray-600">Due:</span>
-                            <span className={`font-medium ${selectedTask.isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-                              {new Date(selectedTask.deadline).toLocaleDateString()}
-                              {selectedTask.isOverdue && <span className="ml-1 text-red-600">• Overdue</span>}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Description Section */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h5 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Description
-                    </h5>
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedTask.description || 'No description provided'}</p>
-                  </div>
-
-
-                  {/* Project & Assignment Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <h5 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        Project Details
-                      </h5>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-sm font-medium text-gray-600">Project:</span>
-                          <p className="text-sm font-semibold text-gray-900">{project?.projectName || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-600">Assigned By:</span>
-                          <p className="text-sm font-semibold text-gray-900">{selectedTask.createdBy?.fullName || 'System'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <h5 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Timeline
-                      </h5>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-sm font-medium text-gray-600">Created:</span>
-                          <p className="text-sm text-gray-900">{selectedTask.createdAt ? new Date(selectedTask.createdAt).toLocaleDateString() : 'N/A'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-600">Deadline:</span>
-                          <p className={`text-sm ${selectedTask.isOverdue ? 'text-red-600 font-semibold' : 'text-gray-900'}`}>
-                            {new Date(selectedTask.deadline).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedTask.attachments && selectedTask.attachments.length > 0 && (
-                    <div>
-                      <h5 className="text-lg font-medium text-gray-900 mb-3">Attachments</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedTask.attachments.map((attachment, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                            </svg>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                              <p className="text-xs text-gray-500">{attachment.size}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {showModal && selectedTask && (
+          <TaskDetailsModal
+            taskId={selectedTask._id}
+            onClose={() => setShowModal(false)}
+            currentUserRole="staff"
+            currentUserId={auth.user?._id || auth.user?.id}
+            onTaskUpdated={(updatedTask) => {
+              setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+              setSelectedTask(updatedTask);
+            }}
+          />
+        )}
 
         {/* Chat Sidebar for Staff */}
         <ChatSidebar
@@ -821,27 +647,75 @@ const Tasks = () => {
           entityTitle={selectedTask?.title || 'Task'}
           entityData={selectedTask}
         />
-      </div>
+      </div >
 
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-4 md:p-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Tasks Management</h1>
-            <p className="text-[#700606]/80 text-sm">Manage and track all project tasks with enterprise-level tools</p>
-          </div>
+      {/* Header - Only show if not embedded */}
+      {!isEmbedded && (
+        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Tasks Management</h1>
+              <p className="text-white/80 text-sm">Manage and track all project tasks with enterprise-level tools</p>
+            </div>
 
+            <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                    }`}
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  Cards
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                    }`}
+                >
+                  <TableCellsIcon className="w-4 h-4" />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'kanban' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                    }`}
+                >
+                  <ViewColumnsIcon className="w-4 h-4" />
+                  Kanban
+                </button>
+              </div>
+
+              {auth.user?.role === 'admin' && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Add Task
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embedded Actions Header */}
+      {isEmbedded && (
+        <div className="flex justify-end mb-6">
           <div className="flex items-center gap-3">
             {/* View Mode Toggle */}
-            <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
+            <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('card')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-white text-[#700606] shadow-sm' : 'text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 <Squares2X2Icon className="w-4 h-4" />
@@ -849,7 +723,7 @@ const Tasks = () => {
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-white text-[#700606] shadow-sm' : 'text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 <TableCellsIcon className="w-4 h-4" />
@@ -857,7 +731,7 @@ const Tasks = () => {
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'kanban' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'kanban' ? 'bg-white text-[#700606] shadow-sm' : 'text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 <ViewColumnsIcon className="w-4 h-4" />
@@ -865,10 +739,10 @@ const Tasks = () => {
               </button>
             </div>
 
-            {auth.user?.role === 'admin' && (
+            {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-[#700606] text-white rounded-lg hover:bg-[#800808] transition-colors font-medium"
               >
                 <PlusIcon className="w-5 h-5" />
                 Add Task
@@ -876,7 +750,7 @@ const Tasks = () => {
             )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Search and Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
@@ -911,13 +785,7 @@ const Tasks = () => {
               <ArrowDownTrayIcon className="w-5 h-5" />
               <span className="hidden sm:inline">Export</span>
             </button>
-            <button
-              onClick={() => setSortBy(sortBy === 'deadline' ? 'priority' : sortBy === 'priority' ? 'progress' : 'deadline')}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <AdjustmentsHorizontalIcon className="w-5 h-5" />
-              <span className="hidden sm:inline">Sort</span>
-            </button>
+
             <div className="relative">
               <button
                 onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
@@ -978,22 +846,24 @@ const Tasks = () => {
               className="overflow-hidden"
             >
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project</label>
-                    <select
-                      value={filterProject}
-                      onChange={(e) => setFilterProject(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
-                    >
-                      <option value="all">All Projects</option>
-                      {projects.map((project) => (
-                        <option key={project._id} value={project._id}>
-                          {project.projectName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-6">
+                  {!isEmbedded && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Project</label>
+                      <select
+                        value={filterProject}
+                        onChange={(e) => setFilterProject(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                      >
+                        <option value="all">All Projects</option>
+                        {projects.map((project) => (
+                          <option key={project._id} value={project._id}>
+                            {project.projectName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <select
@@ -1021,7 +891,7 @@ const Tasks = () => {
                       <option value="high">High</option>
                     </select>
                   </div>
-                  <div className="sm:col-span-2 lg:col-span-1">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Due Date Range</label>
                     <div className="flex gap-2">
                       <input
@@ -1091,53 +961,7 @@ const Tasks = () => {
         </motion.div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg p-4 mb-6 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
-            <select
-              value={filterProject}
-              onChange={(e) => setFilterProject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#700606] focus:border-[#700606]"
-            >
-              <option value="all">All Projects</option>
-              {projects.map((project) => (
-                <option key={project._id} value={project._id}>
-                  {project.projectName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#700606] focus:border-[#700606]"
-            >
-              <option value="all">All Statuses</option>
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="delayed">Delayed</option>
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#700606] focus:border-[#700606]"
-            >
-              <option value="all">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </div>
-      </div>
+
 
 
       {/* Loading state */}
@@ -1503,12 +1327,12 @@ const Tasks = () => {
         <TaskDetailsModal
           taskId={selectedTask._id}
           onClose={() => setShowModal(false)}
-          onEditTask={() => {
+          onEditTask={auth.user?.role?.toLowerCase() !== 'staff' ? () => {
             setShowModal(false);
             handleEditTask(selectedTask);
-          }}
-          currentUserRole={auth.user?.role}
-          currentUserId={auth.user?._id}
+          } : undefined}
+          currentUserRole={auth.user?.role?.toLowerCase() === 'staff' ? 'staff' : auth.user?.role}
+          currentUserId={auth.user?._id || auth.user?.id}
           onTaskUpdated={(updatedTask) => {
             setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
             setSelectedTask(updatedTask);

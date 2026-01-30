@@ -282,8 +282,8 @@ exports.getProjectDailyReport = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -334,8 +334,8 @@ exports.getProjectWeeklyReport = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -399,8 +399,8 @@ exports.getProjectMonthlyReport = async (req, res) => {
 
     // Check authorization
     if (req.user.role === 'staff' &&
-        project.manager.toString() !== req.user._id.toString() &&
-        !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
+      project.manager.toString() !== req.user._id.toString() &&
+      !project.teamMembers.some(member => member._id.toString() === req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -950,6 +950,16 @@ exports.getAdminDashboardData = async (req, res) => {
     const totalProjectsCompleted = projects.filter(p => p.status === 'completed').length;
     const totalProjectsDelayed = projects.filter(p => p.status === 'on-hold' || (p.endDate && p.endDate < now && p.status !== 'completed')).length;
 
+    // Calculate At-Risk Projects (In Progress AND Due within next 7 days)
+    const nextWeek = new Date(now);
+    nextWeek.setDate(now.getDate() + 7);
+    const totalProjectsAtRisk = projects.filter(p =>
+      p.status === 'in-progress' &&
+      p.endDate &&
+      new Date(p.endDate) >= now &&
+      new Date(p.endDate) <= nextWeek
+    ).length;
+
     // Calculate productivity (tasks completed vs total tasks in the period)
     const periodTasks = await Task.find({
       $or: [
@@ -997,6 +1007,7 @@ exports.getAdminDashboardData = async (req, res) => {
           totalProjectsInProgress,
           totalProjectsCompleted,
           totalProjectsDelayed,
+          totalProjectsAtRisk,
           averageProgress: projects.length > 0 ?
             projects.reduce((sum, project) => sum + project.progress, 0) / projects.length : 0
         },

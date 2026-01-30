@@ -112,6 +112,7 @@ const systemSettingSlice = createSlice({
       })
       .addCase(fetchSystemSettings.fulfilled, (state, action) => {
         state.loading = false;
+
         state.settings = action.payload.settings || [];
         state.categorized = action.payload.categorized || state.categorized;
       })

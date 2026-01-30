@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import TaskCreateModal from '../components/TaskCreateModal';
 import ChatSidebar from '../components/ChatSidebar';
 import UserAvatar from '../components/UserAvatar';
+import ExpenseModal from '../components/ExpenseModal';
+import Tasks from './Tasks';
+import expenseService from '../services/expenseService';
+import { PlusIcon, BanknotesIcon, CurrencyDollarIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 
 const ProjectDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +27,9 @@ const ProjectDetailPage = () => {
   const [selectedTaskForActions, setSelectedTaskForActions] = useState(null);
   const [staff, setStaff] = useState([]);
   const [showChatSidebar, setShowChatSidebar] = useState(false);
+  const [expenses, setExpenses] = useState([]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [financials, setFinancials] = useState({ totalExpenses: 0, profit: 0, utilization: 0 });
 
   // Filter states for tasks tab
   const [taskFilters, setTaskFilters] = useState({
@@ -80,6 +88,60 @@ const ProjectDetailPage = () => {
     }
   };
 
+  // Fetch project expenses
+  const fetchExpenses = async () => {
+    try {
+      // Helper to safely get string ID
+      const getUserId = (userOrId) => {
+        if (!userOrId) return null;
+        return typeof userOrId === 'string' ? userOrId : userOrId._id?.toString();
+      };
+
+      const currentUserId = (auth.user?._id || auth.user?.id)?.toString();
+      const managerId = getUserId(project?.manager);
+
+      const isManager = managerId === currentUserId;
+      const isTeamMember = project?.teamMembers?.some(m => getUserId(m) === currentUserId);
+      const isAdmin = auth.user?.role === 'admin';
+
+      console.log('FetchExpenses Debug:', {
+        currentUser: auth.user,
+        currentUserId,
+        managerId,
+        isManager,
+        isAdmin,
+        isTeamMember,
+        projectManagerRaw: project?.manager
+      });
+
+      // Fetch if Admin, Manager, or Team Member
+      if (isAdmin || isManager || isTeamMember) {
+        const data = await expenseService.getProjectExpenses(id);
+        if (data.success) {
+          setExpenses(data.expenses);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+    }
+  };
+
+  // Calculate financials whenever project or expenses change
+  useEffect(() => {
+    if (project && expenses) {
+      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const budget = project.budget || 0;
+      const profit = budget - totalExpenses;
+      const utilization = budget > 0 ? (totalExpenses / budget) * 100 : 0;
+
+      setFinancials({
+        totalExpenses,
+        profit,
+        utilization
+      });
+    }
+  }, [project, expenses]);
+
 
   useEffect(() => {
     if (auth.isAuthenticated && id) {
@@ -88,6 +150,19 @@ const ProjectDetailPage = () => {
       fetchStaff();
     }
   }, [auth.isAuthenticated, id]);
+
+  // Handle deep link for chat
+  useEffect(() => {
+    if (project && searchParams.get('openChat') === 'true') {
+      setShowChatSidebar(true);
+    }
+  }, [project, searchParams]);
+
+  useEffect(() => {
+    if (auth.isAuthenticated && id && project) {
+      fetchExpenses();
+    }
+  }, [auth.isAuthenticated, id, project?.manager]); // Fetch after project loaded
 
   // Helper functions
   const getProgress = (status) => {
@@ -298,235 +373,152 @@ const ProjectDetailPage = () => {
   };
 
   const TasksTab = () => (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="bg-white rounded-lg p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search Tasks</label>
-            <input
-              type="text"
-              placeholder="Search by title or description..."
-              value={taskFilters.search}
-              onChange={(e) => setTaskFilters({ ...taskFilters, search: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={taskFilters.status}
-              onChange={(e) => setTaskFilters({ ...taskFilters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="delayed">Delayed</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select
-              value={taskFilters.priority}
-              onChange={(e) => setTaskFilters({ ...taskFilters, priority: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Tasks List */}
-      {filteredTasks.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks Found</h3>
-          <p className="text-gray-500">No tasks match the current filters.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredTasks.map((task) => (
-            <div key={task._id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary-600 transition-colors">{task.title}</h3>
-                  <p className="text-sm text-gray-500 mb-2">Project: {task.project?.projectName || 'N/A'}</p>
-                </div>
-                <div className="flex gap-2">
-                  <TaskStatusBadge status={task.status} />
-                  <TaskPriorityBadge priority={task.priority} />
-                </div>
-              </div>
-
-              <p className="text-gray-600 mb-6 line-clamp-2">{task.description}</p>
-
-              <div className="grid grid-cols-2 gap-4 text-sm mb-6">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-gray-500 font-medium">Assigned To</p>
-                  <p className="font-semibold text-gray-900">{task.assignedTo?.fullName || 'Unassigned'}</p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-gray-500 font-medium">Due Date</p>
-                  <p className="font-semibold text-gray-900">{new Date(task.deadline).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="flex-1 mr-4">
-                  <div className="flex justify-between items-center text-sm mb-2">
-                    <p className="text-gray-500 font-medium">Progress</p>
-                    <p className="font-bold text-primary-600">{task.progress || 0}%</p>
-                  </div>
-                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-1000 ease-out"
-                      style={{ width: `${task.progress || 0}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedTaskForActions(task);
-                    setShowTaskActionsModal(true);
-                  }}
-                  className="px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tasks Summary */}
-      {filteredTasks.length > 0 && (
-        <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-8 shadow-lg border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-            <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Tasks Summary
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">📋</span>
-                <p className="text-gray-600 text-sm font-semibold">Total Tasks</p>
-              </div>
-              <p className="text-4xl font-bold text-blue-600">{filteredTasks.length}</p>
-            </div>
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">⏳</span>
-                <p className="text-gray-600 text-sm font-semibold">To Do</p>
-              </div>
-              <p className="text-4xl font-bold text-gray-600">
-                {filteredTasks.filter(t => t.status === 'todo').length}
-              </p>
-            </div>
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">🔄</span>
-                <p className="text-gray-600 text-sm font-semibold">In Progress</p>
-              </div>
-              <p className="text-4xl font-bold text-yellow-600">
-                {filteredTasks.filter(t => t.status === 'in-progress').length}
-              </p>
-            </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">✅</span>
-                <p className="text-gray-600 text-sm font-semibold">Completed</p>
-              </div>
-              <p className="text-4xl font-bold text-green-600">
-                {filteredTasks.filter(t => t.status === 'completed').length}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px]">
+      <Tasks projectId={id} isEmbedded={true} />
     </div>
   );
 
   const TeamTab = () => {
-    // Combine manager and team members
-    const teamList = [];
-    if (project?.manager) {
-      teamList.push({ ...project.manager, role: 'Project Manager' });
-    }
-    if (project?.teamMembers && project.teamMembers.length > 0) {
-      project.teamMembers.forEach(member => {
-        teamList.push({ ...member, role: 'Team Member' });
+    // Merge project team members with task assignees
+    const getAllTeamMembers = () => {
+      const explicitMembers = project.teamMembers || [];
+      const taskAssignees = tasks
+        .map(t => t.assignedTo)
+        .filter(u => u && u._id); // Filter out nulls or undefined assignments
+
+      // Create a Map to ensure uniqueness by ID
+      const uniqueMembersMap = new Map();
+
+      // Add explicit members first
+      explicitMembers.forEach(member => {
+        if (member && member._id) {
+          uniqueMembersMap.set(member._id, { ...member, isExplicitMember: true });
+        }
       });
-    }
+
+      // Add task assignees if not already present
+      taskAssignees.forEach(assignee => {
+        if (assignee && assignee._id && !uniqueMembersMap.has(assignee._id)) {
+          uniqueMembersMap.set(assignee._id, { ...assignee, isExplicitMember: false });
+        }
+      });
+
+      return Array.from(uniqueMembersMap.values());
+    };
+
+    const allTeamMembers = getAllTeamMembers();
 
     return (
       <div className="space-y-8">
+        {/* Project Manager Section */}
+        {project?.manager && (
+          <div className="bg-gradient-to-br from-theme-50 to-red-50 rounded-xl p-8 shadow-sm border border-theme-100">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <svg className="w-6 h-6 text-theme-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Project Manager
+            </h3>
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-white rounded-xl p-6 border border-theme-100 shadow-sm">
+              <UserAvatar
+                user={project.manager}
+                size="custom"
+                className="w-24 h-24 text-3xl bg-gradient-to-br from-theme-500 to-theme-700 text-white shadow-lg"
+              />
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                  <h4 className="text-2xl font-bold text-gray-900">{project.manager.fullName}</h4>
+                  <span className="px-3 py-1 bg-theme-100 text-theme-700 rounded-full text-xs font-bold uppercase tracking-wider w-fit mx-auto md:mx-0">
+                    Lead
+                  </span>
+                </div>
+                <p className="text-gray-500 mb-4">{project.manager.username}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 text-gray-700 justify-center md:justify-start">
+                    <div className="w-8 h-8 rounded-full bg-theme-50 flex items-center justify-center text-theme-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <span>{project.manager.email}</span>
+                  </div>
+                  {project.manager.phone && (
+                    <div className="flex items-center gap-3 text-gray-700 justify-center md:justify-start">
+                      <div className="w-8 h-8 rounded-full bg-theme-50 flex items-center justify-center text-theme-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      </div>
+                      <span>{project.manager.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Team Members Section */}
         <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-            <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <svg className="w-6 h-6 text-theme-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
             </svg>
-            Project Team
+            Team Members
+            <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-sm font-normal">
+              {allTeamMembers.length}
+            </span>
           </h3>
-          {teamList.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {teamList.map((member, index) => (
-                <div key={member._id || index} className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100">
-                  <div className="flex items-center gap-4 mb-6">
+
+          {allTeamMembers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allTeamMembers.map((member, index) => (
+                <div key={member._id || index} className="group bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-theme-100 relartive overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-theme-500 to-theme-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                  <div className="flex items-start gap-4 mb-4">
                     <UserAvatar
                       user={member}
                       size="custom"
-                      className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 text-xl text-primary-700"
+                      className="w-14 h-14 text-xl shadow-md"
                     />
                     <div>
-                      <h4 className="font-bold text-gray-900 text-lg">{member.fullName || `Member ${index + 1}`}</h4>
-                      <p className="text-sm text-gray-500 font-medium">{member.role}</p>
+                      <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{member.fullName || `Member ${index + 1}`}</h4>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+                        {member.isExplicitMember ? 'Staff Member' : 'Task Assignee'}
+                      </p>
                     </div>
                   </div>
-                  <div className="space-y-3 text-sm">
-                    <p className="text-gray-700 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                  <div className="space-y-2 text-sm border-t border-gray-50 pt-4 mt-2">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <svg className="w-4 h-4 text-theme-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span className="font-medium">Email:</span> {member.email || 'Not provided'}
-                    </p>
-                    <p className="text-gray-700 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span className="font-medium">Phone:</span> {member.phone || 'Not provided'}
-                    </p>
-                    <p className="text-gray-700 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span className="font-medium">Role:</span> {member.role}
-                    </p>
+                      <span className="truncate">{member.email || 'No email'}</span>
+                    </div>
+                    {member.phone && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <svg className="w-4 h-4 text-theme-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span>{member.phone}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <div className="mx-auto w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">No Team Assigned</h3>
-              <p className="text-gray-600 text-lg">No manager or team members have been assigned to this project yet.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No Team Assigned</h3>
+              <p className="text-gray-500">Add staff members to this project to see them here.</p>
             </div>
           )}
         </div>
@@ -536,149 +528,139 @@ const ProjectDetailPage = () => {
 
   const BudgetTab = () => (
     <div className="space-y-8">
-      <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-          </svg>
-          Budget Overview
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 shadow-md border border-green-100">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-800 text-lg">Total Budget</h4>
-                <p className="text-green-600 text-sm font-medium">Allocated Amount</p>
-              </div>
-            </div>
-            <p className="text-4xl font-bold text-green-600">₹{project?.budget?.toLocaleString() || 'N/A'}</p>
+      {/* Financial Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Budget */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm font-medium mb-1">Total Budget</p>
+            <h3 className="text-2xl font-bold text-gray-900">₹{project?.budget?.toLocaleString() || '0'}</h3>
           </div>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 shadow-md border border-blue-100">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-800 text-lg">Budget Status</h4>
-                <p className="text-blue-600 text-sm font-medium">Tracking System</p>
-              </div>
-            </div>
-            <p className="text-lg text-gray-700 font-medium">Budget tracking and expense management features are coming soon</p>
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+            <CurrencyDollarIcon className="w-6 h-6" />
           </div>
         </div>
+
+        {/* Total Expenses */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm font-medium mb-1">Total Expenses</p>
+            <h3 className="text-2xl font-bold text-red-600">₹{financials.totalExpenses.toLocaleString()}</h3>
+          </div>
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600">
+            <ReceiptPercentIcon className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Remaining Budget (Profit) */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm font-medium mb-1">Remaining Budget</p>
+            <h3 className={`text-2xl font-bold ${financials.profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              ₹{financials.profit.toLocaleString()}
+            </h3>
+          </div>
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${financials.profit >= 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+            <BanknotesIcon className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Utilization Bar */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="font-semibold text-gray-700">Budget Utilization</h4>
+          <span className={`font-bold ${financials.utilization > 100 ? 'text-red-600' : 'text-gray-700'}`}>
+            {financials.utilization.toFixed(1)}%
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+          <div
+            className={`h-4 rounded-full transition-all duration-1000 ${financials.utilization > 100 ? 'bg-red-500' : 'bg-green-500'}`}
+            style={{ width: `${Math.min(financials.utilization, 100)}%` }}
+          ></div>
+        </div>
+        <p className="text-xs text-gray-500 mt-2 text-right">
+          {financials.utilization > 100 ? 'Over Budget' : 'Within Budget'}
+        </p>
+      </div>
+
+      {/* Expenses List */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <ReceiptPercentIcon className="w-6 h-6 text-primary-600" />
+            Expense History
+          </h3>
+          {(auth.user.role === 'manager' || auth.user.role === 'admin') && (
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add Expense
+            </button>
+          )}
+        </div>
+
+        {expenses.length === 0 ? (
+          <div className="p-12 text-center text-gray-500">
+            <p>No expenses recorded yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-gray-600 font-semibold text-sm">
+                <tr>
+                  <th className="p-4">Date</th>
+                  <th className="p-4">Title</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Vendor</th>
+                  <th className="p-4">Recorded By</th>
+                  <th className="p-4 text-right">Amount</th>
+                  <th className="p-4 text-center">Receipt</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {expenses.map((expense) => (
+                  <tr key={expense._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 text-gray-700">{new Date(expense.date).toLocaleDateString()}</td>
+                    <td className="p-4 font-medium text-gray-900">
+                      {expense.title}
+                      {expense.task && <span className="block text-xs text-gray-500">Task: {expense.task.title}</span>}
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                        {expense.category}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-700">{expense.vendor}</td>
+                    <td className="p-4 text-gray-600 text-sm">
+                      <div className="flex items-center gap-2">
+                        <UserAvatar user={expense.recordedBy} size="xs" />
+                        {expense.recordedBy?.fullName || 'Unknown'}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right font-bold text-gray-900">₹{expense.amount.toLocaleString()}</td>
+                    <td className="p-4 text-center">
+                      {expense.receipt ? (
+                        <a href={expense.receipt} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm underline">
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 
-
-  // Assign Team Modal
-  const AssignTeamModal = () => {
-    const [selectedUsers, setSelectedUsers] = useState([]);
-    const [assigning, setAssigning] = useState(false);
-
-    const handleAssignTeam = async () => {
-      if (selectedUsers.length === 0) {
-        toast.error('Please select at least one team member');
-        return;
-      }
-
-      setAssigning(true);
-      try {
-        for (const userId of selectedUsers) {
-          await api.post(`/projects/${id}/team`, { userId });
-        }
-        toast.success('Team members assigned successfully!');
-        setShowAssignTeamModal(false);
-        setSelectedUsers([]);
-        fetchProject(); // Refresh project data
-      } catch (error) {
-        console.error('Error assigning team:', error);
-        toast.error('Failed to assign team members: ' + (error.response?.data?.message || error.message));
-      } finally {
-        setAssigning(false);
-      }
-    };
-
-    const availableStaff = staff.filter(s => !project?.teamMembers?.some(tm => tm._id === s._id));
-
-    if (!showAssignTeamModal) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Assign Team Members</h2>
-            <button
-              onClick={() => setShowAssignTeamModal(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-gray-600">Select team members to add to this project:</p>
-
-            {availableStaff.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">All available staff are already assigned to this project.</p>
-            ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {availableStaff.map((member) => (
-                  <label key={member._id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(member._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUsers([...selectedUsers, member._id]);
-                        } else {
-                          setSelectedUsers(selectedUsers.filter(id => id !== member._id));
-                        }
-                      }}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
-                    <div className="flex items-center space-x-3">
-                      <UserAvatar user={member} size="sm" />
-                      <div>
-                        <p className="font-medium text-gray-900">{member.fullName}</p>
-                        <p className="text-sm text-gray-500">{member.username}</p>
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={() => setShowAssignTeamModal(false)}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              disabled={assigning}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAssignTeam}
-              disabled={assigning || selectedUsers.length === 0}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-            >
-              {assigning ? 'Assigning...' : 'Assign Team'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Task Actions Modal
   const TaskActionsModal = () => {
@@ -740,7 +722,7 @@ const ProjectDetailPage = () => {
               >
                 <div className="text-center">
                   <svg className="w-8 h-8 text-blue-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   <p className="font-medium text-blue-900">View All Tasks</p>
                   <p className="text-sm text-blue-700">Go to tasks page</p>
@@ -1069,15 +1051,7 @@ const ProjectDetailPage = () => {
             </svg>
             Add Task
           </button>
-          <button
-            onClick={() => setShowAssignTeamModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-            </svg>
-            Assign Team
-          </button>
+
           <button
             onClick={() => setShowEditModal(true)}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
@@ -1126,8 +1100,7 @@ const ProjectDetailPage = () => {
         }}
       />
 
-      {/* Assign Team Modal */}
-      <AssignTeamModal />
+
 
       {/* Edit Project Modal */}
       <EditProjectModal />
@@ -1143,6 +1116,13 @@ const ProjectDetailPage = () => {
         entityId={project?._id}
         entityTitle={project?.projectName || 'Project'}
         entityData={project}
+      />
+
+      <ExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        projectId={id}
+        onExpenseAdded={fetchExpenses}
       />
     </div>
   );

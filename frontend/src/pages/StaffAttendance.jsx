@@ -166,12 +166,12 @@ const StaffAttendance = () => {
   }, [todayRecord]);
 
   return (
-    <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
+    <div className="container mx-auto px-4 py-4 md:px-6 md:py-8 bg-gradient-to-br from-slate-50 to-[#700606]/5">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">My Attendance</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">My Attendance</h1>
             <p className="text-white/80 text-sm">Track your daily attendance and work hours</p>
             <p className="text-white/60 text-xs mt-1">Automated check-in/out system</p>
           </div>
@@ -240,11 +240,10 @@ const StaffAttendance = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className={`text-center p-4 rounded-lg border ${
-                todayRecord.checkOut
+              className={`text-center p-4 rounded-lg border ${todayRecord.checkOut
                   ? 'bg-red-50 border-red-200'
                   : 'bg-gray-50 border-gray-200'
-              }`}
+                }`}
             >
               {todayRecord.checkOut ? (
                 <CheckCircleSolid className="w-8 h-8 text-red-600 mx-auto mb-2" />
@@ -304,7 +303,7 @@ const StaffAttendance = () => {
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-center gap-4 w-full">
           {todayRecord && todayRecord.checkOut ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -380,74 +379,124 @@ const StaffAttendance = () => {
             <p className="text-gray-500">Your attendance history will appear here once you start checking in.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Check In
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Check Out
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Hours
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Overtime
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {attendanceHistory.map((record, index) => (
-                  <motion.tr
-                    key={record._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatDate(record.date)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                      {record.checkIn ? formatTime(record.checkIn) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                      {record.checkOut ? formatTime(record.checkOut) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.totalHours ? `${record.totalHours}h` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className={`font-medium ${record.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                        {record.overtimeHours ? `${record.overtimeHours}h` : '0h'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        record.status === 'Present' ? 'bg-[#700606]/10 text-[#700606] border border-[#700606]/20' :
-                        record.status === 'Half-day' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                        record.status === 'Absent' ? 'bg-red-100 text-red-700 border border-red-200' :
-                        'bg-gray-100 text-gray-700 border border-gray-200'
-                      }`}>
-                        {record.status === 'Present' ? <CheckCircleIcon className="w-3 h-3" /> :
-                         record.status === 'Half-day' ? <ClockIcon className="w-3 h-3" /> :
-                         record.status === 'Absent' ? <ExclamationTriangleIcon className="w-3 h-3" /> :
-                         <ClockIcon className="w-3 h-3" />}
+          <div className="overflow-hidden">
+            {/* Desktop View (Table) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Check In
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Check Out
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Hours
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Overtime
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {attendanceHistory.map((record, index) => (
+                    <motion.tr
+                      key={record._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {formatDate(record.date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                        {record.checkIn ? formatTime(record.checkIn) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                        {record.checkOut ? formatTime(record.checkOut) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.totalHours ? `${record.totalHours}h` : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`font-medium ${record.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                          {record.overtimeHours ? `${record.overtimeHours}h` : '0h'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-[#700606]/10 text-[#700606] border border-[#700606]/20' :
+                            record.status === 'Half-day' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                              record.status === 'Absent' ? 'bg-red-100 text-red-700 border border-red-200' :
+                                'bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}>
+                          {record.status === 'Present' ? <CheckCircleIcon className="w-3 h-3" /> :
+                            record.status === 'Half-day' ? <ClockIcon className="w-3 h-3" /> :
+                              record.status === 'Absent' ? <ExclamationTriangleIcon className="w-3 h-3" /> :
+                                <ClockIcon className="w-3 h-3" />}
+                          {record.status}
+                        </span>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View (Cards) */}
+            <div className="md:hidden space-y-4 p-4">
+              {attendanceHistory.map((record, index) => (
+                <motion.div
+                  key={record._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{formatDate(record.date)}</p>
+                      <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-[#700606]/10 text-[#700606] border border-[#700606]/20' :
+                          record.status === 'Half-day' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                            record.status === 'Absent' ? 'bg-red-100 text-red-700 border border-red-200' :
+                              'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
                         {record.status}
                       </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Total Hours</p>
+                      <p className="text-sm font-bold text-gray-900">{record.totalHours ? `${record.totalHours}h` : '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Check In</p>
+                      <p className="text-sm font-mono text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Check Out</p>
+                      <p className="text-sm font-mono text-gray-900">{record.checkOut ? formatTime(record.checkOut) : '-'}</p>
+                    </div>
+                  </div>
+
+                  {record.overtimeHours > 0 && (
+                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                      <p className="text-xs text-gray-500">Overtime</p>
+                      <span className="text-sm font-medium text-green-600">+{record.overtimeHours}h</span>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -455,7 +504,7 @@ const StaffAttendance = () => {
         {!loading && attendanceHistory.length > 0 && (
           <div className="p-6 bg-gray-50 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Overtime Summary</h3>
-            <div className="h-64">
+            <div className="h-64 md:h-80">
               <Bar
                 data={{
                   labels: ['This Month'],

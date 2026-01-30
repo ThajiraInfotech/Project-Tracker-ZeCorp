@@ -11,76 +11,19 @@ import { toast } from 'react-toastify';
 
 const SystemSettings = () => {
   const dispatch = useDispatch();
-  const { settings, categorized, loading, error } = useSelector((state) => state.systemSettings);
+  const { settings, loading, error } = useSelector((state) => state.systemSettings);
 
-  const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
-  const [newSetting, setNewSetting] = useState({
-    settingName: '',
-    settingKey: '',
-    settingValue: '',
-    settingType: 'string',
-    description: '',
-    category: 'general'
-  });
 
-  const categories = [
-    { key: 'all', label: 'All Settings', icon: '⚙️' },
-    { key: 'working-hours', label: 'Working Hours', icon: '🕒' },
-    { key: 'company-rules', label: 'Company Rules', icon: '🏢' },
-    { key: 'notification-rules', label: 'Notifications', icon: '🔔' },
-    { key: 'security', label: 'Security', icon: '🔒' },
-    { key: 'general', label: 'General', icon: '📋' }
-  ];
+  // Filter settings based on search term
+  const filteredSettings = settings.filter(setting =>
+    setting.settingName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    setting.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  useEffect(() => {
-    dispatch(fetchSystemSettings());
-  }, [dispatch]);
 
-  // Filter settings based on active tab and search term
-  const getFilteredSettings = () => {
-    let filtered = settings;
-
-    if (activeTab !== 'all') {
-      filtered = categorized[activeTab] || [];
-    }
-
-    if (searchTerm) {
-      filtered = filtered.filter(setting =>
-        setting.settingName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        setting.settingKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        setting.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    return filtered;
-  };
-
-  const handleCreateSetting = async (e) => {
-    e.preventDefault();
-    try {
-      // Convert settingValue based on type
-      let processedValue = newSetting.settingValue;
-      if (newSetting.settingType === 'number') {
-        processedValue = parseFloat(processedValue);
-      } else if (newSetting.settingType === 'boolean') {
-        processedValue = processedValue === 'true' || processedValue === true;
-      }
-
-      await dispatch(upsertSystemSetting({
-        ...newSetting,
-        settingValue: processedValue
-      })).unwrap();
-
-      setShowCreateModal(false);
-      resetNewSetting();
-    } catch (error) {
-      console.error('Failed to create setting:', error);
-    }
-  };
 
   const handleEditSetting = async (e) => {
     e.preventDefault();
@@ -125,24 +68,14 @@ const SystemSettings = () => {
     }
   };
 
-  const resetNewSetting = () => {
-    setNewSetting({
-      settingName: '',
-      settingKey: '',
-      settingValue: '',
-      settingType: 'string',
-      description: '',
-      category: 'general'
-    });
-  };
+
 
   const renderSettingValue = (setting) => {
     switch (setting.settingType) {
       case 'boolean':
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            setting.settingValue ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${setting.settingValue ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}>
             {setting.settingValue ? 'Enabled' : 'Disabled'}
           </span>
         );
@@ -159,7 +92,7 @@ const SystemSettings = () => {
         return (
           <select
             value={setting.settingValue}
-            onChange={(e) => onChange({...setting, settingValue: e.target.value === 'true'})}
+            onChange={(e) => onChange({ ...setting, settingValue: e.target.value === 'true' })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value={true}>Enabled</option>
@@ -171,7 +104,7 @@ const SystemSettings = () => {
           <input
             type="number"
             value={setting.settingValue}
-            onChange={(e) => onChange({...setting, settingValue: e.target.value})}
+            onChange={(e) => onChange({ ...setting, settingValue: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter number"
           />
@@ -181,7 +114,7 @@ const SystemSettings = () => {
           <input
             type="text"
             value={setting.settingValue}
-            onChange={(e) => onChange({...setting, settingValue: e.target.value})}
+            onChange={(e) => onChange({ ...setting, settingValue: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter value"
           />
@@ -189,85 +122,60 @@ const SystemSettings = () => {
     }
   };
 
-  const filteredSettings = getFilteredSettings();
+
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
-          <p className="text-gray-600 mt-1">Enterprise-level configuration management</p>
-        </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Header */}
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-8 text-white shadow-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">System Settings</h1>
+            <p className="text-white/80 text-lg">
+              Manage your enterprise configuration and security preferences.
+            </p>
+          </div>
+
           <button
             onClick={handleInitializeDefaults}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm font-semibold flex items-center gap-2 backdrop-blur-sm border border-white/20"
+            title="Reset to default settings"
           >
-            Initialize Defaults
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
-          >
-            + Add Setting
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v3.25a1 1 0 11-2 0V13.04a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+            </svg>
+            Reset Defaults
           </button>
         </div>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search settings..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+        <div className="relative max-w-xl">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            </svg>
           </div>
-        </div>
-      </div>
-
-      {/* Category Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {categories.map((category) => (
-              <button
-                key={category.key}
-                onClick={() => setActiveTab(category.key)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                  activeTab === category.key
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span>{category.icon}</span>
-                <span>{category.label}</span>
-                {category.key !== 'all' && (
-                  <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 text-gray-600">
-                    {(categorized[category.key] || []).length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+          <input
+            type="text"
+            placeholder="Search settings..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 sm:text-sm shadow-md transition-shadow"
+          />
         </div>
       </div>
 
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-theme-600"></div>
         </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
@@ -278,7 +186,7 @@ const SystemSettings = () => {
               <p className="text-sm text-red-700">{error}</p>
               <button
                 onClick={() => dispatch(clearError())}
-                className="mt-2 text-sm text-red-600 hover:text-red-800"
+                className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
               >
                 Dismiss
               </button>
@@ -289,77 +197,52 @@ const SystemSettings = () => {
 
       {/* Settings Grid */}
       {!loading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredSettings.map((setting) => (
-            <div key={setting._id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+            <div
+              key={setting._id}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group overflow-hidden"
+            >
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {setting.settingName}
-                    </h3>
-                    <p className="text-sm text-gray-500 font-mono">
-                      {setting.settingKey}
-                    </p>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="p-3 bg-theme-50 rounded-xl group-hover:bg-theme-100 transition-colors">
+                    {setting.settingKey.includes('password') || setting.settingKey.includes('login') ? (
+                      <span className="text-2xl text-theme-600">🔒</span>
+                    ) : (
+                      <span className="text-2xl text-theme-600">🕒</span>
+                    )}
                   </div>
-                  <div className="flex space-x-2">
+                  {setting.isEditable && (
                     <button
                       onClick={() => {
                         setSelectedSetting(setting);
                         setShowEditModal(true);
                       }}
-                      className="text-indigo-600 hover:text-indigo-900 p-1"
-                      title="Edit setting"
+                      className="p-2 text-gray-400 hover:text-theme-600 hover:bg-theme-50 rounded-lg transition-all"
+                      title="Edit Setting"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    {setting.isEditable && (
-                      <button
-                        onClick={() => handleDeleteSetting(setting._id)}
-                        className="text-red-600 hover:text-red-900 p-1"
-                        title="Delete setting"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Value
-                    </label>
-                    <div className="mt-1">
-                      {renderSettingValue(setting)}
-                    </div>
-                  </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-theme-600 transition-colors">
+                  {setting.settingName}
+                </h3>
 
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Type
-                    </label>
-                    <div className="mt-1">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                        {setting.settingType}
-                      </span>
-                    </div>
-                  </div>
+                <p className="text-sm text-gray-500 mb-6 line-clamp-2 min-h-[40px]">
+                  {setting.description}
+                </p>
 
-                  {setting.description && (
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Description
-                      </label>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {setting.description}
-                      </p>
-                    </div>
-                  )}
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Current Value
+                  </p>
+                  <div className="text-lg font-medium text-gray-900">
+                    {renderSettingValue(setting)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -369,177 +252,36 @@ const SystemSettings = () => {
 
       {/* Empty State */}
       {!loading && !error && filteredSettings.length === 0 && (
-        <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+          <div className="mx-auto w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchTerm ? 'No settings found' : 'No settings configured'}
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            No settings found
           </h3>
-          <p className="text-gray-500 mb-4">
-            {searchTerm
-              ? 'Try adjusting your search terms'
-              : 'Get started by initializing default settings or adding a new one'
-            }
+          <p className="text-gray-500 max-w-sm mx-auto">
+            We couldn't find any settings matching "{searchTerm}". Try checking for typos or clear the search.
           </p>
-          {!searchTerm && (
-            <div className="space-x-3">
-              <button
-                onClick={handleInitializeDefaults}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Initialize Defaults
-              </button>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                Add Setting
-              </button>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Create Setting Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Create New Setting</h2>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetNewSetting();
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSetting} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting Name *
-                </label>
-                <input
-                  type="text"
-                  value={newSetting.settingName}
-                  onChange={(e) => setNewSetting({...newSetting, settingName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting Key *
-                </label>
-                <input
-                  type="text"
-                  value={newSetting.settingKey}
-                  onChange={(e) => setNewSetting({...newSetting, settingKey: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Used programmatically, lowercase with underscores</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type *
-                </label>
-                <select
-                  value={newSetting.settingType}
-                  onChange={(e) => setNewSetting({...newSetting, settingType: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="string">String</option>
-                  <option value="number">Number</option>
-                  <option value="boolean">Boolean</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Value *
-                </label>
-                {renderValueInput(newSetting, setNewSetting)}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
-                <select
-                  value={newSetting.category}
-                  onChange={(e) => setNewSetting({...newSetting, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="general">General</option>
-                  <option value="working-hours">Working Hours</option>
-                  <option value="company-rules">Company Rules</option>
-                  <option value="notification-rules">Notification Rules</option>
-                  <option value="security">Security</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newSetting.description}
-                  onChange={(e) => setNewSetting({...newSetting, description: e.target.value})}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Optional description of this setting"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetNewSetting();
-                  }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                >
-                  Create Setting
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Setting Modal */}
+      {/* Simplified Edit Setting Modal */}
       {showEditModal && selectedSetting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Edit Setting</h2>
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl transform transition-all scale-100">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Edit Configuration</h2>
+                <p className="text-sm text-gray-500 mt-1">Update system value</p>
+              </div>
               <button
                 onClick={() => {
                   setShowEditModal(false);
                   setSelectedSetting(null);
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -547,103 +289,41 @@ const SystemSettings = () => {
               </button>
             </div>
 
-            <form onSubmit={handleEditSetting} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting Name *
-                </label>
-                <input
-                  type="text"
-                  value={selectedSetting.settingName}
-                  onChange={(e) => setSelectedSetting({...selectedSetting, settingName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                />
+            <form onSubmit={handleEditSetting}>
+              <div className="p-8 space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {selectedSetting.settingName}
+                  </label>
+                  <div className="p-4 bg-gray-50 rounded-xl text-sm text-gray-600 leading-relaxed border border-gray-100">
+                    {selectedSetting.description}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    New Value
+                  </label>
+                  {renderValueInput(selectedSetting, setSelectedSetting)}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting Key *
-                </label>
-                <input
-                  type="text"
-                  value={selectedSetting.settingKey}
-                  onChange={(e) => setSelectedSetting({...selectedSetting, settingKey: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type *
-                </label>
-                <select
-                  value={selectedSetting.settingType}
-                  onChange={(e) => setSelectedSetting({...selectedSetting, settingType: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="string">String</option>
-                  <option value="number">Number</option>
-                  <option value="boolean">Boolean</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Value *
-                </label>
-                {renderValueInput(selectedSetting, setSelectedSetting)}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
-                <select
-                  value={selectedSetting.category}
-                  onChange={(e) => setSelectedSetting({...selectedSetting, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="general">General</option>
-                  <option value="working-hours">Working Hours</option>
-                  <option value="company-rules">Company Rules</option>
-                  <option value="notification-rules">Notification Rules</option>
-                  <option value="security">Security</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={selectedSetting.description}
-                  onChange={(e) => setSelectedSetting({...selectedSetting, description: e.target.value})}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Optional description of this setting"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     setSelectedSetting(null);
                   }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors focus:ring-2 focus:ring-gray-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                  className="px-5 py-2.5 bg-theme-600 text-white rounded-xl hover:bg-theme-700 font-medium shadow-lg shadow-theme-200 transition-all transform hover:-translate-y-0.5 focus:ring-2 focus:ring-theme-500 focus:ring-offset-2"
                 >
-                  Update Setting
+                  Save Changes
                 </button>
               </div>
             </form>

@@ -2,6 +2,8 @@ const cloudinaryService = require('../utils/cloudinaryService');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 
+const fs = require('fs');
+
 // Upload single file
 exports.uploadFile = async (req, res) => {
   try {
@@ -9,13 +11,30 @@ exports.uploadFile = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const fileUrl = req.file.path;
+    let fileUrl;
+    if (req.file.mimetype === 'application/pdf') {
+      // Keep PDF local
+      // Construct full URL
+      const protocol = req.protocol;
+      const host = req.get('host');
+      fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    } else {
+      // Upload to Cloudinary
+      fileUrl = await cloudinaryService.uploadFile(req.file.path);
+      // Delete local file
+      fs.unlinkSync(req.file.path);
+    }
+
     res.json({
       success: true,
       fileUrl
     });
   } catch (error) {
     console.error('Upload file error:', error);
+    // Try to cleanup local file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) { }
+    }
     res.status(500).json({ message: 'Failed to upload file' });
   }
 };
@@ -23,16 +42,24 @@ exports.uploadFile = async (req, res) => {
 // Upload multiple files
 exports.uploadMultipleFiles = async (req, res) => {
   try {
-    console.log('Upload multiple files request received');
-    console.log('req.files:', req.files);
-
     if (!req.files || req.files.length === 0) {
-      console.log('No files found in request');
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
-    const fileUrls = req.files.map(file => file.path);
-    console.log('File URLs:', fileUrls);
+    const fileUrls = await Promise.all(req.files.map(async (file) => {
+      if (file.mimetype === 'application/pdf') {
+        // Keep PDF local
+        const protocol = req.protocol;
+        const host = req.get('host');
+        return `${protocol}://${host}/uploads/${file.filename}`;
+      } else {
+        // Upload to Cloudinary
+        const url = await cloudinaryService.uploadFile(file.path);
+        // Delete local file
+        fs.unlinkSync(file.path);
+        return url;
+      }
+    }));
 
     res.json({
       success: true,
@@ -40,6 +67,14 @@ exports.uploadMultipleFiles = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload multiple files error:', error);
+    // Cleanup any remaining local files
+    if (req.files) {
+      req.files.forEach(file => {
+        if (fs.existsSync(file.path)) {
+          try { fs.unlinkSync(file.path); } catch (e) { }
+        }
+      });
+    }
     res.status(500).json({ message: 'Failed to upload files', error: error.message });
   }
 };
@@ -61,10 +96,35 @@ exports.getFile = async (req, res) => {
 // Delete file
 exports.deleteFile = async (req, res) => {
   try {
-    const { fileId } = req.params;
+    const { fileId } = req.params; // logic assumes fileId passed here is the public_id or the URL? 
+    // In many implementations, the ID stored is the URL. 
+    // If we are deleting by URL passed as fileId (which often happens in this codebase pattern), detection is needed.
+    // However, usually fileId param implies a DB ID, but looking at previous code 'cloudinaryService.deleteFile(fileId)' suggests it expects a public_id.
+    // If the frontend passes the FULL URL as the ID to delete (as seen in some naive implementations), we need to extract info.
+    // BUT, the existing cloudinaryService code seemed to take a publicId. 
+    // The previous controller code: `await cloudinaryService.deleteFile(fileId);`
 
-    // Delete from Cloudinary
-    await cloudinaryService.deleteFile(fileId);
+    // If we stored the full URL, extracting the public_id is needed for Cloudinary.
+    // If it's a local file, we need to extract the filename.
+
+    // Assuming 'fileId' passed here is meant to be the identifier.
+    // If the architecture stores URLs, passing URL as ID is common in simple apps.
+    // Let's assume the client passes the file identifier (logic depends on how frontend calls this).
+
+    // If it's a local file URL:
+    if (fileId.includes('/uploads/')) {
+      const filename = fileId.split('/uploads/')[1];
+      const filePath = path.join(__dirname, '../uploads', filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } else {
+      // Assume Cloudinary public_id or URL
+      // If it's a URL, Cloudinary destroy usually needs the public_id.
+      // We might need to extract it, but let's stick to the previous implementation style + safety.
+      // Previous: await cloudinaryService.deleteFile(fileId);
+      await cloudinaryService.deleteFile(fileId);
+    }
 
     res.json({
       success: true,

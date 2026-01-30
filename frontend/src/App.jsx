@@ -17,7 +17,7 @@ import Register from './pages/auth/Register';
 import Projects from './pages/Projects';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import Tasks from './pages/Tasks';
-import Reports from './pages/Reports';
+
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import TimeTracking from './pages/TimeTracking';
@@ -38,13 +38,13 @@ import TeamPerformance from './pages/TeamPerformance';
 
 // Admin pages
 import UserManagement from './pages/admin/UserManagement';
-import TaskOverride from './pages/admin/TaskOverride';
+
 import SystemSettings from './pages/admin/SystemSettings';
 import AttendanceExceptions from './pages/admin/AttendanceExceptions';
-import ProductivityReport from './pages/admin/ProductivityReport';
+
 
 // Initialize socket connection
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+export const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
 
 function App() {
   const dispatch = useDispatch();
@@ -86,34 +86,26 @@ function App() {
         >
           <Route path="/" element={
             user?.role === 'admin' ? <Navigate to="/admin" replace /> :
-            user?.role === 'manager' ? <Navigate to="/manager" replace /> :
-            user?.role === 'staff' ? <Navigate to="/staff" replace /> :
-            <Navigate to="/login" replace />
+              user?.role === 'manager' ? <Navigate to="/manager" replace /> :
+                user?.role === 'staff' ? <Navigate to="/staff" replace /> :
+                  <Navigate to="/login" replace />
           } />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/attendance" element={
             user?.role === 'admin' ? <AdminAttendance /> :
-            user?.role === 'manager' ? <ManagerAttendance /> :
-            user?.role === 'staff' ? <StaffAttendance /> :
-            <Navigate to="/login" replace />
+              user?.role === 'manager' ? <ManagerAttendance /> :
+                user?.role === 'staff' ? <StaffAttendance /> :
+                  <Navigate to="/login" replace />
           } />
-          <Route path="/reports" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager']}>
-              <Reports />
-            </ProtectedRoute>
-          } />
+
           <Route path="/team" element={
             <ProtectedRoute allowedRoles={['manager']}>
               <TeamPerformance />
             </ProtectedRoute>
           } />
-          <Route path="/time" element={
-            <ProtectedRoute allowedRoles={['staff']}>
-              <TimeTracking />
-            </ProtectedRoute>
-          } />
+
           <Route path="/performance" element={
             <ProtectedRoute allowedRoles={['staff']}>
               <Performance />
@@ -133,11 +125,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/admin/tasks" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <TaskOverride />
-            </ProtectedRoute>
-          } />
+
 
           <Route path="/admin/settings" element={
             <ProtectedRoute allowedRoles={['admin']}>
@@ -151,11 +139,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/admin/reports/staff-productivity" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <ProductivityReport />
-            </ProtectedRoute>
-          } />
+
 
           <Route path="/manager" element={
             <ProtectedRoute allowedRoles={['manager']}>

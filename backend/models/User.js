@@ -61,6 +61,13 @@ const userSchema = new mongoose.Schema({
   profileImage: {
     type: String,
     default: 'https://via.placeholder.com/150'
+  },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: {
+    type: Date
   }
 }, {
   timestamps: true

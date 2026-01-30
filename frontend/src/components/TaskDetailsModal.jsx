@@ -18,6 +18,9 @@ import {
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import ChatSidebar from './ChatSidebar';
 import UserAvatar from './UserAvatar';
+import ExpenseModal from './ExpenseModal';
+import expenseService from '../services/expenseService';
+import { BanknotesIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -78,6 +81,10 @@ const TaskDetailsModal = ({
         endDate: ''
     });
 
+    // Expenses State
+    const [taskExpenses, setTaskExpenses] = useState([]);
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
+
     const [updating, setUpdating] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
 
@@ -86,9 +93,14 @@ const TaskDetailsModal = ({
 
     // Determine if subtasks exist (controls logic)
     const hasSubtasks = task?.subtasks && task.subtasks.length > 0;
+    const hasIncompleteSubtasks = hasSubtasks && task.subtasks.some(st => st.status !== 'completed');
 
     // Determine if user can edit task/subtasks
-    const isAssignedStaff = currentUserRole === 'staff' && task?.assignedTo?._id === currentUserId;
+    const isAssignedToSubtask = task?.subtasks?.some(st => {
+        const assignedId = st.assignedTo?._id || st.assignedTo;
+        return assignedId?.toString() === currentUserId;
+    });
+    const isAssignedStaff = currentUserRole === 'staff' && (task?.assignedTo?._id === currentUserId || isAssignedToSubtask);
     const canManageSubtasks = currentUserRole === 'admin' || currentUserRole === 'manager';
     const canUpdateParent = isAssignedStaff || canManageSubtasks;
 
@@ -130,9 +142,21 @@ const TaskDetailsModal = ({
         }
     };
 
+    const fetchTaskExpenses = async () => {
+        try {
+            const data = await expenseService.getTaskExpenses(taskId);
+            if (data.success) {
+                setTaskExpenses(data.expenses);
+            }
+        } catch (error) {
+            console.error('Error fetching task expenses:', error);
+        }
+    };
+
     useEffect(() => {
         if (taskId) {
             fetchTaskDetails();
+            fetchTaskExpenses();
         }
     }, [taskId]);
 
@@ -141,7 +165,7 @@ const TaskDetailsModal = ({
         try {
             const payload = {};
 
-            if (!hasSubtasks) {
+            if (!hasSubtasks || !hasIncompleteSubtasks) {
                 payload.status = updateForm.status;
                 if (updateForm.status !== 'completed') {
                     payload.progress = updateForm.progress;
@@ -154,7 +178,7 @@ const TaskDetailsModal = ({
                 });
             }
 
-            if (!hasSubtasks) {
+            if (!hasSubtasks || !hasIncompleteSubtasks) {
                 const response = await api.patch(`/tasks/${taskId}/status`, payload);
                 if (response.data.success) {
                     setTask(response.data.task);
@@ -284,295 +308,338 @@ const TaskDetailsModal = ({
     if (loading || !task) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="mb-4">
-                    <p className="text-sm text-gray-500 mb-2">Tasks › {task.title}</p>
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
-                        <button
-                            onClick={onClose}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="font-medium text-gray-700 mb-2">Description</h3>
-                        <p className="text-gray-600">{task.description}</p>
-                    </div>
-
-                    {/* Read Only Banner */}
-                    {task.readOnly && (
-                        <div className="bg-yellow-50 border border-yellow-100 rounded-md p-3 mb-4 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p className="text-sm text-yellow-800">
-                                You can view this task because you are assigned to a subtask.
-                            </p>
+        <>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="mb-4">
+                        <p className="text-sm text-gray-500 mb-2">Tasks › {task.title}</p>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
+                            <button
+                                onClick={onClose}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Subtasks Section */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                            Subtasks
-                            {hasSubtasks && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">{task.subtasks.length}</span>}
-                        </h4>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="font-medium text-gray-700 mb-2">Description</h3>
+                            <p className="text-gray-600">{task.description}</p>
+                        </div>
 
-                        {/* List Subtasks */}
-                        <div className="space-y-3 mb-4">
-                            {task.subtasks && task.subtasks.map(subtask => {
-                                const assignedId = subtask.assignedTo?._id ? subtask.assignedTo._id.toString() : subtask.assignedTo?.toString();
-                                const isSubtaskAssignedToMe = assignedId === currentUserId?.toString();
-                                const canToggle = canManageSubtasks || isSubtaskAssignedToMe;
+                        {/* Read Only Banner */}
+                        {task.readOnly && (
+                            <div className="bg-yellow-50 border border-yellow-100 rounded-md p-3 mb-4 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-sm text-yellow-800">
+                                    You can view this task because you are assigned to a subtask.
+                                </p>
+                            </div>
+                        )}
 
-                                return (
-                                    <div key={subtask._id} className="flex flex-col bg-gray-50 rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-start gap-3 flex-1">
-                                                <div className="pt-0.5">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={subtask.status === 'completed'}
-                                                        onChange={() => canToggle && handleToggleSubtask(subtask._id, subtask.status)}
-                                                        disabled={!canToggle}
-                                                        className={`w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 ${canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className={`text-sm font-medium ${subtask.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                                                        {subtask.title}
-                                                    </p>
-                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <UserAvatar
-                                                                user={subtask.assignedTo || { fullName: getAssigneeName(subtask.assignedTo) }}
-                                                                size="xs"
-                                                                className="w-4 h-4 text-[10px]"
-                                                            />
-                                                            {subtask.assignedTo?.fullName || getAssigneeName(subtask.assignedTo)}
-                                                        </div>
-                                                        {(subtask.startDate || subtask.endDate) && (
-                                                            <div className="flex items-center gap-1">
-                                                                <CalendarIcon className="w-3 h-3" />
-                                                                {subtask.startDate ? new Date(subtask.startDate).toLocaleDateString() : 'Start'}
-                                                                {' - '}
-                                                                {subtask.endDate ? new Date(subtask.endDate).toLocaleDateString() : 'End'}
+                        {/* Subtasks Section */}
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                Subtasks
+                                {hasSubtasks && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">{task.subtasks.length}</span>}
+                            </h4>
+
+                            {/* List Subtasks */}
+                            <div className="space-y-3 mb-4">
+                                {task.subtasks && task.subtasks.map(subtask => {
+                                    const assignedId = subtask.assignedTo?._id ? subtask.assignedTo._id.toString() : subtask.assignedTo?.toString();
+                                    const isSubtaskAssignedToMe = assignedId === currentUserId?.toString();
+                                    const canToggle = canManageSubtasks || isSubtaskAssignedToMe;
+
+                                    return (
+                                        <div key={subtask._id} className="flex flex-col bg-gray-50 rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-start gap-3 flex-1">
+                                                    <div className="pt-0.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={subtask.status === 'completed'}
+                                                            onChange={() => canToggle && handleToggleSubtask(subtask._id, subtask.status)}
+                                                            disabled={!canToggle}
+                                                            className={`w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 ${canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className={`text-sm font-medium ${subtask.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                                            {subtask.title}
+                                                        </p>
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <UserAvatar
+                                                                    user={subtask.assignedTo || { fullName: getAssigneeName(subtask.assignedTo) }}
+                                                                    size="xs"
+                                                                    className="w-4 h-4 text-[10px]"
+                                                                />
+                                                                {subtask.assignedTo?.fullName || getAssigneeName(subtask.assignedTo)}
                                                             </div>
-                                                        )}
+                                                            {(subtask.startDate || subtask.endDate) && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <CalendarIcon className="w-3 h-3" />
+                                                                    {subtask.startDate ? new Date(subtask.startDate).toLocaleDateString() : 'Start'}
+                                                                    {' - '}
+                                                                    {subtask.endDate ? new Date(subtask.endDate).toLocaleDateString() : 'End'}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
+
+                                                {canManageSubtasks && !task.readOnly && (
+                                                    <button
+                                                        onClick={() => handleDeleteSubtask(subtask._id)}
+                                                        className="text-gray-400 hover:text-red-600 p-1"
+                                                        title="Delete subtask"
+                                                    >
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
-
-                                            {canManageSubtasks && !task.readOnly && (
-                                                <button
-                                                    onClick={() => handleDeleteSubtask(subtask._id)}
-                                                    className="text-gray-400 hover:text-red-600 p-1"
-                                                    title="Delete subtask"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            )}
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
 
-                            {!hasSubtasks && (
-                                <p className="text-sm text-gray-400 italic">No subtasks yet.</p>
+                                {!hasSubtasks && (
+                                    <p className="text-sm text-gray-400 italic">No subtasks yet.</p>
+                                )}
+                            </div>
+
+                            {/* Add Subtask Form (Manager/Admin only) */}
+                            {canManageSubtasks && !task.readOnly && (
+                                <form onSubmit={handleAddSubtask} className="border border-gray-200 rounded-lg p-3 bg-white">
+                                    <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">Add New Subtask</h5>
+                                    <div className="space-y-3">
+                                        <input
+                                            type="text"
+                                            value={newSubtask.title}
+                                            onChange={(e) => setNewSubtask({ ...newSubtask, title: e.target.value })}
+                                            placeholder="Subtask title..."
+                                            className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent highlight-white/50"
+                                        />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <select
+                                                value={newSubtask.assignedTo}
+                                                onChange={(e) => setNewSubtask({ ...newSubtask, assignedTo: e.target.value })}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="">Assign to (Default: Parent Task Owner)</option>
+                                                <optgroup label="All Users">
+                                                    {allUsers.length > 0 ? (
+                                                        allUsers.map(user => (
+                                                            <option key={user._id} value={user._id}>
+                                                                {user.fullName} ({user.role})
+                                                            </option>
+                                                        ))
+                                                    ) : (
+                                                        <>
+                                                            {task.project?.teamMembers?.map(member => (
+                                                                <option key={member._id} value={member._id}>
+                                                                    {member.fullName} ({member.email})
+                                                                </option>
+                                                            ))}
+                                                            {task.project?.manager && (
+                                                                <option value={task.project.manager._id}>
+                                                                    {task.project.manager.fullName} (Manager)
+                                                                </option>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </optgroup>
+                                            </select>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="date"
+                                                    value={newSubtask.startDate}
+                                                    onChange={(e) => setNewSubtask({ ...newSubtask, startDate: e.target.value })}
+                                                    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
+                                                    title="Start Date"
+                                                />
+                                                <input
+                                                    type="date"
+                                                    value={newSubtask.endDate}
+                                                    onChange={(e) => setNewSubtask({ ...newSubtask, endDate: e.target.value })}
+                                                    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
+                                                    title="End Date"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={!newSubtask.title.trim()}
+                                            className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            <PlusIcon className="w-4 h-4" /> Add Subtask
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {/* Staff hint if they can't add */}
+                            {(!canManageSubtasks || task.readOnly) && !hasSubtasks && (
+                                <p className="text-xs text-gray-400 mt-1">Only managers can add subtasks.</p>
                             )}
                         </div>
 
-                        {/* Add Subtask Form (Manager/Admin only) */}
-                        {canManageSubtasks && !task.readOnly && (
-                            <form onSubmit={handleAddSubtask} className="border border-gray-200 rounded-lg p-3 bg-white">
-                                <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">Add New Subtask</h5>
-                                <div className="space-y-3">
-                                    <input
-                                        type="text"
-                                        value={newSubtask.title}
-                                        onChange={(e) => setNewSubtask({ ...newSubtask, title: e.target.value })}
-                                        placeholder="Subtask title..."
-                                        className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent highlight-white/50"
-                                    />
+                        <div className="border-t border-gray-100"></div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <select
-                                            value={newSubtask.assignedTo}
-                                            onChange={(e) => setNewSubtask({ ...newSubtask, assignedTo: e.target.value })}
-                                            className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        >
-                                            <option value="">Assign to (Default: Parent Task Owner)</option>
-                                            <optgroup label="All Users">
-                                                {allUsers.length > 0 ? (
-                                                    allUsers.map(user => (
-                                                        <option key={user._id} value={user._id}>
-                                                            {user.fullName} ({user.role})
-                                                        </option>
-                                                    ))
-                                                ) : (
-                                                    <>
-                                                        {task.project?.teamMembers?.map(member => (
-                                                            <option key={member._id} value={member._id}>
-                                                                {member.fullName} ({member.email})
-                                                            </option>
-                                                        ))}
-                                                        {task.project?.manager && (
-                                                            <option value={task.project.manager._id}>
-                                                                {task.project.manager.fullName} (Manager)
-                                                            </option>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </optgroup>
-                                        </select>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="date"
-                                                value={newSubtask.startDate}
-                                                onChange={(e) => setNewSubtask({ ...newSubtask, startDate: e.target.value })}
-                                                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
-                                                title="Start Date"
-                                            />
-                                            <input
-                                                type="date"
-                                                value={newSubtask.endDate}
-                                                onChange={(e) => setNewSubtask({ ...newSubtask, endDate: e.target.value })}
-                                                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
-                                                title="End Date"
-                                            />
+                        {/* Execution Section */}
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Execution</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="md:col-span-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h3 className="font-medium text-gray-700">Status</h3>
+                                        {hasIncompleteSubtasks && (
+                                            <div className="group relative">
+                                                <LockClosedIcon className="w-4 h-4 text-gray-400" />
+                                                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-10">
+                                                    Status is locked until all subtasks are completed
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="scale-110 transform origin-left">
+                                        <StatusBadge status={task.status} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-gray-700 mb-1">Assigned To</h3>
+                                    <div className="flex items-center gap-2">
+                                        <UserAvatar
+                                            user={task.assignedTo}
+                                            size="sm"
+                                        />
+                                        <p className="text-gray-600">{task.assignedTo?.fullName || 'Unassigned'}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-gray-700 mb-1">
+                                        {task.status === 'completed' ? 'Completed on' : 'Due'}
+                                    </h3>
+                                    <p className="text-gray-600">
+                                        {task.status === 'completed'
+                                            ? (task.completionDate ? new Date(task.completionDate).toLocaleDateString() : 'N/A')
+                                            : new Date(task.deadline).toLocaleDateString()
+                                        }
+                                        {task.status !== 'completed' && task.isOverdue && <span className="text-red-600"> • Overdue</span>}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-100"></div>
+
+                        {/* Progress Section */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Progress</h4>
+                                {hasSubtasks && (
+                                    <div className="group relative">
+                                        <LockClosedIcon className="w-4 h-4 text-gray-400" />
+                                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-10">
+                                            Calculated automatically from subtasks
                                         </div>
                                     </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={!newSubtask.title.trim()}
-                                        className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                    >
-                                        <PlusIcon className="w-4 h-4" /> Add Subtask
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Staff hint if they can't add */}
-                        {(!canManageSubtasks || task.readOnly) && !hasSubtasks && (
-                            <p className="text-xs text-gray-400 mt-1">Only managers can add subtasks.</p>
-                        )}
-                    </div>
-
-                    <div className="border-t border-gray-100"></div>
-
-                    {/* Execution Section */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Execution</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <h3 className="font-medium text-gray-700">Status</h3>
-                                    {hasSubtasks && (
-                                        <div className="group relative">
-                                            <LockClosedIcon className="w-4 h-4 text-gray-400" />
-                                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-10">
-                                                Status is controlled by subtasks
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="scale-110 transform origin-left">
-                                    <StatusBadge status={task.status} />
-                                </div>
+                                )}
                             </div>
+
                             <div>
-                                <h3 className="font-medium text-gray-700 mb-1">Assigned To</h3>
-                                <div className="flex items-center gap-2">
-                                    <UserAvatar
-                                        user={task.assignedTo}
-                                        size="sm"
-                                    />
-                                    <p className="text-gray-600">{task.assignedTo?.fullName || 'Unassigned'}</p>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-medium text-gray-700">Completion</h3>
+                                    <span className="text-lg font-semibold text-gray-900">{task.progress || 0}%</span>
                                 </div>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-700 mb-1">
-                                    {task.status === 'completed' ? 'Completed on' : 'Due'}
-                                </h3>
-                                <p className="text-gray-600">
-                                    {task.status === 'completed'
-                                        ? (task.completionDate ? new Date(task.completionDate).toLocaleDateString() : 'N/A')
-                                        : new Date(task.deadline).toLocaleDateString()
-                                    }
-                                    {task.status !== 'completed' && task.isOverdue && <span className="text-red-600"> • Overdue</span>}
+                                <div className="w-full h-4 bg-gray-200 rounded-full mb-2">
+                                    <div
+                                        className="h-4 bg-primary-600 rounded-full transition-all duration-300"
+                                        style={{ width: `${task.progress || 0}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {hasSubtasks ? 'Progress updated automatically' : 'Progress updated by staff'}
                                 </p>
                             </div>
                         </div>
+
+                        <div className="border-t border-gray-100"></div>
+
+                        {/* Context Section */}
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Context</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <h3 className="font-medium text-gray-700 mb-1">Project</h3>
+                                    <p className="text-gray-600">{task.project?.projectName || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-gray-700 mb-1">Priority</h3>
+                                    <span className="text-sm text-gray-500">{task.priority} priority</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-gray-700 mb-1">Created By</h3>
+                                    <div className="flex items-center gap-2">
+                                        <UserAvatar
+                                            user={task.createdBy}
+                                            size="sm"
+                                        />
+                                        <p className="text-gray-600">{task.createdBy?.fullName || 'Unknown'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="border-t border-gray-100"></div>
 
-                    {/* Progress Section */}
+                    {/* Expenses Section */}
                     <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Progress</h4>
-                            {hasSubtasks && (
-                                <div className="group relative">
-                                    <LockClosedIcon className="w-4 h-4 text-gray-400" />
-                                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-10">
-                                        Calculated automatically from subtasks
-                                    </div>
-                                </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Expenses</h4>
+                            {(isAssignedStaff || canManageSubtasks) && (
+                                <button
+                                    onClick={() => setShowExpenseModal(true)}
+                                    className="text-xs flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium"
+                                >
+                                    <PlusIcon className="w-3 h-3" /> Add Expense
+                                </button>
                             )}
                         </div>
 
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="font-medium text-gray-700">Completion</h3>
-                                <span className="text-lg font-semibold text-gray-900">{task.progress || 0}%</span>
-                            </div>
-                            <div className="w-full h-4 bg-gray-200 rounded-full mb-2">
-                                <div
-                                    className="h-4 bg-primary-600 rounded-full transition-all duration-300"
-                                    style={{ width: `${task.progress || 0}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                                {hasSubtasks ? 'Progress updated automatically' : 'Progress updated by staff'}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-gray-100"></div>
-
-                    {/* Context Section */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Context</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <h3 className="font-medium text-gray-700 mb-1">Project</h3>
-                                <p className="text-gray-600">{task.project?.projectName || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-700 mb-1">Priority</h3>
-                                <span className="text-sm text-gray-500">{task.priority} priority</span>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-700 mb-1">Created By</h3>
-                                <div className="flex items-center gap-2">
-                                    <UserAvatar
-                                        user={task.createdBy}
-                                        size="sm"
-                                    />
-                                    <p className="text-gray-600">{task.createdBy?.fullName || 'Unknown'}</p>
+                        {taskExpenses.length > 0 ? (
+                            <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+                                {taskExpenses.map(expense => (
+                                    <div key={expense._id} className="p-3 border-b border-gray-100 last:border-0 flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-medium text-gray-900">{expense.title}</p>
+                                            <p className="text-xs text-gray-500">{new Date(expense.date).toLocaleDateString()} • {expense.vendor}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-gray-900">₹{expense.amount.toLocaleString()}</p>
+                                            {expense.receipt && (
+                                                <a href={expense.receipt} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Receipt</a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="p-2 bg-gray-100 text-right text-xs font-bold text-gray-700">
+                                    Total: ₹{taskExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <p className="text-sm text-gray-400 italic">No expenses recorded for this task.</p>
+                        )}
                     </div>
 
                     {/* Update form for staff (Hidden/Disabled controls if subtasks exist or readOnly) */}
@@ -580,7 +647,7 @@ const TaskDetailsModal = ({
                         <div className="border-t pt-4">
                             <h3 className="font-medium text-gray-700 mb-4">Task Updates</h3>
 
-                            {!hasSubtasks && (
+                            {!hasIncompleteSubtasks && (
                                 <div className="grid grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -609,10 +676,10 @@ const TaskDetailsModal = ({
                                 </div>
                             )}
 
-                            {hasSubtasks && (
+                            {hasIncompleteSubtasks && (
                                 <div className="bg-blue-50 border border-blue-100 rounded-md p-3 mb-4 flex items-center gap-2">
                                     <LockClosedIcon className="w-5 h-5 text-blue-500" />
-                                    <p className="text-sm text-blue-700">Status and progress are automatically managed by subtask completion.</p>
+                                    <p className="text-sm text-blue-700">Status is defined by subtasks. Complete all subtasks to unlock parent task status.</p>
                                 </div>
                             )}
 
@@ -624,7 +691,7 @@ const TaskDetailsModal = ({
                                     onChange={(e) => setUpdateForm({ ...updateForm, comment: e.target.value })}
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                                 />
-                                {hasSubtasks ? (
+                                {hasIncompleteSubtasks ? (
                                     <button
                                         onClick={handleAddCommentOnly}
                                         disabled={!updateForm.comment.trim()}
@@ -643,7 +710,7 @@ const TaskDetailsModal = ({
                                 )}
                             </div>
 
-                            {!hasSubtasks && (
+                            {!hasIncompleteSubtasks && (
                                 <button
                                     onClick={handleUpdateTask}
                                     disabled={updating}
@@ -687,15 +754,31 @@ const TaskDetailsModal = ({
                 </div>
             </div>
 
+
+            {/* Chat Sidebar */}
             {showChatSidebar && (
                 <ChatSidebar
                     isOpen={showChatSidebar}
                     onClose={() => setShowChatSidebar(false)}
-                    taskId={taskId}
-                    currentUser={{ _id: currentUserId, role: currentUserRole }}
+                    entityType="task"
+                    entityId={taskId}
+                    entityTitle={task.title}
+                    entityData={task}
                 />
             )}
-        </div>
+
+            {/* Expense Modal */}
+            <ExpenseModal
+                isOpen={showExpenseModal}
+                onClose={() => setShowExpenseModal(false)}
+                projectId={task.project?._id || task.project}
+                taskId={taskId}
+                onExpenseAdded={() => {
+                    fetchTaskExpenses();
+                    if (onTaskUpdated) onTaskUpdated(task);
+                }}
+            />
+        </>
     );
 };
 

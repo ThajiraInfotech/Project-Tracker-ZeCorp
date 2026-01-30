@@ -41,21 +41,20 @@ const MainLayout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: user?.role === 'admin' ? '/admin' : '/', icon: HomeIcon },
-    { name: 'Projects', href: '/projects', icon: FolderIcon },
+    // Show Projects only for non-staff users (admin, manager)
+    ...(user?.role !== 'staff' ? [{ name: 'Projects', href: '/projects', icon: FolderIcon }] : []),
     { name: 'Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
     { name: 'Attendance', href: '/attendance', icon: CalendarDaysIcon },
     ...(user?.role === 'staff' ? [
-      { name: 'Time Tracking', href: '/time', icon: ClockIcon },
       { name: 'Performance', href: '/performance', icon: ChartBarIcon }
     ] : []),
     ...(user?.role === 'manager' ? [{ name: 'Team Performance', href: '/team', icon: UserGroupIcon }] : []),
-    ...(user?.role !== 'staff' ? [{ name: 'Reports', href: '/reports', icon: DocumentChartBarIcon }] : []),
   ];
 
   // Admin-specific navigation
   const adminNavigation = [
     { name: 'User Management', href: '/admin/users', icon: UserIcon },
-    { name: 'Task Override', href: '/admin/tasks', icon: ClipboardDocumentListIcon },
+
     { name: 'System Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
@@ -70,6 +69,14 @@ const MainLayout = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-gray-900 bg-opacity-50 md:hidden transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-xl border-r border-slate-200 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative transition-transform duration-200 ease-in-out`}>
         <div className="flex flex-col h-full">
@@ -92,6 +99,7 @@ const MainLayout = () => {
                   <Link
                     key={item.name}
                     to={item.href}
+                    onClick={() => setSidebarOpen(false)}
                     className="group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 hover:shadow-sm focus:outline-none focus:bg-slate-100 transition-all duration-200 border border-transparent hover:border-slate-200"
                   >
                     <item.icon className="w-5 h-5 mr-4 text-slate-600 group-hover:text-slate-900" />
@@ -110,6 +118,7 @@ const MainLayout = () => {
                     <Link
                       key={item.name}
                       to={item.href}
+                      onClick={() => setSidebarOpen(false)}
                       className="group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-blue-50 hover:shadow-sm focus:outline-none focus:bg-blue-50 transition-all duration-200 border border-transparent hover:border-blue-200"
                     >
                       <item.icon className="w-5 h-5 mr-4 text-blue-600 group-hover:text-blue-800" />
@@ -177,6 +186,7 @@ const MainLayout = () => {
             <div className="space-y-1">
               <Link
                 to="/profile"
+                onClick={() => setSidebarOpen(false)}
                 className="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-white hover:shadow-sm transition-all duration-200 border border-transparent hover:border-slate-200"
               >
                 <UserIcon className="w-5 h-5 mr-3 text-slate-600" />

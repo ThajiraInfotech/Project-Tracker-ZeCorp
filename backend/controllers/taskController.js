@@ -5,29 +5,19 @@ const emailService = require('../utils/emailService');
 const cloudinaryService = require('../utils/cloudinaryService');
 const { createMentionNotifications } = require('../utils/mentionParser');
 const { updateProjectProgressAndStatus } = require('../utils/projectProgressUtils');
+const { publishEvent } = require('../infrastructure/queue');
 
 // Helper function to sync progress based on status
 // Helper function to sync progress based on status
 const syncProgressWithStatus = (task) => {
-  // Guard: If subtasks exist, recalculate progress and status from them
+  // Guard: If subtasks exist, recalculate progress from them
   if (task.subtasks && task.subtasks.length > 0) {
     const totalSubtasks = task.subtasks.length;
     const completedSubtasks = task.subtasks.filter(st => st.status === 'completed').length;
-    const inProgressSubtasks = task.subtasks.filter(st => st.status === 'in-progress').length;
 
-    // Calculate progress
+    // Calculate progress ONLY, do not touch status
     task.progress = Math.round((completedSubtasks / totalSubtasks) * 100);
-
-    // Calculate status
-    if (completedSubtasks === totalSubtasks) {
-      task.status = 'completed';
-      if (!task.completionDate) task.completionDate = new Date();
-    } else {
-      // If any subtask exists, parent cannot be 'todo' (per rules)
-      task.status = 'in-progress';
-      task.completionDate = undefined;
-    }
-    return; // Exit, do not use manual logic below
+    return;
   }
 
   // Original logic for tasks without subtasks
@@ -36,7 +26,6 @@ const syncProgressWithStatus = (task) => {
   } else if (task.status === 'todo') {
     task.progress = 0;
   }
-  // For 'in-progress', progress is set separately, allow any value
 };
 
 // Create a new task
@@ -78,20 +67,20 @@ exports.createTask = async (req, res) => {
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
 
-    // Send email notification
-    await emailService.sendTaskAssignmentEmail(
-      userExists.email,
-      {
-        title: task.title,
-        deadline: task.deadline,
-        priority: task.priority,
-        description: task.description
-      },
-      {
-        projectName: projectExists.projectName,
-        clientName: projectExists.clientName
-      }
-    );
+    // Update project progress and status
+    await updateProjectProgressAndStatus(task.project);
+
+    // EMIT EVENT: Task Assigned
+    await publishEvent('TASK_ASSIGNED', {
+      entityType: 'task',
+      entityId: task._id,
+      entityTitle: task.title,
+      assignedTo: userExists,
+      triggeredBy: req.user._id, // Actor
+      messageSnippet: `You have been assigned a new task: ${task.title}`,
+      relatedLink: `/tasks?taskId=${task._id}`, // Deep link for modal
+      project: projectExists
+    });
 
     res.status(201).json({
       success: true,
@@ -339,9 +328,19 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     // Update status
-    // If subtasks exist, ignore manual status update (it will be recalculated)
+    // If subtasks exist, only allow manual update if ALL subtasks are completed
     if (task.subtasks && task.subtasks.length > 0) {
-      // Do nothing to status here, syncProgressWithStatus will handle it
+      const allCompleted = task.subtasks.every(st => st.status === 'completed');
+      if (!allCompleted) {
+        // Do nothing to status if subtasks are not all completed
+        // The UI should prevent this, but backend safe-guard here
+      } else {
+        // All subtasks completed, ALLOW manual status update
+        task.status = status;
+        if (status === 'completed') {
+          task.completionDate = new Date();
+        }
+      }
     } else {
       task.status = status;
       // If task is completed, set completion date
@@ -464,11 +463,20 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     }
 
     // Update fields if provided
+    // Update fields if provided
     if (task.subtasks && task.subtasks.length > 0) {
-      // If subtasks exist, IGNORE status and progress updates from request
-      // We only allow other fields if any (but this endpoint is specific to status/progress)
+      // If subtasks exist, check if they are all completed
+      const allCompleted = task.subtasks.every(st => st.status === 'completed');
 
-      // Force recalculation
+      if (allCompleted && status !== undefined) {
+        // If all completed, allow status update
+        task.status = status;
+        if (status === 'completed') {
+          task.completionDate = new Date();
+        }
+      }
+
+      // Always sync progress from subtasks (ignoring manual progress input for subtask-tasks)
       syncProgressWithStatus(task);
     } else {
       if (status !== undefined) {
@@ -717,151 +725,9 @@ exports.sendTaskNotification = async (req, res) => {
   }
 };
 
-// Admin: Override task assignment
-exports.adminOverrideTaskAssignment = async (req, res) => {
-  try {
-    const { assignedTo, priority, deadline, status } = req.body;
-    const task = await Task.findById(req.params.id);
 
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
 
-    // Check if assigned user exists
-    if (assignedTo) {
-      const userExists = await User.findById(assignedTo);
-      if (!userExists) {
-        return res.status(404).json({ message: 'Assigned user not found' });
-      }
-    }
 
-    // Update task with admin override
-    if (assignedTo) task.assignedTo = assignedTo;
-    if (priority) task.priority = priority;
-    if (deadline) task.deadline = deadline;
-    if (status) {
-      task.status = status;
-      if (status === 'completed') {
-        task.completionDate = new Date();
-      }
-    }
-
-    syncProgressWithStatus(task);
-
-    // Add admin override comment
-    task.comments.push({
-      user: req.user._id,
-      text: `ADMIN OVERRIDE: Task updated by ${req.user.fullName || req.user.username}`,
-      createdAt: new Date()
-    });
-
-    await task.save();
-
-    // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
-
-    // Send notification to new assignee if changed
-    if (assignedTo && assignedTo !== task.createdBy.toString()) {
-      const newAssignee = await User.findById(assignedTo);
-      if (newAssignee && newAssignee.email) {
-        await emailService.sendEmail(
-          newAssignee.email,
-          `Task Reassigned: ${task.title}`,
-          `<p>You have been assigned to task: ${task.title}</p>
-           <p>Priority: ${task.priority}</p>
-           <p>Deadline: ${new Date(task.deadline).toLocaleDateString()}</p>
-           <p>This assignment was made by admin override.</p>`
-        );
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Task override successful',
-      task
-    });
-  } catch (error) {
-    console.error('Admin override task assignment error:', error);
-    res.status(500).json({ message: 'Failed to override task assignment' });
-  }
-};
-
-// Admin: Reassign stuck tasks
-exports.adminReassignStuckTasks = async (req, res) => {
-  try {
-    const { fromUserId, toUserId, projectId } = req.body;
-
-    // Validate users
-    const fromUser = await User.findById(fromUserId);
-    const toUser = await User.findById(toUserId);
-
-    if (!fromUser || !toUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Build query for stuck tasks
-    let query = {
-      status: { $in: ['in-progress', 'delayed'] },
-      assignedTo: fromUserId
-    };
-
-    if (projectId) {
-      query.project = projectId;
-    } else {
-      // If no specific project, get overdue tasks
-      const today = new Date();
-      query.deadline = { $lt: today };
-    }
-
-    const stuckTasks = await Task.find(query);
-
-    // Reassign tasks
-    const reassignResults = [];
-    for (const task of stuckTasks) {
-      task.assignedTo = toUserId;
-      task.status = 'in-progress'; // Reset status
-      syncProgressWithStatus(task);
-      task.comments.push({
-        user: req.user._id,
-        text: `ADMIN REASSIGNMENT: Task reassigned from ${fromUser.username} to ${toUser.username} by ${req.user.fullName || req.user.username}`,
-        createdAt: new Date()
-      });
-
-      await task.save();
-
-      // Update project progress and status for each reassigned task
-      await updateProjectProgressAndStatus(task.project);
-
-      reassignResults.push({
-        taskId: task._id,
-        taskTitle: task.title,
-        fromUser: fromUser.username,
-        toUser: toUser.username
-      });
-    }
-
-    // Send notifications
-    if (toUser.email) {
-      await emailService.sendEmail(
-        toUser.email,
-        `Tasks Reassigned to You (${reassignResults.length})`,
-        `<p>${reassignResults.length} task(s) have been reassigned to you by admin:</p>
-         <ul>
-           ${reassignResults.map(r => `<li>${r.taskTitle} (from ${r.fromUser})</li>`).join('')}
-         </ul>`
-      );
-    }
-
-    res.json({
-      success: true,
-      message: `Reassigned ${reassignResults.length} stuck tasks`,
-      reassignResults
-    });
-  } catch (error) {
-    console.error('Admin reassign stuck tasks error:', error);
-    res.status(500).json({ message: 'Failed to reassign stuck tasks' });
-  }
-};
 
 // Update subtask status
 exports.updateSubtaskStatus = async (req, res) => {
@@ -973,78 +839,5 @@ exports.getTasksByProject = async (req, res) => {
   }
 };
 
-// Admin: Get all tasks (override access control)
-exports.adminGetAllTasks = async (req, res) => {
-  try {
-    const { status, priority, projectId, assignedTo } = req.query;
 
-    let query = {};
 
-    if (status) query.status = status;
-    if (priority) query.priority = priority;
-    if (projectId) query.project = projectId;
-    if (assignedTo) query.assignedTo = assignedTo;
-
-    const tasks = await Task.find(query)
-      .populate('project', 'projectName projectType status')
-      .populate('assignedTo', 'username fullName email role')
-      .populate('createdBy', 'username fullName email')
-      .sort({ deadline: 1 });
-
-    res.json({
-      success: true,
-      tasks,
-      summary: {
-        totalTasks: tasks.length,
-        completed: tasks.filter(t => t.status === 'completed').length,
-        overdue: tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < new Date()).length,
-        highPriority: tasks.filter(t => t.priority === 'high').length
-      }
-    });
-  } catch (error) {
-    console.error('Admin get all tasks error:', error);
-    res.status(500).json({ message: 'Failed to get all tasks' });
-  }
-};
-
-// Admin: Force complete task
-exports.adminForceCompleteTask = async (req, res) => {
-  try {
-    const { completionNotes } = req.body;
-    const task = await Task.findById(req.params.id);
-
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    // Force complete the task
-    task.status = 'completed';
-    task.completionDate = new Date();
-    task.progress = 100;
-
-    syncProgressWithStatus(task); // Ensures progress is 100
-
-    // Add admin completion note
-    if (completionNotes) {
-      task.comments.push({
-        user: req.user._id,
-        text: `ADMIN COMPLETION: ${completionNotes} - Forced completion by ${req.user.fullName || req.user.username}`,
-        createdAt: new Date()
-      });
-    }
-
-    await task.save();
-
-    // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
-
-    res.json({
-      success: true,
-      message: 'Task forced completion successful',
-      task
-    });
-  } catch (error) {
-    console.error('Admin force complete task error:', error);
-    res.status(500).json({ message: 'Failed to force complete task' });
-  }
-};

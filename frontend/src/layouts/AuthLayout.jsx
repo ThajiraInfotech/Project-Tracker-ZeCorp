@@ -15,12 +15,12 @@ const AuthLayout = () => {
                 alt="Thajira WorkFlow"
               />
             </Link>
-            
+
             <p className="text-xl mb-4 ">
-            Enterprise Project & Task Management for Zeecorp
+              Enterprise Project & Task Management for Zeecorp
             </p>
             <p className>
-             Streamline your projects, tasks, and team productivity with a single platform.
+              Streamline your projects, tasks, and team productivity with a single platform.
             </p>
           </div>
         </div>
@@ -36,9 +36,9 @@ const AuthLayout = () => {
                   alt="Thajira WorkFlow"
                 />
               </Link>
-           
+
               <p className="mt-4 text-center text-md  text-gray-900">
-           Enterprise Project & Task Management for Zeecorp
+                Enterprise Project & Task Management for Zeecorp
               </p>
             </div>
 

@@ -26,55 +26,69 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
   const fileInputRef = useRef(null);
   const auth = useSelector((state) => state.auth);
 
+  const [admins, setAdmins] = useState([]);
+
+  // Fetch admins on mount
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const response = await api.get('/auth/admins');
+        if (response.data.success) {
+          setAdmins(response.data.users || []);
+        }
+      } catch (error) {
+        console.error('Error fetching admins:', error);
+      }
+    };
+    fetchAdmins();
+  }, []);
+
   // Get available users for mentions
   const getMentionableUsers = () => {
-    if (!entityData || !entityId) return [];
-
     const users = [];
 
-    if (entityType === 'project') {
+    // Helper to add user if unique
+    const addUser = (user, role) => {
+      if (!user || !user._id) return;
+      if (user._id === auth.user?._id) return; // Don't mention self
+      if (users.find(u => u._id === user._id)) return; // Already added
+
+      users.push({
+        ...user,
+        role
+      });
+    };
+
+    if (entityType === 'project' && entityData) {
       // Add manager
-      if (entityData.manager) {
-        users.push({
-          ...entityData.manager,
-          role: 'Manager'
-        });
-      }
+      addUser(entityData.manager, 'Manager');
+
       // Add team members
-      if (entityData.teamMembers && entityData.teamMembers.length > 0) {
+      if (entityData.teamMembers) {
         entityData.teamMembers.forEach(member => {
-          if (member._id !== auth.user?._id) {
-            users.push({
-              ...member,
-              role: 'Team Member'
-            });
-          }
+          addUser(member, 'Team Member');
         });
       }
-    } else if (entityType === 'task') {
+    } else if (entityType === 'task' && entityData) {
       // For tasks, include assigned user and project team
-      if (entityData.assignedTo && entityData.assignedTo._id !== auth.user?._id) {
-        users.push({
-          ...entityData.assignedTo,
-          role: 'Assigned To'
-        });
+      addUser(entityData.assignedTo, 'Assigned To');
+
+      if (entityData.project?.manager) {
+        addUser(entityData.project.manager, 'Project Manager');
       }
-      if (entityData.project?.manager && entityData.project.manager._id !== auth.user?._id) {
-        users.push({
-          ...entityData.project.manager,
-          role: 'Project Manager'
-        });
-      }
+
       if (entityData.project?.teamMembers) {
         entityData.project.teamMembers.forEach(member => {
-          if (member._id !== auth.user?._id && !users.find(u => u._id === member._id)) {
-            users.push({
-              ...member,
-              role: 'Team Member'
-            });
-          }
+          addUser(member, 'Team Member');
         });
       }
+    }
+
+    // Add admins (if not already included)
+    if (admins.length > 0) {
+      admins.forEach(admin => {
+        addUser(admin, 'Admin');
+      });
     }
 
     return users;
@@ -432,24 +446,142 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
                         {/* Attachments */}
                         {comment.attachments && comment.attachments.length > 0 && (
                           <div className={`mt-2 flex flex-wrap gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                            {comment.attachments.map((file, i) => (
-                              <div key={i} className="relative group/file">
-                                {file.fileType?.startsWith('image/') || file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                  <a href={file.url} target="_blank" rel="noopener noreferrer">
-                                    <img src={file.url} alt={file.name} className="w-32 h-32 object-cover rounded-lg border-2 border-white/20 hover:border-white/50 transition-colors" />
-                                  </a>
-                                ) : file.fileType?.startsWith('video/') || file.url.match(/\.(mp4|webm|ogg)$/i) ? (
-                                  <video src={file.url} controls className="w-48 rounded-lg border-2 border-white/20" />
-                                ) : (
-                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isCurrentUser ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                    </svg>
-                                    <span className="underline max-w-[150px] truncate">{file.name || 'Attachment'}</span>
-                                  </a>
-                                )}
-                              </div>
-                            ))}
+                            {comment.attachments.map((file, i) => {
+                              const isImage = file.fileType?.startsWith('image/') || file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                              const isVideo = file.fileType?.startsWith('video/') || file.url.match(/\.(mp4|webm|ogg|mov)$/i);
+                              const isPDF = file.fileType === 'application/pdf' || file.url.match(/\.pdf$/i);
+
+                              const getCloudinaryUrl = (url, type) => {
+                                try {
+                                  if (!url || !url.includes('cloudinary.com')) return url;
+
+                                  // Helper to inject transformation
+                                  const injectTransformation = (url, transformation) => {
+                                    const uploadIndex = url.indexOf('/upload/');
+                                    if (uploadIndex === -1) return url;
+                                    return url.slice(0, uploadIndex + 8) + transformation + '/' + url.slice(uploadIndex + 8);
+                                  };
+
+                                  if (type === 'thumbnail') {
+                                    // Only attempt to generate thumbnails if it's already an image pipeline
+                                    // OR explicitly force it if we know we want to try generic pdf thumb (but risky if raw)
+                                    // User rule: "PDF thumbnails may be generated using image/upload with pg_1 only if applicable."
+                                    // Safe bet: if it says /image/upload, add pg_1. If /raw/upload, DO NOT change to image.
+                                    if (url.includes('/image/upload/')) {
+                                      const parts = url.split('/upload/');
+                                      // Replace existing ext with jpg for thumbnail if needed, or just add params
+                                      let path = parts[1];
+                                      if (path.toLowerCase().endsWith('.pdf')) {
+                                        path = path.replace(/\.pdf$/i, '.jpg');
+                                      }
+                                      return `${parts[0]}/upload/w_300,h_300,c_fill,pg_1/${path}`;
+                                    }
+                                    // If raw, return original (will fail image load, triggering fallback)
+                                    return url;
+                                  }
+
+                                  if (type === 'download') {
+                                    // Inject fl_attachment, preserve resource type
+                                    return injectTransformation(url, 'fl_attachment');
+                                  }
+
+                                  if (type === 'view') {
+                                    // Return exact URL for viewing
+                                    return url;
+                                  }
+
+                                  return url;
+                                } catch (e) {
+                                  console.error('Error parsing Cloudinary URL:', e);
+                                  return url;
+                                }
+                              };
+
+                              return (
+                                <div key={i} className="relative group/file">
+                                  {isImage ? (
+                                    <a href={file.url} target="_blank" rel="noopener noreferrer">
+                                      <img src={file.url} alt={file.name} className="w-32 h-32 object-cover rounded-lg border-2 border-white/20 hover:border-white/50 transition-colors" />
+                                    </a>
+                                  ) : isVideo ? (
+                                    <video src={file.url} controls className="w-48 rounded-lg border-2 border-white/20" />
+                                  ) : isPDF ? (
+                                    <div
+                                      onClick={() => window.open(getCloudinaryUrl(file.url, 'view'), '_blank')}
+                                      className="relative group/pdf cursor-pointer block w-72 bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200"
+                                      title="Click to view PDF"
+                                    >
+                                      {/* Preview Area */}
+                                      <div className="h-48 bg-gray-50 relative flex items-center justify-center overflow-hidden border-b border-gray-100">
+                                        {/* Try to show generated thumbnail, fallback to Icon */}
+                                        {file.url.includes('cloudinary') ? (
+                                          <img
+                                            src={getCloudinaryUrl(file.url, 'thumbnail')}
+                                            alt="PDF Preview"
+                                            className="w-full h-full object-contain p-2"
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                                          />
+                                        ) : null}
+                                        <div className={`absolute inset-0 flex items-center justify-center ${file.url.includes('cloudinary') ? 'hidden' : 'flex'}`}>
+                                          <svg className="w-16 h-16 text-red-500 opacity-80" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 0L4 0C2.9 0 2 0.9 2 2L2 14 12 24 22 14 22 2C22 0.9 21.1 0 20 0L12 0ZM11 15L11 9 8 9 8 7 16 7 16 9 13 9 13 15 11 15Z" />
+                                            <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fontSize="6px" fill="white">PDF</text>
+                                          </svg>
+                                        </div>
+
+                                        {/* Hover Overlay with View and Download Options */}
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3 opacity-0 group-hover/pdf:opacity-100 transition-opacity duration-200">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(getCloudinaryUrl(file.url, 'view'), '_blank');
+                                            }}
+                                            className="bg-white text-gray-900 text-xs font-bold px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 hover:bg-gray-50 transform translate-y-2 group-hover/pdf:translate-y-0 transition-transform"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            View
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(getCloudinaryUrl(file.url, 'download'), '_blank');
+                                            }}
+                                            className="bg-white text-gray-900 text-xs font-bold px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 hover:bg-gray-50 transform translate-y-2 group-hover/pdf:translate-y-0 transition-transform delay-75"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                            Download
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Footer Area */}
+                                      <div className="px-4 py-3 bg-white flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-600">
+                                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0L4 0C2.9 0 2 0.9 2 2L2 14 12 24 22 14 22 2C22 0.9 21.1 0 20 0L12 0ZM11 15L11 9 8 9 8 7 16 7 16 9 13 9 13 15 11 15Z" /></svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-semibold text-gray-800 truncate" title={file.name}>{file.name}</p>
+                                          <p className="text-[11px] text-gray-500 font-medium">View PDF • PDF</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <a
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isCurrentUser ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
+                                      title="Download File"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                      </svg>
+                                      <span className="underline max-w-[150px] truncate">{file.name || 'Attachment'}</span>
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

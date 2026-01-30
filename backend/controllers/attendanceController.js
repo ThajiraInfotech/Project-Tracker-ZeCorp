@@ -2,6 +2,7 @@ const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
+const SystemSetting = require('../models/SystemSetting');
 
 // Check in
 exports.checkIn = async (req, res) => {
@@ -57,11 +58,22 @@ exports.checkOut = async (req, res) => {
       return res.status(400).json({ message: 'Already checked out today' });
     }
 
+    // Get standard working hours setting
+    let standardHours = 8; // Default
+    try {
+      const setting = await SystemSetting.findOne({ settingKey: 'standard_working_hours' });
+      if (setting && setting.settingValue) {
+        standardHours = Number(setting.settingValue);
+      }
+    } catch (err) {
+      console.error('Failed to fetch standard working hours setting:', err);
+    }
+
     // Calculate hours
     const checkOut = new Date();
     const totalHours = (checkOut - attendance.checkIn) / (1000 * 60 * 60);
-    const regularHours = Math.min(totalHours, 8);
-    const overtimeHours = totalHours > 8 ? totalHours - 8 : 0;
+    const regularHours = Math.min(totalHours, standardHours);
+    const overtimeHours = totalHours > standardHours ? totalHours - standardHours : 0;
 
     // Determine status
     let status = 'Present';
@@ -153,4 +165,3 @@ exports.getAllAttendance = async (req, res) => {
     res.status(500).json({ message: 'Failed to get attendance' });
   }
 };
-                                                                                  
