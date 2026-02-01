@@ -151,10 +151,15 @@ const ProjectDetailPage = () => {
     }
   }, [auth.isAuthenticated, id]);
 
-  // Handle deep link for chat
+  // Handle deep link for chat and edit
   useEffect(() => {
-    if (project && searchParams.get('openChat') === 'true') {
-      setShowChatSidebar(true);
+    if (project) {
+      if (searchParams.get('openChat') === 'true') {
+        setShowChatSidebar(true);
+      }
+      if (searchParams.get('action') === 'edit') {
+        setShowEditModal(true);
+      }
     }
   }, [project, searchParams]);
 
@@ -289,7 +294,7 @@ const ProjectDetailPage = () => {
               Project Details
             </h3>
             <div className="space-y-3">
-              <p className="text-gray-700"><span className="font-semibold">Type:</span> {project.projectType}</p>
+              <p className="text-gray-700"><span className="font-semibold">Scope of Work:</span> {project.projectType}</p>
               <p className="text-gray-700 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -339,8 +344,8 @@ const ProjectDetailPage = () => {
               Financial Overview
             </h3>
             <div className="space-y-3">
-              <p className="text-gray-700 text-lg"><span className="font-semibold">Budget:</span> ₹{project.budget?.toLocaleString()}</p>
-              <p className="text-gray-700"><span className="font-semibold">Spent:</span> Expense tracking coming soon</p>
+              <p className="text-gray-700 text-lg"><span className="font-semibold">Budget:</span> AED {project.budget?.toLocaleString()}</p>
+              <p className="text-gray-700"><span className="font-semibold">Spent:</span> AED {financials?.totalExpenses?.toLocaleString() || '0'}</p>
               <p className="text-gray-700"><span className="font-semibold">Status:</span> <span className={`font-bold ${risk.color} px-2 py-1 rounded-full text-sm`}>{risk.text}</span></p>
             </div>
           </div>
@@ -534,7 +539,7 @@ const ProjectDetailPage = () => {
         <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Total Budget</p>
-            <h3 className="text-2xl font-bold text-gray-900">₹{project?.budget?.toLocaleString() || '0'}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">AED {project?.budget?.toLocaleString() || '0'}</h3>
           </div>
           <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
             <CurrencyDollarIcon className="w-6 h-6" />
@@ -545,7 +550,7 @@ const ProjectDetailPage = () => {
         <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Total Expenses</p>
-            <h3 className="text-2xl font-bold text-red-600">₹{financials.totalExpenses.toLocaleString()}</h3>
+            <h3 className="text-2xl font-bold text-red-600">AED {financials.totalExpenses.toLocaleString()}</h3>
           </div>
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600">
             <ReceiptPercentIcon className="w-6 h-6" />
@@ -557,7 +562,7 @@ const ProjectDetailPage = () => {
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Remaining Budget</p>
             <h3 className={`text-2xl font-bold ${financials.profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-              ₹{financials.profit.toLocaleString()}
+              AED {financials.profit.toLocaleString()}
             </h3>
           </div>
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${financials.profit >= 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
@@ -641,7 +646,7 @@ const ProjectDetailPage = () => {
                         {expense.recordedBy?.fullName || 'Unknown'}
                       </div>
                     </td>
-                    <td className="p-4 text-right font-bold text-gray-900">₹{expense.amount.toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold text-gray-900">AED {expense.amount.toLocaleString()}</td>
                     <td className="p-4 text-center">
                       {expense.receipt ? (
                         <a href={expense.receipt} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm underline">

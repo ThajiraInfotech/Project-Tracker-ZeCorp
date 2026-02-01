@@ -17,7 +17,8 @@ import {
   CheckCircleIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -42,6 +43,7 @@ import TaskCreateModal from '../components/TaskCreateModal';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
 import ChatSidebar from '../components/ChatSidebar';
+import Pagination from '../components/Pagination';
 
 ChartJS.register(
   ArcElement,
@@ -54,11 +56,13 @@ ChartJS.register(
 );
 
 const Tasks = ({ projectId = null, isEmbedded = false }) => {
+  const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all');
+  const [filterPriority, setFilterPriority] = useState(searchParams.get('priority') || 'all');
   const [filterProject, setFilterProject] = useState(projectId || 'all');
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', or 'kanban'
   const [selectedTask, setSelectedTask] = useState(null);
@@ -73,7 +77,10 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     comment: ''
   });
   const [updating, setUpdating] = useState(false);
-  const [searchParams] = useSearchParams();
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // New enterprise features
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +88,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const auth = useSelector((state) => state.auth);
   const projects = useSelector((state) => state.projects.projects);
@@ -120,6 +128,26 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             task.status !== 'completed' &&
             new Date(task.deadline) < now
           );
+        } else if (filter === 'upcoming') {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const nextWeek = new Date(today);
+          nextWeek.setDate(today.getDate() + 7);
+          nextWeek.setHours(23, 59, 59, 999); // Include the end of the 7th day
+
+          allTasks = allTasks.filter(task => {
+            if (task.status === 'completed') return false;
+            const deadline = new Date(task.deadline);
+            // Reset deadline time to 00:00:00 to compare dates properly
+            // OR keep deadline time if we want exact timing. 
+            // Matching ManagerDashboard: it uses diffDays based on Midnight.
+            // So we should compare date parts.
+            const deadlineDate = new Date(deadline);
+            deadlineDate.setHours(0, 0, 0, 0);
+
+            return deadlineDate >= today && deadlineDate <= nextWeek;
+          });
         }
 
         // Apply client-side filters
@@ -345,6 +373,50 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     }
   }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
 
+  // Reset logic inside filter effect
+  useEffect(() => {
+    const filterTasks = () => {
+      let result = [...tasks];
+
+      // Filter by status
+      if (filterStatus && filterStatus !== 'all') {
+        result = result.filter(task => task.status === filterStatus);
+      }
+
+      // Filter by priority
+      if (filterPriority && filterPriority !== 'all') {
+        result = result.filter(task => task.priority === filterPriority);
+      }
+
+      // Filter by project
+      if (filterProject && filterProject !== 'all') {
+        result = result.filter(task => task.project?._id === filterProject);
+      }
+
+      // Filter by search query
+      if (searchQuery) {
+        result = result.filter(task =>
+          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.assignedTo?.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      // Filter by date range
+      if (dateRange.start && dateRange.end) {
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        result = result.filter(task => {
+          const taskDeadline = new Date(task.deadline);
+          return taskDeadline >= startDate && taskDeadline <= endDate;
+        });
+      }
+      setFilteredTasks(result);
+      setCurrentPage(1); // Reset to first page on filter change
+    };
+    filterTasks();
+  }, [tasks, filterStatus, filterPriority, filterProject, searchQuery, dateRange.start, dateRange.end, selectedTasks, searchParams]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -493,13 +565,15 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                       <EyeIcon className="w-4 h-4" />
                       View Details
                     </button>
-                    <button
-                      onClick={() => { handleEditTask(task); setMenuOpen(false); }}
-                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                      Edit Task
-                    </button>
+                    {auth.user?.role !== 'staff' && (
+                      <button
+                        onClick={() => { handleEditTask(task); setMenuOpen(false); }}
+                        className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                        Edit Task
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -657,14 +731,14 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       {/* Header */}
       {/* Header - Only show if not embedded */}
       {!isEmbedded && (
-        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-4 md:p-6 mb-6 text-white">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Tasks Management</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Tasks Management</h1>
               <p className="text-white/80 text-sm">Manage and track all project tasks with enterprise-level tools</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               {/* View Mode Toggle */}
               <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
                 <button
@@ -673,7 +747,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     }`}
                 >
                   <Squares2X2Icon className="w-4 h-4" />
-                  Cards
+                  <span className="hidden sm:inline">Cards</span>
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
@@ -681,7 +755,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     }`}
                 >
                   <TableCellsIcon className="w-4 h-4" />
-                  Table
+                  <span className="hidden sm:inline">Table</span>
                 </button>
                 <button
                   onClick={() => setViewMode('kanban')}
@@ -689,17 +763,18 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     }`}
                 >
                   <ViewColumnsIcon className="w-4 h-4" />
-                  Kanban
+                  <span className="hidden sm:inline">Kanban</span>
                 </button>
               </div>
 
               {auth.user?.role === 'admin' && (
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium ml-auto lg:ml-0"
                 >
                   <PlusIcon className="w-5 h-5" />
-                  Add Task
+                  <span className="hidden sm:inline">Add Task</span>
+                  <span className="sm:hidden">Add</span>
                 </button>
               )}
             </div>
@@ -710,7 +785,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       {/* Embedded Actions Header */}
       {isEmbedded && (
         <div className="flex justify-end mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full justify-end">
             {/* View Mode Toggle */}
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
@@ -719,7 +794,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   }`}
               >
                 <Squares2X2Icon className="w-4 h-4" />
-                Cards
+                <span className="hidden sm:inline">Cards</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
@@ -727,7 +802,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   }`}
               >
                 <TableCellsIcon className="w-4 h-4" />
-                Table
+                <span className="hidden sm:inline">Table</span>
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
@@ -735,7 +810,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   }`}
               >
                 <ViewColumnsIcon className="w-4 h-4" />
-                Kanban
+                <span className="hidden sm:inline">Kanban</span>
               </button>
             </div>
 
@@ -745,7 +820,8 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                 className="flex items-center gap-2 px-4 py-2 bg-[#700606] text-white rounded-lg hover:bg-[#800808] transition-colors font-medium"
               >
                 <PlusIcon className="w-5 h-5" />
-                Add Task
+                <span className="hidden sm:inline">Add Task</span>
+                <span className="sm:hidden">Add</span>
               </button>
             )}
           </div>
@@ -937,17 +1013,59 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <select
-                onChange={(e) => e.target.value && handleBulkStatusUpdate(e.target.value)}
-                className="px-3 py-1 border border-blue-300 rounded-md text-sm bg-white"
-                defaultValue=""
-              >
-                <option value="">Change Status</option>
-                <option value="todo">To Do</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="delayed">Delayed</option>
-              </select>
+              <div className="relative">
+                <button
+                  onClick={() => setShowStatusMenu(!showStatusMenu)}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Change Status
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${showStatusMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <AnimatePresence>
+                  {showStatusMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden"
+                    >
+                      <div className="py-1">
+                        <button
+                          onClick={() => { handleBulkStatusUpdate('todo'); setShowStatusMenu(false); }}
+                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                          To Do
+                        </button>
+                        <button
+                          onClick={() => { handleBulkStatusUpdate('in-progress'); setShowStatusMenu(false); }}
+                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          In Progress
+                        </button>
+                        <button
+                          onClick={() => { handleBulkStatusUpdate('completed'); setShowStatusMenu(false); }}
+                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 transition-colors"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                          Completed
+                        </button>
+                        <button
+                          onClick={() => { handleBulkStatusUpdate('delayed'); setShowStatusMenu(false); }}
+                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-red-50 transition-colors"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                          Delayed
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               {auth.user?.role === 'admin' && (
                 <button
                   onClick={handleBulkDelete}
@@ -1069,6 +1187,12 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                             />
                           </div>
                         </div>
+                        <button
+                          onClick={() => fetchTaskDetails(task._id)}
+                          className="mt-3 w-full text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none text-center"
+                        >
+                          View Details
+                        </button>
                       </motion.div>
                     ))}
                   </div>
@@ -1191,154 +1315,177 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         )
       )}
 
+      <React.Fragment />
+
+      {/* Pagination Component */}
+      {
+        !loading && !error && filteredTasks.length > 0 && viewMode !== 'kanban' && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredTasks.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newLimit) => {
+              setItemsPerPage(newLimit);
+              setCurrentPage(1);
+            }}
+            className="mt-6"
+          />
+        )
+      }
+
       {/* Summary section */}
-      {!loading && !error && tasks.length > 0 && (
-        <div className="mt-8 space-y-6">
-          {/* Stats Cards - Mobile First */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tasks Overview</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <ClockIcon className="w-6 h-6 text-slate-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-600">To Do</p>
-                  <p className="text-lg font-bold text-slate-900">
-                    {tasks.filter(t => t.status === 'todo').length}
-                  </p>
+      {
+        !loading && !error && tasks.length > 0 && (
+          <div className="mt-8 space-y-6">
+            {/* Stats Cards - Mobile First */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tasks Overview</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <ClockIcon className="w-6 h-6 text-slate-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-600">To Do</p>
+                    <p className="text-lg font-bold text-slate-900">
+                      {tasks.filter(t => t.status === 'todo').length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                <ClockSolid className="w-6 h-6 text-amber-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-600">In Progress</p>
-                  <p className="text-lg font-bold text-amber-900">
-                    {tasks.filter(t => t.status === 'in-progress').length}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
+                  <ClockSolid className="w-6 h-6 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-600">In Progress</p>
+                    <p className="text-lg font-bold text-amber-900">
+                      {tasks.filter(t => t.status === 'in-progress').length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
-                <CheckCircleSolid className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-600">Completed</p>
-                  <p className="text-lg font-bold text-emerald-900">
-                    {tasks.filter(t => t.status === 'completed').length}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
+                  <CheckCircleSolid className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-600">Completed</p>
+                    <p className="text-lg font-bold text-emerald-900">
+                      {tasks.filter(t => t.status === 'completed').length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
-                <ExclamationTriangleSolid className="w-6 h-6 text-red-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-gray-600">Overdue</p>
-                  <p className="text-lg font-bold text-red-900">
-                    {tasks.filter(t => t.isOverdue).length}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                  <ExclamationTriangleSolid className="w-6 h-6 text-red-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-600">Overdue</p>
+                    <p className="text-lg font-bold text-red-900">
+                      {tasks.filter(t => t.isOverdue).length}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Status Distribution */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
-              <div className="h-64 sm:h-80">
-                <Doughnut
-                  data={{
-                    labels: ['To Do', 'In Progress', 'Completed', 'Delayed'],
-                    datasets: [{
-                      data: [
-                        tasks.filter(t => t.status === 'todo').length,
-                        tasks.filter(t => t.status === 'in-progress').length,
-                        tasks.filter(t => t.status === 'completed').length,
-                        tasks.filter(t => t.status === 'delayed').length,
-                      ],
-                      backgroundColor: [
-                        '#700606',
-                        '#f59e0b',
-                        '#10b981',
-                        '#ef4444',
-                      ],
-                      borderWidth: 0,
-                    }],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: window.innerWidth < 640 ? 'bottom' : 'right',
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Priority Distribution */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Priority Breakdown</h3>
-              <div className="h-64 sm:h-80">
-                <Bar
-                  data={{
-                    labels: ['Low', 'Medium', 'High'],
-                    datasets: [{
-                      label: 'Tasks',
-                      data: [
-                        tasks.filter(t => t.priority === 'low').length,
-                        tasks.filter(t => t.priority === 'medium').length,
-                        tasks.filter(t => t.priority === 'high').length,
-                      ],
-                      backgroundColor: [
-                        '#700606',
-                        '#f59e0b',
-                        '#ef4444',
-                      ],
-                      borderRadius: 4,
-                    }],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: {
-                          stepSize: 1,
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Status Distribution */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
+                <div className="h-64 sm:h-80">
+                  <Doughnut
+                    data={{
+                      labels: ['To Do', 'In Progress', 'Completed', 'Delayed'],
+                      datasets: [{
+                        data: [
+                          tasks.filter(t => t.status === 'todo').length,
+                          tasks.filter(t => t.status === 'in-progress').length,
+                          tasks.filter(t => t.status === 'completed').length,
+                          tasks.filter(t => t.status === 'delayed').length,
+                        ],
+                        backgroundColor: [
+                          '#700606',
+                          '#f59e0b',
+                          '#10b981',
+                          '#ef4444',
+                        ],
+                        borderWidth: 0,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          position: window.innerWidth < 640 ? 'bottom' : 'right',
                         },
                       },
-                    },
-                  }}
-                />
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Priority Distribution */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Priority Breakdown</h3>
+                <div className="h-64 sm:h-80">
+                  <Bar
+                    data={{
+                      labels: ['Low', 'Medium', 'High'],
+                      datasets: [{
+                        label: 'Tasks',
+                        data: [
+                          tasks.filter(t => t.priority === 'low').length,
+                          tasks.filter(t => t.priority === 'medium').length,
+                          tasks.filter(t => t.priority === 'high').length,
+                        ],
+                        backgroundColor: [
+                          '#700606',
+                          '#f59e0b',
+                          '#ef4444',
+                        ],
+                        borderRadius: 4,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            stepSize: 1,
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Task details modal */}
       {/* Task details modal */}
-      {showModal && selectedTask && (
-        <TaskDetailsModal
-          taskId={selectedTask._id}
-          onClose={() => setShowModal(false)}
-          onEditTask={auth.user?.role?.toLowerCase() !== 'staff' ? () => {
-            setShowModal(false);
-            handleEditTask(selectedTask);
-          } : undefined}
-          currentUserRole={auth.user?.role?.toLowerCase() === 'staff' ? 'staff' : auth.user?.role}
-          currentUserId={auth.user?._id || auth.user?.id}
-          onTaskUpdated={(updatedTask) => {
-            setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
-            setSelectedTask(updatedTask);
-          }}
-        />
-      )}
+      {
+        showModal && selectedTask && (
+          <TaskDetailsModal
+            taskId={selectedTask._id}
+            onClose={() => setShowModal(false)}
+            onEditTask={auth.user?.role?.toLowerCase() !== 'staff' ? () => {
+              setShowModal(false);
+              handleEditTask(selectedTask);
+            } : undefined}
+            currentUserRole={auth.user?.role?.toLowerCase() === 'staff' ? 'staff' : auth.user?.role}
+            currentUserId={auth.user?._id || auth.user?.id}
+            onTaskUpdated={(updatedTask) => {
+              setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+              setSelectedTask(updatedTask);
+            }}
+          />
+        )
+      }
 
       {/* Task create modal */}
       <TaskCreateModal
@@ -1364,7 +1511,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         entityTitle={selectedTask?.title || 'Task'}
         entityData={selectedTask}
       />
-    </div>
+    </div >
   );
 };
 

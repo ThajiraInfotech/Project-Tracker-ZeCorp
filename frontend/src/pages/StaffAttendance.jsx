@@ -9,7 +9,9 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   CalendarDaysIcon,
-  UserIcon
+  UserIcon,
+  CurrencyDollarIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -58,10 +60,17 @@ const StaffAttendance = () => {
         const records = response.data.attendance;
         setAttendanceHistory(records);
 
+        // Find active session
+        const activeSession = records
+          .filter(r => !r.checkOut)
+          .sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn))[0];
+
         // Find today's record
         const today = new Date().toISOString().split('T')[0];
         const todayRec = records.find(r => r.date === today);
-        setTodayRecord(todayRec);
+
+        // Prioritize active session
+        setTodayRecord(activeSession || todayRec);
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -110,23 +119,23 @@ const StaffAttendance = () => {
   }, [auth.isAuthenticated]);
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString();
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const getStatusText = () => {
     if (!todayRecord) return "Not Checked In";
     if (!todayRecord.checkOut) return `Checked In at ${formatTime(todayRecord.checkIn)}`;
-    return `Checked Out at ${formatTime(todayRecord.checkOut)}`;
+    return "Shift Completed";
   };
 
   // Export functionality
   const handleExport = () => {
     const csvContent = [
-      ['Date', 'Check In', 'Check Out', 'Total Hours', 'Regular Hours', 'Overtime Hours', 'Status'],
+      ['Date', 'Check In', 'Check Out', 'Total Hours', 'Regular Hours', 'Overtime Hours', 'Regular Pay', 'Overtime Pay', 'Total Pay', 'Status'],
       ...attendanceHistory.map(record => [
         formatDate(record.date),
         record.checkIn ? formatTime(record.checkIn) : '-',
@@ -134,6 +143,9 @@ const StaffAttendance = () => {
         record.totalHours || '-',
         record.regularHours || '-',
         record.overtimeHours || 0,
+        record.dailyRegularPay ? `AED ${record.dailyRegularPay}` : 'AED 0',
+        record.dailyOvertimePay ? `AED ${record.dailyOvertimePay}` : 'AED 0',
+        record.dailyTotalPay ? `AED ${record.dailyTotalPay}` : 'AED 0',
         record.status
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -166,382 +178,370 @@ const StaffAttendance = () => {
   }, [todayRecord]);
 
   return (
-    <div className="container mx-auto px-4 py-4 md:px-6 md:py-8 bg-gradient-to-br from-slate-50 to-[#700606]/5">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">My Attendance</h1>
-            <p className="text-white/80 text-sm">Track your daily attendance and work hours</p>
-            <p className="text-white/60 text-xs mt-1">Automated check-in/out system</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-sans">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-8 text-white shadow-lg">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-1">
+                My Attendance
+              </h1>
+              <p className="text-white/80 mt-1 flex items-center gap-2">
+                <CalendarDaysIcon className="w-4 h-4" />
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="relative">
+                <button
+                  onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all shadow-sm font-medium"
+                >
+                  <span className="text-sm font-mono">⌨️</span>
+                  <span className="hidden sm:inline">Help</span>
+                </button>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: showKeyboardHelp ? 1 : 0, scale: showKeyboardHelp ? 1 : 0.95 }}
+                  className={`absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4 ${showKeyboardHelp ? 'block' : 'hidden'}`}
+                >
+                  <h4 className="font-semibold text-gray-900 mb-3">Keyboard Shortcuts</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Check-in/out</span>
+                      <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+Enter</kbd>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#700606] rounded-xl hover:bg-white/90 transition-all shadow-sm font-medium"
+              >
+                <ArrowDownTrayIcon className="w-5 h-5" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Action & Status Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Main Action Card */}
+          <div className="lg:col-span-2 bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100 relative">
+            <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-[#700606]/5 to-transparent rounded-bl-full -mr-16 -mt-16 pointer-events-none" />
+
+            <div className="p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#700606]/10 flex items-center justify-center text-[#700606]">
+                  <ClockIcon className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Time Clock</h2>
+                  <p className="text-gray-500 text-sm">Manage your daily attendance</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-center py-8">
+                {/* Timer Display */}
+                <div className="text-center sm:text-left mr-0 sm:mr-8 mb-6 sm:mb-0">
+                  <p className="text-sm text-gray-500 font-medium tracking-wide uppercase mb-1">Current Time</p>
+                  <p className="text-5xl font-extrabold text-[#700606] font-mono tracking-tight">
+                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <span className="text-xl text-gray-400 font-normal ml-1">
+                      {new Date().toLocaleTimeString([], { second: '2-digit' })}
+                    </span>
+                  </p>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-4">
+                  {!todayRecord?.checkIn ? (
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={loading || actionLoading}
+                      className="group relative px-8 py-4 bg-[#700606] text-white rounded-2xl font-bold shadow-lg shadow-[#700606]/30 hover:shadow-xl hover:shadow-[#700606]/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                      <span className="relative flex items-center gap-2">
+                        <CheckCircleIcon className="w-6 h-6" />
+                        Check In Now
+                      </span>
+                    </button>
+                  ) : !todayRecord?.checkOut ? (
+                    <button
+                      onClick={handleCheckOut}
+                      disabled={loading || actionLoading}
+                      className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-900/30 hover:shadow-xl hover:shadow-gray-900/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                      <span className="relative flex items-center gap-2">
+                        <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
+                        Check Out
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="px-8 py-4 bg-green-50 text-green-700 rounded-2xl font-bold border border-green-200 flex items-center gap-2">
+                      <CheckCircleSolid className="w-6 h-6" />
+                      Shift Completed
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Today's Status Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
+                  <p className={`text-lg font-bold mt-1 ${todayRecord?.status === 'Present' ? 'text-green-600' :
+                    todayRecord?.status === 'Half-day' ? 'text-yellow-600' :
+                      todayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
+                    }`}>
+                    {todayRecord?.status || 'Pending'}
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Total Hours</p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{todayRecord?.totalHours || '0'}h</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Overtime</p>
+                  <p className={`text-lg font-bold mt-1 ${todayRecord?.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                    {todayRecord?.overtimeHours || '0'}h
+                  </p>
+                </div>
+                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <p className="text-xs text-indigo-600 font-semibold uppercase">Today's Pay</p>
+                  <p className="text-lg font-bold text-indigo-900 mt-1">AED {todayRecord?.dailyTotalPay || 0}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              Export History
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-colors"
-              >
-                <span className="text-sm font-mono">⌨️</span>
-                <span className="hidden sm:inline ml-2">Help</span>
-              </button>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: showKeyboardHelp ? 1 : 0, scale: showKeyboardHelp ? 1 : 0.95 }}
-                className={`absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4 ${showKeyboardHelp ? 'block' : 'hidden'}`}
-              >
-                <h4 className="font-semibold text-gray-900 mb-3">Keyboard Shortcuts</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Check-in/out</span>
-                    <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+Enter</kbd>
+          {/* Monthly Quick Stats (Side Panel) */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-gradient-to-br from-[#700606] to-[#500404] rounded-3xl p-6 text-white shadow-xl shadow-[#700606]/20 relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-black/20 rounded-full blur-2xl" />
+
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-6 opacity-90">
+                <BanknotesIcon className="w-5 h-5" /> Earnings Forecast
+              </h3>
+
+              <div className="space-y-6 relative z-10">
+                <div>
+                  <p className="text-white/60 text-sm mb-1">This Month</p>
+                  <p className="text-4xl font-bold tracking-tight">
+                    AED {attendanceHistory
+                      .filter(r => {
+                        const today = new Date();
+                        const recordDate = new Date(r.date);
+                        return recordDate.getMonth() === today.getMonth() &&
+                          recordDate.getFullYear() === today.getFullYear();
+                      })
+                      .reduce((sum, r) => sum + (r.dailyTotalPay || 0), 0)
+                      .toFixed(2)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                  <div>
+                    <p className="text-white/60 text-xs mb-1">Overtime Pay</p>
+                    <p className="text-lg font-semibold text-green-300">
+                      +AED {attendanceHistory
+                        .filter(r => {
+                          const today = new Date();
+                          const recordDate = new Date(r.date);
+                          return recordDate.getMonth() === today.getMonth() &&
+                            recordDate.getFullYear() === today.getFullYear();
+                        })
+                        .reduce((sum, r) => sum + (r.dailyOvertimePay || 0), 0)
+                        .toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-xs mb-1">OT Hours</p>
+                    <p className="text-lg font-semibold text-yellow-300">
+                      {attendanceHistory
+                        .filter(r => {
+                          const today = new Date();
+                          const recordDate = new Date(r.date);
+                          return recordDate.getMonth() === today.getMonth() &&
+                            recordDate.getFullYear() === today.getFullYear();
+                        })
+                        .reduce((sum, r) => sum + (r.overtimeHours || 0), 0)}h
+                    </p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Quick Stats</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                      <CheckCircleSolid className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Present</span>
+                  </div>
+                  <span className="font-bold text-gray-900">
+                    {attendanceHistory.filter(r => r.status === 'Present').length} Days
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                      <ExclamationTriangleIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Absent</span>
+                  </div>
+                  <span className="font-bold text-gray-900">
+                    {attendanceHistory.filter(r => r.status === 'Absent').length} Days
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Today's Status Card */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <ClockIcon className="w-6 h-6 text-[#700606]" />
-            Today's Status
-          </h2>
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${!todayRecord ? 'bg-gray-400' : todayRecord.checkOut ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-            <span className="text-sm text-gray-600">
-              {!todayRecord ? 'Not Checked In' : todayRecord.checkOut ? 'Completed' : 'Active'}
-            </span>
-          </div>
-        </div>
+        {/* History Table */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h3 className="text-xl font-bold text-gray-900">Attendance History</h3>
 
-        {todayRecord ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center p-4 bg-green-50 rounded-lg border border-green-200"
-            >
-              <CheckCircleSolid className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 font-medium">Check In</p>
-              <p className="text-xl font-bold text-green-900">{formatTime(todayRecord.checkIn)}</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={`text-center p-4 rounded-lg border ${todayRecord.checkOut
-                  ? 'bg-red-50 border-red-200'
-                  : 'bg-gray-50 border-gray-200'
-                }`}
-            >
-              {todayRecord.checkOut ? (
-                <CheckCircleSolid className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              ) : (
-                <ClockIcon className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-              )}
-              <p className="text-sm text-gray-600 font-medium">Check Out</p>
-              <p className={`text-xl font-bold ${todayRecord.checkOut ? 'text-red-900' : 'text-gray-500'}`}>
-                {todayRecord.checkOut ? formatTime(todayRecord.checkOut) : 'Not checked out'}
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200"
-            >
-              <UserIcon className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600 font-medium">Status</p>
-              <p className="text-lg font-bold text-blue-900">{getStatusText()}</p>
-            </motion.div>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300"
-          >
-            <ClockIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-lg text-gray-600 mb-2">Not Checked In Today</p>
-            <p className="text-sm text-gray-500">Use the check-in button below to start your workday</p>
-          </motion.div>
-        )}
-
-        {/* Today's Hours & OT */}
-        {todayRecord && todayRecord.checkOut && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg"
-          >
-            <div className="text-center">
-              <p className="text-sm text-gray-600 font-medium">Total Hours</p>
-              <p className="text-2xl font-bold text-blue-900">{todayRecord.totalHours}h</p>
+            {/* Filter Toggle */}
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button className="px-4 py-2 bg-white rounded-lg shadow-sm text-sm font-medium text-gray-900 transition-all">All History</button>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 font-medium">Regular Hours</p>
-              <p className="text-2xl font-bold text-purple-900">{todayRecord.regularHours}h</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 font-medium">Overtime Hours</p>
-              <p className={`text-2xl font-bold ${todayRecord.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                {todayRecord.overtimeHours}h
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4 w-full">
-          {todayRecord && todayRecord.checkOut ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center p-4 bg-green-50 rounded-lg border border-green-200"
-            >
-              <CheckCircleSolid className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="text-green-800 font-medium">Attendance completed for today</p>
-              <p className="text-sm text-green-600 mt-1">Great work! 🎉</p>
-            </motion.div>
-          ) : (
-            <>
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={handleCheckIn}
-                disabled={actionLoading || todayRecord}
-                className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-[#700606] to-[#a04040] text-white rounded-lg hover:from-[#a04040] hover:to-[#c04040] disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                {actionLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                ) : (
-                  <CheckCircleIcon className="w-5 h-5" />
-                )}
-                {actionLoading ? 'Processing...' : 'Check In'}
-              </motion.button>
-              <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                onClick={handleCheckOut}
-                disabled={actionLoading || !todayRecord || todayRecord.checkOut}
-                className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                {actionLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                ) : (
-                  <ExclamationTriangleIcon className="w-5 h-5" />
-                )}
-                {actionLoading ? 'Processing...' : 'Check Out'}
-              </motion.button>
-            </>
-          )}
-        </div>
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-800 text-center">
-            <span className="font-medium">💡 Tip:</span> Attendance is automatically recorded and cannot be edited.
-            Use <kbd className="px-1 py-0.5 bg-white rounded text-xs">Ctrl+Enter</kbd> for quick check-in/out.
-          </p>
-        </div>
-      </div>
-
-      {/* Attendance History */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <CalendarDaysIcon className="w-5 h-5 text-[#700606]" />
-            Attendance History
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">Your complete attendance record</p>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#700606]"></div>
           </div>
-        ) : attendanceHistory.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <CalendarDaysIcon className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Records</h3>
-            <p className="text-gray-500">Your attendance history will appear here once you start checking in.</p>
-          </div>
-        ) : (
-          <div className="overflow-hidden">
-            {/* Desktop View (Table) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Check In
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Check Out
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Hours
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Overtime
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {attendanceHistory.map((record, index) => (
-                    <motion.tr
-                      key={record._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatDate(record.date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                        {record.checkIn ? formatTime(record.checkIn) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                        {record.checkOut ? formatTime(record.checkOut) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {record.totalHours ? `${record.totalHours}h` : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className={`font-medium ${record.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                          {record.overtimeHours ? `${record.overtimeHours}h` : '0h'}
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hours</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Daily Pay</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {attendanceHistory.map((record, index) => (
+                  <motion.tr
+                    key={record._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-gray-50/80 transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-[#700606]/10 group-hover:text-[#700606] transition-colors">
+                          <CalendarDaysIcon className="w-5 h-5" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatDate(record.date)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-[#700606]/10 text-[#700606] border border-[#700606]/20' :
-                            record.status === 'Half-day' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                              record.status === 'Absent' ? 'bg-red-100 text-red-700 border border-red-200' :
-                                'bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}>
-                          {record.status === 'Present' ? <CheckCircleIcon className="w-3 h-3" /> :
-                            record.status === 'Half-day' ? <ClockIcon className="w-3 h-3" /> :
-                              record.status === 'Absent' ? <ExclamationTriangleIcon className="w-3 h-3" /> :
-                                <ClockIcon className="w-3 h-3" />}
-                          {record.status}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
+                        <p className="text-xs text-gray-500">{record.checkOut ? formatTime(record.checkOut) : 'Active'}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {record.totalHours || 0} hrs
+                      </span>
+                      {record.overtimeHours > 0 && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          +{record.overtimeHours} OT
                         </span>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile View (Cards) */}
-            <div className="md:hidden space-y-4 p-4">
-              {attendanceHistory.map((record, index) => (
-                <motion.div
-                  key={record._id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{formatDate(record.date)}</p>
-                      <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-[#700606]/10 text-[#700606] border border-[#700606]/20' :
-                          record.status === 'Half-day' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                            record.status === 'Absent' ? 'bg-red-100 text-red-700 border border-red-200' :
-                              'bg-gray-100 text-gray-700 border border-gray-200'
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                        record.status === 'Half-day' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
                         }`}>
                         {record.status}
                       </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Total Hours</p>
-                      <p className="text-sm font-bold text-gray-900">{record.totalHours ? `${record.totalHours}h` : '-'}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-100">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Check In</p>
-                      <p className="text-sm font-mono text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Check Out</p>
-                      <p className="text-sm font-mono text-gray-900">{record.checkOut ? formatTime(record.checkOut) : '-'}</p>
-                    </div>
-                  </div>
-
-                  {record.overtimeHours > 0 && (
-                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                      <p className="text-xs text-gray-500">Overtime</p>
-                      <span className="text-sm font-medium text-green-600">+{record.overtimeHours}h</span>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900">AED {record.dailyTotalPay || 0}</span>
+                        {record.dailyOvertimePay > 0 && (
+                          <span className="text-xs text-green-600">+AED {record.dailyOvertimePay} OT</span>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
 
-        {/* Overtime Summary Chart */}
+        {/* Monthly Summary Chart Section */}
         {!loading && attendanceHistory.length > 0 && (
-          <div className="p-6 bg-gray-50 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Overtime Summary</h3>
-            <div className="h-64 md:h-80">
-              <Bar
-                data={{
-                  labels: ['This Month'],
-                  datasets: [{
-                    label: 'Total Overtime Hours',
-                    data: [attendanceHistory.reduce((sum, r) => sum + (r.overtimeHours || 0), 0)],
-                    backgroundColor: ['#700606'],
-                    borderRadius: 4,
-                  }],
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      display: false,
-                    },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        stepSize: 1,
-                      },
-                    },
-                  },
-                }}
-              />
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Monthly Overtime Trend</h3>
+              <div className="h-64">
+                <Bar
+                  data={{
+                    labels: ['This Month'],
+                    datasets: [{
+                      label: 'Total Overtime Hours',
+                      data: [attendanceHistory.reduce((sum, r) => sum + (r.overtimeHours || 0), 0)],
+                      backgroundColor: ['#700606'],
+                      borderRadius: 4,
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-3xl text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+              <h3 className="text-xl font-bold mb-4 relative z-10">Attendance Guidelines</h3>
+              <ul className="space-y-4 text-gray-300 relative z-10">
+                <li className="flex items-start gap-3">
+                  <CheckCircleIcon className="w-6 h-6 text-green-400 shrink-0" />
+                  <span>Ensure you check-in immediately upon arrival to accurately track your hours.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <ClockIcon className="w-6 h-6 text-yellow-400 shrink-0" />
+                  <span>Overtime is calculated automatically for any work beyond 10 hours/day.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-400 shrink-0" />
+                  <span>Missed check-outs may result in system flagging. Contact manager for manual correction.</span>
+                </li>
+              </ul>
             </div>
           </div>
         )}
 
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <p className="text-sm text-gray-500 text-center">
-            All attendance records are system-generated and cannot be modified.
+        <div className="mt-12 text-center">
+          <p className="text-sm text-gray-400">
+            &copy; {new Date().getFullYear()} Zeecorp Attendance System • Enterprise Edition
           </p>
         </div>
+
       </div>
     </div>
   );

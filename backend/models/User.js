@@ -68,6 +68,10 @@ const userSchema = new mongoose.Schema({
   },
   lockUntil: {
     type: Date
+  },
+  salaryPerHour: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

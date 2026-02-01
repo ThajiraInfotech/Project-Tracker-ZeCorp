@@ -146,7 +146,7 @@ const AdminDashboard = () => {
     labels: ['Total Revenue', 'Completed Revenue', 'Pending Revenue'],
     datasets: [
       {
-        label: 'Revenue (₹)',
+        label: 'Revenue (AED)',
         data: [
           adminDashboard.revenue.totalRevenue,
           adminDashboard.revenue.completedProjectsRevenue,
@@ -179,7 +179,7 @@ const AdminDashboard = () => {
   const projectInsight = `${adminDashboard.projects.totalProjectsDelayed} project${adminDashboard.projects.totalProjectsDelayed !== 1 ? 's' : ''} ${adminDashboard.projects.totalProjectsDelayed === 1 ? 'is' : 'are'} at risk due to delayed tasks.`;
   const taskInsight = `${adminDashboard.tasks.totalTasksOverdue} task${adminDashboard.tasks.totalTasksOverdue !== 1 ? 's' : ''} overdue, ${adminDashboard.tasks.tasksDueToday} due today.`;
   const productivityInsight = `Current productivity at ${adminDashboard.productivity.productivityPercentage}%, with ${adminDashboard.productivity.totalOvertimeHours} overtime hours logged.`;
-  const revenueInsight = `Total revenue of $${adminDashboard.revenue.totalRevenue.toLocaleString()}, with $${adminDashboard.revenue.pendingRevenue.toLocaleString()} still pending.`;
+  const revenueInsight = `Total revenue of AED ${adminDashboard.revenue.totalRevenue.toLocaleString()}, with AED ${adminDashboard.revenue.pendingRevenue.toLocaleString()} still pending.`;
 
   // Top insights data
   const projectInsights = adminDashboard.delayedProjects.slice(0, 3).map(p => ({
@@ -220,19 +220,19 @@ const AdminDashboard = () => {
   const revenueInsights = [
     {
       name: 'Total Revenue',
-      value: `₹${adminDashboard.revenue.totalRevenue.toLocaleString()}`,
+      value: `AED ${adminDashboard.revenue.totalRevenue.toLocaleString()}`,
       link: '/projects',
       type: 'total'
     },
     {
       name: 'Completed Revenue',
-      value: `₹${adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}`,
+      value: `AED ${adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}`,
       link: '/projects?status=completed',
       type: 'completed'
     },
     {
       name: 'Pending Revenue',
-      value: `₹${adminDashboard.revenue.pendingRevenue.toLocaleString()}`,
+      value: `AED ${adminDashboard.revenue.pendingRevenue.toLocaleString()}`,
       link: '/projects?filter=pending',
       type: 'pending'
     }
@@ -575,21 +575,21 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-3 gap-6">
           <div className="text-center bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Total Revenue</p>
-            <p className="text-2xl font-bold text-green-600">₹{adminDashboard.revenue.totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600">AED {adminDashboard.revenue.totalRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-green-200 rounded-full h-2">
               <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
             </div>
           </div>
           <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Completed Revenue</p>
-            <p className="text-2xl font-bold text-blue-600">₹{adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-600">AED {adminDashboard.revenue.completedProjectsRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
               <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.completedProjectsRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%` }}></div>
             </div>
           </div>
           <div className="text-center bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl border border-yellow-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Pending Revenue</p>
-            <p className="text-2xl font-bold text-yellow-600">₹{adminDashboard.revenue.pendingRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-yellow-600">AED {adminDashboard.revenue.pendingRevenue.toLocaleString()}</p>
             <div className="mt-2 w-full bg-yellow-200 rounded-full h-2">
               <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${adminDashboard.revenue.totalRevenue > 0 ? (adminDashboard.revenue.pendingRevenue / adminDashboard.revenue.totalRevenue * 100) : 0}%` }}></div>
             </div>

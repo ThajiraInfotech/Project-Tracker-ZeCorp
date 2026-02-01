@@ -9,8 +9,8 @@ const projectSchema = new mongoose.Schema({
   },
   projectType: {
     type: String,
-    enum: ['turnkey-project', 'commercial-kitchen', 'mep-hvac', 'civil-interior', 'maintenance-amc', 'equipment-supply', 'other'],
-    required: [true, 'Please specify project type']
+    enum: ['Retail', 'Spare Parts', 'Service', 'Project', 'Design', 'Project Management'],
+    required: [true, 'Please specify Scope of Work']
   },
   description: {
     type: String,

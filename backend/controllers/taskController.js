@@ -25,6 +25,10 @@ const syncProgressWithStatus = (task) => {
     task.progress = 100;
   } else if (task.status === 'todo') {
     task.progress = 0;
+  } else if (task.status === 'in-progress') {
+    task.progress = 10;
+  } else if (task.status === 'review') {
+    task.progress = 80;
   }
 };
 

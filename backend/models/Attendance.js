@@ -38,6 +38,18 @@ const attendanceSchema = new mongoose.Schema({
     enum: ['Present', 'Half-day', 'Absent'],
     default: 'Present'
   },
+  dailyRegularPay: {
+    type: Number,
+    default: 0
+  },
+  dailyOvertimePay: {
+    type: Number,
+    default: 0
+  },
+  dailyTotalPay: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

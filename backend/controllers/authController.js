@@ -42,7 +42,7 @@ const generateToken = (userId) => {
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { username, email, password, fullName, role, phone, department } = req.body;
+    const { username, email, password, fullName, role, phone, department, salaryPerHour } = req.body;
 
     // Validate password
     const passwordError = await validatePassword(password);
@@ -64,7 +64,9 @@ exports.register = async (req, res) => {
       fullName,
       role: role || 'staff',
       phone,
-      department
+      phone,
+      department,
+      salaryPerHour: salaryPerHour || 0
     });
 
     await user.save();
@@ -88,7 +90,10 @@ exports.register = async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
+        role: user.role,
+        phone: user.phone,
+        department: user.department,
+        salaryPerHour: user.salaryPerHour
       }
     });
   } catch (error) {
@@ -179,7 +184,11 @@ exports.login = async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        phone: user.phone,
+        department: user.department,
+        salaryPerHour: user.salaryPerHour,
+        isActive: user.isActive
       }
     });
   } catch (error) {
@@ -206,7 +215,8 @@ exports.getCurrentUser = async (req, res) => {
         profileImage: req.user.profileImage,
         phone: req.user.phone,
         department: req.user.department,
-        isActive: req.user.isActive
+        isActive: req.user.isActive,
+        salaryPerHour: req.user.salaryPerHour
       }
     });
   } catch (error) {
@@ -281,7 +291,7 @@ exports.getUserById = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['username', 'email', 'fullName', 'role', 'phone', 'department', 'isActive'];
+    const allowedUpdates = ['username', 'email', 'fullName', 'role', 'phone', 'department', 'isActive', 'salaryPerHour'];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {

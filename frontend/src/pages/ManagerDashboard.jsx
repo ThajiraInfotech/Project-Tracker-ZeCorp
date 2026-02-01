@@ -165,8 +165,13 @@ const ManagerDashboard = () => {
   // Advanced KPIs
   const teamMembers = staff.length;
   const upcomingDeadlines = tasks.filter(t => {
+    if (t.status === 'completed') return false;
     const deadline = new Date(t.deadline);
     const now = new Date();
+    // Reset time to start of day for accurate day difference
+    deadline.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+
     const diffTime = deadline - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays >= 0 && diffDays <= 7;
@@ -255,22 +260,22 @@ const ManagerDashboard = () => {
 
   // Top insights data
   const projectInsights = [
-    { name: 'Active Projects', value: inProgressProjects, link: '/projects' },
-    { name: 'Completed Projects', value: completedProjects, link: '/projects' },
-    { name: 'Planning Phase', value: projects.filter(p => p.status === 'planning').length, link: '/projects' }
+    { name: 'Active Projects', value: inProgressProjects, link: '/projects?filter=active' },
+    { name: 'Completed Projects', value: completedProjects, link: '/projects?status=completed' },
+    { name: 'Planning Phase', value: projects.filter(p => p.status === 'planning').length, link: '/projects?status=planning' }
   ].filter(item => item.value > 0).slice(0, 3);
 
   const taskInsights = [
-    { name: 'Overdue Tasks', value: overdueTasks, link: '/tasks' },
-    { name: 'Due This Week', value: upcomingDeadlines, link: '/tasks' },
-    { name: 'In Progress', value: tasks.filter(t => t.status === 'in-progress').length, link: '/tasks' },
-    { name: 'Completed', value: completedTasks, link: '/tasks' }
+    { name: 'Overdue Tasks', value: overdueTasks, link: '/tasks?filter=overdue' },
+    { name: 'Due This Week', value: upcomingDeadlines, link: '/tasks?filter=upcoming' },
+    { name: 'In Progress', value: tasks.filter(t => t.status === 'in-progress').length, link: '/tasks?status=in-progress' },
+    { name: 'Completed', value: completedTasks, link: '/tasks?status=completed' }
   ].filter(item => item.value > 0).slice(0, 3);
 
   const teamInsights = [
-    { name: 'Team Members', value: teamMembers, link: '/staff' },
-    { name: 'Completion Rate', value: `${averageCompletionRate}%`, link: '/reports' },
-    { name: 'Avg Duration', value: `${averageProjectDuration} days`, link: '/projects' }
+    { name: 'Team Members', value: teamMembers, link: '/team' },
+    { name: 'Completion Rate', value: `${averageCompletionRate}%`, link: '/team' },
+    { name: 'Avg Duration', value: `${averageProjectDuration} days`, link: '/projects?status=completed' }
   ].slice(0, 3);
 
   // Show loading if either auth is loading or dashboard data is loading
@@ -486,75 +491,7 @@ const ManagerDashboard = () => {
         </div>
       </div>
 
-      {/* Quick Actions Panel */}
-      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <div className="bg-blue-100 p-2 rounded-full mr-3">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <Link to="/projects?filter=active" className="bg-gradient-to-br from-[#700606]/20 to-[#700606]/30 p-6 rounded-xl border border-[#700606]/30 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-[#700606]/20 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-[#700606]/30 transition-colors">
-              <svg className="w-6 h-6 text-[#700606]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="text-sm text-[#700606] font-semibold">View Active Projects</div>
-            <div className="flex items-center text-[#700606] group-hover:text-[#900808]">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/tasks?filter=overdue" className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-red-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-red-200 transition-colors">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="text-sm text-red-700 font-semibold">Review Overdue Tasks</div>
-            <div className="flex items-center text-red-600 group-hover:text-red-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/tasks?filter=upcoming" className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-yellow-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-yellow-200 transition-colors">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="text-sm text-yellow-700 font-semibold">Check Deadlines</div>
-            <div className="flex items-center text-yellow-600 group-hover:text-yellow-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-          <Link to="/team" className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200/50 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer text-center group">
-            <div className="bg-purple-100 p-3 rounded-full w-fit mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div className="text-sm text-purple-700 font-semibold">Manage Team</div>
-            <div className="flex items-center text-purple-600 group-hover:text-purple-700">
-              <span className="text-sm font-medium">View</span>
-              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </div>
+
       {/* Summary Cards - Enhanced for Manager */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Project Metrics */}

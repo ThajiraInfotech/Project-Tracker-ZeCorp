@@ -247,20 +247,20 @@ const StaffDashboard = () => {
     <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-4 md:p-6">
       {/* Staff Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
           <div>
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">Staff Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-1 md:mb-2">Staff Dashboard</h1>
             <p className="text-white/80 text-sm">Task Management & Productivity Tracking</p>
           </div>
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-4 md:space-x-6 self-end md:self-auto">
             <div className="text-right">
-              <p className="text-sm text-white">Welcome, {user?.fullName}</p>
+              <p className="text-sm text-white font-medium">Welcome, {user?.fullName}</p>
               <p className="text-xs text-white/80">Staff Member</p>
             </div>
             <UserAvatar
               user={user}
               size="custom"
-              className="w-10 h-10 bg-white/20 text-white ring-2 ring-white/30"
+              className="w-10 h-10 bg-white/20 text-white ring-2 ring-white/30 shadow-sm"
             />
           </div>
         </div>

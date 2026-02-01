@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload, Loader2, Calendar, Tag, FileText, ShoppingBag } from 'lucide-react';
-import { CurrencyRupeeIcon } from '@heroicons/react/24/outline';
+import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import expenseService from '../services/expenseService';
 import { toast } from 'react-toastify';
 
@@ -80,7 +80,7 @@ const ExpenseModal = ({ isOpen, onClose, projectId, taskId, onExpenseAdded }) =>
                     <div className="px-4 py-4 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                         <h3 className="text-xl leading-6 font-bold text-gray-900 flex items-center gap-2" id="modal-title">
                             <div className="p-1.5 bg-theme-500/10 rounded-lg">
-                                <CurrencyRupeeIcon className="w-5 h-5 text-theme-600" />
+                                <CurrencyDollarIcon className="w-5 h-5 text-theme-600" />
                             </div>
                             <span>Add Expense {taskId ? 'for Task' : 'for Project'}</span>
                         </h3>
@@ -120,8 +120,8 @@ const ExpenseModal = ({ isOpen, onClose, projectId, taskId, onExpenseAdded }) =>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <CurrencyRupeeIcon className="w-4 h-4 text-gray-500" />
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold text-xs">
+                                            AED
                                         </div>
                                         <input
                                             type="number"

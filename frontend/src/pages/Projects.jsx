@@ -40,6 +40,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
 import { toast } from 'react-toastify';
+import Pagination from '../components/Pagination';
 
 ChartJS.register(
   ArcElement,
@@ -54,12 +55,9 @@ ChartJS.register(
 const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [projectTasks, setProjectTasks] = useState([]);
-  const [tasksLoading, setTasksLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [searchParams] = useSearchParams();
   const [showMenu, setShowMenu] = useState(null);
 
@@ -68,6 +66,10 @@ const Projects = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [startDateFilter, setStartDateFilter] = useState(searchParams.get('startDate') || '');
   const [endDateFilter, setEndDateFilter] = useState(searchParams.get('endDate') || '');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(9); // Default 9 for 3x3 grid
 
   // View and table states
   const [viewMode, setViewMode] = useState('card');
@@ -97,7 +99,7 @@ const Projects = () => {
     endDate: '',
     priority: '',
     budget: '',
-    currency: 'INR',
+    currency: 'AED',
     manager: ''
   });
   const [formErrors, setFormErrors] = useState({});
@@ -107,28 +109,17 @@ const Projects = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Project types
+  // Project types (Scope of Work)
   const projectTypes = [
-    { value: 'turnkey-project', label: 'Turnkey Project' },
-    { value: 'commercial-kitchen', label: 'Commercial Kitchen' },
-    { value: 'mep-hvac', label: 'MEP / HVAC' },
-    { value: 'civil-interior', label: 'Civil / Interior' },
-    { value: 'maintenance-amc', label: 'Maintenance / AMC' },
-    { value: 'equipment-supply', label: 'Equipment Supply' }
+    { value: 'Retail', label: 'Retail' },
+    { value: 'Spare Parts', label: 'Spare Parts' },
+    { value: 'Service', label: 'Service' },
+    { value: 'Project', label: 'Project' },
+    { value: 'Design', label: 'Design' },
+    { value: 'Project Management', label: 'Project Management' }
   ];
 
   // Helper functions
-  const getProgress = (status) => {
-    switch (status) {
-      case 'planning': return 25;
-      case 'in-progress': return 60;
-      case 'completed': return 100;
-      case 'on-hold': return 40;
-      case 'cancelled': return 0;
-      default: return 50;
-    }
-  };
-
   const getRiskBadge = (project) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -152,7 +143,7 @@ const Projects = () => {
         new Date(project.endDate).toLocaleDateString(),
         project.budget || 'N/A',
         project.location,
-        getProgress(project.status) + '%'
+        (project.progress || 0) + '%'
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
@@ -242,6 +233,8 @@ const Projects = () => {
         (project.endDate && new Date(project.endDate) < today && project.status !== 'completed') ||
         project.status === 'delayed'
       );
+    } else if (filter === 'active') {
+      filtered = filtered.filter(project => project.status === 'in-progress');
     } else if (filter === 'pending') {
       filtered = filtered.filter(project => project.status !== 'completed');
     } else if (statusParam) {
@@ -276,6 +269,7 @@ const Projects = () => {
     }
 
     setFilteredProjects(filtered);
+    setCurrentPage(1); // Reset to first page on filter change
   }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, searchParams]);
 
   // Apply sorting
@@ -290,7 +284,7 @@ const Projects = () => {
           case 'clientName': aVal = a.clientName.toLowerCase(); bVal = b.clientName.toLowerCase(); break;
           case 'manager': aVal = (a.manager?.fullName || 'John Doe').toLowerCase(); bVal = (b.manager?.fullName || 'John Doe').toLowerCase(); break;
           case 'status': aVal = a.status; bVal = b.status; break;
-          case 'progress': aVal = getProgress(a.status); bVal = getProgress(b.status); break;
+          case 'progress': aVal = a.progress || 0; bVal = b.progress || 0; break;
           case 'startDate': aVal = new Date(a.startDate); bVal = new Date(b.startDate); break;
           case 'endDate': aVal = new Date(a.endDate); bVal = new Date(b.endDate); break;
           case 'budget': aVal = a.budget || 0; bVal = b.budget || 0; break;
@@ -307,38 +301,7 @@ const Projects = () => {
   }, [filteredProjects, sortColumn, sortDirection]);
 
   // Fetch project details
-  const fetchProjectDetails = async (projectId) => {
-    try {
-      const response = await api.get(`/projects/${projectId}`);
 
-      if (response.data.success && response.data.project) {
-        setSelectedProject(response.data.project);
-        setShowModal(true);
-        // Fetch tasks for this project
-        fetchProjectTasks(projectId);
-      }
-    } catch (error) {
-      console.error('Error fetching project details:', error);
-      toast.error('Failed to fetch project details: ' + error.message);
-    }
-  };
-
-  // Fetch tasks for a project
-  const fetchProjectTasks = async (projectId) => {
-    try {
-      setTasksLoading(true);
-      const response = await api.get(`/tasks/project/${projectId}`);
-
-      if (response.data.success && response.data.tasks) {
-        setProjectTasks(response.data.tasks);
-      }
-    } catch (error) {
-      console.error('Error fetching project tasks:', error);
-      setProjectTasks([]);
-    } finally {
-      setTasksLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -517,7 +480,7 @@ const Projects = () => {
 
   // Project card component
   const ProjectCard = ({ project }) => {
-    const progress = getProgress(project.status);
+    const progress = project.progress || 0;
     const risk = getRiskBadge(project);
     const manager = project.manager?.fullName || 'John Doe';
 
@@ -527,7 +490,7 @@ const Projects = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{project.projectName}</h3>
-            <p className="text-sm text-gray-500 capitalize">{project.projectType?.replace('-', ' ')}</p>
+            <p className="text-sm text-gray-500 capitalize">{project.projectType}</p>
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={project.status} />
@@ -540,8 +503,8 @@ const Projects = () => {
               {/* Kebab menu dropdown */}
               <div className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 ${showMenu === project._id ? 'block' : 'hidden'}`}>
                 <div className="py-1">
-                  <button onClick={() => { fetchProjectDetails(project._id); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
-                  <button onClick={() => { toast.info('Edit Project feature coming soon'); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
+                  <button onClick={() => { navigate(`/projects/${project._id}`); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
+                  <button onClick={() => { navigate(`/projects/${project._id}?action=edit`); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
                 </div>
               </div>
             </div>
@@ -598,251 +561,31 @@ const Projects = () => {
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="bg-green-50 p-3 rounded-lg">
-            <p className="text-gray-500 text-sm font-medium">Budget</p>
-            <p className="font-bold text-green-600">₹{project.budget?.toLocaleString() || 'N/A'}</p>
+        {/* Budget Row */}
+        <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-green-100 rounded-lg text-green-600">
+              <CurrencyRupeeIcon className="w-5 h-5" />
+            </div>
+            <span className="text-gray-600 font-medium">Project Budget</span>
           </div>
-          <button
-            onClick={() => fetchProjectDetails(project._id)}
-            className="px-6 py-3 bg-gradient-to-r from-[#700606] to-[#900808] text-white rounded-lg hover:from-[#900808] hover:to-[#a03030] transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-          >
-            View Details
-          </button>
+          <p className="text-lg font-bold text-gray-900">AED {project.budget?.toLocaleString() || 'N/A'}</p>
         </div>
+
+        {/* Action Button */}
+        <button
+          onClick={() => navigate(`/projects/${project._id}`)}
+          className="w-full py-3 bg-gradient-to-r from-[#700606] to-[#900808] text-white rounded-xl hover:from-[#900808] hover:to-[#a03030] shadow-md hover:shadow-lg transition-all duration-300 font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 group/btn transform hover:-translate-y-0.5"
+        >
+          <span>View Project Details</span>
+          <svg className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </button>
       </div>
     );
   };
 
-  // Project details modal
-  const ProjectDetailsModal = () => {
-    if (!selectedProject || !showModal) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-200">
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900">{selectedProject.projectName}</h2>
-                <p className="text-gray-500 capitalize">{selectedProject.projectType?.replace('-', ' ')}</p>
-              </div>
-              <StatusBadge status={selectedProject.status} />
-            </div>
-            <button
-              onClick={() => {
-                setShowModal(false);
-                setProjectTasks([]);
-              }}
-              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-2 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {/* Description */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-blue-100">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Description
-              </h3>
-              <p className="text-gray-700 leading-relaxed">{selectedProject.description}</p>
-            </div>
-
-            {/* Client Information and Project Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Client Information
-                </h3>
-                <div className="space-y-2">
-                  <p className="text-gray-700"><span className="font-medium">Name:</span> {selectedProject.clientName}</p>
-                  <p className="text-gray-700"><span className="font-medium">Email:</span> {selectedProject.clientEmail}</p>
-                  <p className="text-gray-700"><span className="font-medium">Phone:</span> {selectedProject.clientPhone}</p>
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 shadow-sm border border-purple-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  Project Details
-                </h3>
-                <div className="space-y-2">
-                  <p className="text-gray-700"><span className="font-medium">Type:</span> {selectedProject.projectType}</p>
-                  <p className="text-gray-700 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="font-medium">Location:</span> {selectedProject.location}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline and Financials */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 shadow-sm border border-yellow-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Timeline
-                </h3>
-                <div className="space-y-2">
-                  <p className="text-gray-700"><span className="font-medium">Start:</span> {new Date(selectedProject.startDate).toLocaleDateString()}</p>
-                  <p className="text-gray-700"><span className="font-medium">End:</span> {new Date(selectedProject.endDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-6 shadow-sm border border-teal-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                  Financials
-                </h3>
-                <p className="text-gray-700 text-lg"><span className="font-medium">Budget:</span> ₹{selectedProject.budget?.toLocaleString()}</p>
-              </div>
-            </div>
-
-            {/* Team Members */}
-            {selectedProject.teamMembers && selectedProject.teamMembers.length > 0 && (
-              <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 shadow-sm border border-pink-100">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Team Members
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {selectedProject.teamMembers.map((member, index) => (
-                    <span key={index} className="bg-white text-gray-800 px-4 py-2 rounded-full text-sm font-medium shadow-sm border border-gray-200">
-                      {member.fullName || `Member ${index + 1}`}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recent Tasks */}
-            <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  Recent Tasks
-                </h3>
-                <button className="text-primary-600 hover:text-primary-700 text-sm font-semibold px-3 py-1 rounded-lg hover:bg-primary-50 transition-colors" onClick={() => {
-                  navigate(`/projects/${selectedProject._id}`);
-                  setShowModal(false);
-                  setProjectTasks([]);
-                }}>
-                  View All Tasks →
-                </button>
-              </div>
-              {tasksLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600"></div>
-                </div>
-              ) : projectTasks.length === 0 ? (
-                <p className="text-gray-500 text-sm">No tasks found for this project.</p>
-              ) : (
-                <div className="space-y-3">
-                  {projectTasks.slice(0, 5).map((task) => (
-                    <div key={task._id} className="bg-white rounded-lg p-3 border">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-gray-900 text-sm">{task.title}</h4>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                            {task.priority}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                              task.status === 'todo' ? 'bg-gray-100 text-gray-800' :
-                                'bg-orange-100 text-orange-800'
-                            }`}>
-                            {task.status}
-                          </span>
-                        </div>
-                      </div>
-                      {task.description && (
-                        <p className="text-gray-600 text-sm mb-2">{task.description}</p>
-                      )}
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>Assigned to: {task.assignedTo?.fullName || task.assignedTo?.username}</span>
-                        <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                      </div>
-                      {task.progress !== undefined && (
-                        <div className="mt-2">
-                          <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
-                            <span>Progress</span>
-                            <span>{task.progress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className="bg-primary-600 h-1.5 rounded-full"
-                              style={{ width: `${task.progress}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-200">
-            <button
-              onClick={() => {
-                navigate(`/projects/${selectedProject._id}`);
-                setShowModal(false);
-                setProjectTasks([]);
-              }}
-              className="px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 font-medium shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              Open Full Page
-            </button>
-            <div className="flex gap-4">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setProjectTasks([]);
-                }}
-                className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  navigate(`/projects/${selectedProject._id}`);
-                  setShowModal(false);
-                  setProjectTasks([]);
-                }}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                Edit Project
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
@@ -1044,9 +787,9 @@ const Projects = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Type *
+                    Scope of Work *
                   </label>
-                  <p className="text-xs text-gray-400 mb-2">Select the primary nature of this project (used for reporting & templates later)</p>
+                  <p className="text-xs text-gray-400 mb-2">Select the Scope of Work for this project</p>
                   <select
                     name="projectType"
                     value={formData.projectType}
@@ -1054,7 +797,7 @@ const Projects = () => {
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${formErrors.projectType ? 'border-red-300' : 'border-gray-300'
                       }`}
                   >
-                    <option value="">Select project type</option>
+                    <option value="">Select Scope of Work</option>
                     {projectTypes.map(type => (
                       <option key={type.value} value={type.value}>{type.label}</option>
                     ))}
@@ -1376,409 +1119,304 @@ const Projects = () => {
       )}
 
       {/* Empty state */}
-      {!loading && !error && sortedProjects.length === 0 && projects.length > 0 && (
-        <div className="text-center py-12">
+      {!loading && !error && sortedProjects.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects Match Filters</h3>
-          <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No Projects Found</h3>
+          <p className="text-gray-500">Try adjusting your filters or create a new project.</p>
         </div>
-      )}
-
-      {!loading && !error && projects.length === 0 && (
-        <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects Found</h3>
-          <p className="text-gray-500">There are no projects available. {auth.user?.role === 'admin' && 'Create your first project to get started!'}</p>
-        </div>
-      )}
-
-      {/* Projects view */}
-      {!loading && !error && sortedProjects.length > 0 && (
+      ) : !loading && !error && (
         <>
-          {viewMode === 'card' ? (
+          <AnimatePresence mode="wait">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              key={viewMode}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
-              {sortedProjects.map((project) => (
-                <ProjectCard key={project._id} project={project} />
-              ))}
-            </motion.div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'projectName') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('projectName');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Project Name {sortColumn === 'projectName' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'clientName') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('clientName');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Client {sortColumn === 'clientName' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'manager') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('manager');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Manager {sortColumn === 'manager' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'status') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('status');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'progress') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('progress');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Progress {sortColumn === 'progress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'startDate') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('startDate');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Start Date {sortColumn === 'startDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'endDate') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('endDate');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        End Date {sortColumn === 'endDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'budget') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('budget');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Budget {sortColumn === 'budget' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          if (sortColumn === 'risk') {
-                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                          } else {
-                            setSortColumn('risk');
-                            setSortDirection('asc');
-                          }
-                        }}
-                      >
-                        Risk {sortColumn === 'risk' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {sortedProjects.map((project) => (
-                      <tr key={project._id} className="hover:bg-gray-50 group">
-                        <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {project.projectName}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {project.clientName}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {project.manager?.fullName || 'John Doe'}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
-                          <StatusBadge status={project.status} />
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                              <div className="bg-primary-600 h-1.5 rounded-full" style={{ width: `${getProgress(project.status)}%` }}></div>
-                            </div>
-                            <span className="text-xs">{getProgress(project.status)}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.startDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.endDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                          ₹{project.budget?.toLocaleString() || 'N/A'}
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskBadge(project).color}`}>
-                            {getRiskBadge(project).text}
-                          </span>
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 relative">
-                          <button className="text-gray-500 hover:text-gray-700">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                          </button>
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden group-hover:block">
-                            <div className="py-1">
-                              <button onClick={() => fetchProjectDetails(project._id)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
-                              <button onClick={() => toast.info('Edit Project feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
-                              <button onClick={() => toast.info('Archive feature coming soon')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Archive</button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+              {viewMode === 'card' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sortedProjects
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((project) => (
+                      <ProjectCard key={project._id} project={project} />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#700606] text-white">
+                        <tr>
+                          <th onClick={() => handleSort('projectName')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Project Name {getSortIcon('projectName')}</div>
+                          </th>
+                          <th onClick={() => handleSort('clientName')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Client {getSortIcon('clientName')}</div>
+                          </th>
+                          <th onClick={() => handleSort('manager')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Manager {getSortIcon('manager')}</div>
+                          </th>
+                          <th onClick={() => handleSort('status')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Status {getSortIcon('status')}</div>
+                          </th>
+                          <th onClick={() => handleSort('progress')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Progress {getSortIcon('progress')}</div>
+                          </th>
+                          <th onClick={() => handleSort('endDate')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Due Date {getSortIcon('endDate')}</div>
+                          </th>
+                          <th className="p-4 font-semibold text-sm text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sortedProjects
+                          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                          .map((project) => (
+                            <tr key={project._id} className="hover:bg-gray-50 transition-colors group">
+                              <td className="p-4">
+                                <p className="font-semibold text-gray-900">{project.projectName}</p>
+                                <p className="text-xs text-gray-500">{project.projectType}</p>
+                              </td>
+                              <td className="p-4 text-gray-700">{project.clientName}</td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                                    {project.manager?.fullName?.charAt(0) || 'U'}
+                                  </div>
+                                  <span className="text-gray-700 text-sm">{project.manager?.fullName || 'Unassigned'}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <StatusBadge status={project.status} />
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className="bg-gradient-to-r from-[#700606] to-[#900808] h-2 rounded-full"
+                                      style={{ width: `${project.progress || 0}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs font-medium text-gray-600">{project.progress || 0}%</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-gray-700 text-sm">{new Date(project.endDate).toLocaleDateString()}</td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={() => navigate(`/projects/${project._id}`)}
+                                  className="text-[#700606] hover:text-[#900808] font-medium text-sm hover:underline"
+                                >
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          <Pagination
+            currentPage={currentPage}
+            totalItems={sortedProjects.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newLimit) => {
+              setItemsPerPage(newLimit);
+              setCurrentPage(1);
+            }}
+            className="mt-6"
+          />
         </>
       )}
 
-      {/* Project details modal */}
-      <ProjectDetailsModal />
+
 
       {/* Summary section */}
-      {!loading && !error && projects.length > 0 && (
-        <div className="mt-8 space-y-6">
-          {/* Stats Cards - Mobile First */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <BuildingOfficeIcon className="w-6 h-6 text-emerald-600" />
-              Projects Overview
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
+      {
+        !loading && !error && projects.length > 0 && (
+          <div className="mt-8 space-y-6">
+            {/* Stats Cards - Mobile First */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <BuildingOfficeIcon className="w-6 h-6 text-emerald-600" />
+                Projects Overview
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Total</p>
+                    <p className="text-lg font-bold text-blue-900">{projects.length}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">Total</p>
-                  <p className="text-lg font-bold text-blue-900">{projects.length}</p>
+                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
+                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <ClockSolid className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">In Progress</p>
+                    <p className="text-lg font-bold text-amber-900">
+                      {projects.filter(p => p.status === 'in-progress').length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <ClockSolid className="w-5 h-5 text-amber-600" />
+                <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <ClockIcon className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Planning</p>
+                    <p className="text-lg font-bold text-indigo-900">
+                      {projects.filter(p => p.status === 'planning').length}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">In Progress</p>
-                  <p className="text-lg font-bold text-amber-900">
-                    {projects.filter(p => p.status === 'in-progress').length}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <CheckCircleSolid className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Completed</p>
+                    <p className="text-lg font-bold text-emerald-900">
+                      {projects.filter(p => p.status === 'completed').length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <ClockIcon className="w-5 h-5 text-indigo-600" />
+                <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <ExclamationTriangleSolid className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">At Risk</p>
+                    <p className="text-lg font-bold text-red-900">
+                      {projects.filter(p => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const endDate = new Date(p.endDate);
+                        return p.status === 'delayed' || p.status === 'on-hold' || (endDate < today && p.status !== 'completed');
+                      }).length}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">Planning</p>
-                  <p className="text-lg font-bold text-indigo-900">
-                    {projects.filter(p => p.status === 'planning').length}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
-                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <CheckCircleSolid className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Completed</p>
-                  <p className="text-lg font-bold text-emerald-900">
-                    {projects.filter(p => p.status === 'completed').length}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <ExclamationTriangleSolid className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">At Risk</p>
-                  <p className="text-lg font-bold text-red-900">
-                    {projects.filter(p => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const endDate = new Date(p.endDate);
-                      return p.status === 'delayed' || p.status === 'on-hold' || (endDate < today && p.status !== 'completed');
-                    }).length}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CurrencyRupeeIcon className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Total Budget</p>
-                  <p className="text-lg font-bold text-green-900">
-                    ₹{projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
-                  </p>
+                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CurrencyRupeeIcon className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Total Budget</p>
+                    <p className="text-lg font-bold text-green-900">
+                      ₹{projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Status Distribution */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
-              <div className="h-64 sm:h-80">
-                <Doughnut
-                  data={{
-                    labels: ['Planning', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
-                    datasets: [{
-                      data: [
-                        projects.filter(p => p.status === 'planning').length,
-                        projects.filter(p => p.status === 'in-progress').length,
-                        projects.filter(p => p.status === 'completed').length,
-                        projects.filter(p => p.status === 'on-hold').length,
-                        projects.filter(p => p.status === 'cancelled').length,
-                      ],
-                      backgroundColor: [
-                        '#700606',
-                        '#f59e0b',
-                        '#10b981',
-                        '#f97316',
-                        '#ef4444',
-                      ],
-                      borderWidth: 0,
-                    }],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: window.innerWidth < 640 ? 'bottom' : 'right',
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Project Types Distribution */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Types</h3>
-              <div className="h-64 sm:h-80">
-                <Bar
-                  data={{
-                    labels: ['Turnkey', 'Kitchen', 'MEP/HVAC', 'Civil/Interior', 'Maintenance', 'Supply'],
-                    datasets: [{
-                      label: 'Projects',
-                      data: [
-                        projects.filter(p => p.projectType === 'turnkey-project').length,
-                        projects.filter(p => p.projectType === 'commercial-kitchen').length,
-                        projects.filter(p => p.projectType === 'mep-hvac').length,
-                        projects.filter(p => p.projectType === 'civil-interior').length,
-                        projects.filter(p => p.projectType === 'maintenance-amc').length,
-                        projects.filter(p => p.projectType === 'equipment-supply').length,
-                      ],
-                      backgroundColor: [
-                        '#700606',
-                        '#8b5cf6',
-                        '#06b6d4',
-                        '#10b981',
-                        '#f59e0b',
-                        '#ef4444',
-                      ],
-                      borderRadius: 4,
-                    }],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: {
-                          stepSize: 1,
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Status Distribution */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
+                <div className="h-64 sm:h-80">
+                  <Doughnut
+                    data={{
+                      labels: ['Planning', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
+                      datasets: [{
+                        data: [
+                          projects.filter(p => p.status === 'planning').length,
+                          projects.filter(p => p.status === 'in-progress').length,
+                          projects.filter(p => p.status === 'completed').length,
+                          projects.filter(p => p.status === 'on-hold').length,
+                          projects.filter(p => p.status === 'cancelled').length,
+                        ],
+                        backgroundColor: [
+                          '#700606',
+                          '#f59e0b',
+                          '#10b981',
+                          '#f97316',
+                          '#ef4444',
+                        ],
+                        borderWidth: 0,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          position: window.innerWidth < 640 ? 'bottom' : 'right',
                         },
                       },
-                    },
-                  }}
-                />
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Project Types Distribution */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Types</h3>
+                <div className="h-64 sm:h-80">
+                  <Bar
+                    data={{
+                      labels: ['Turnkey', 'Kitchen', 'MEP/HVAC', 'Civil/Interior', 'Maintenance', 'Supply'],
+                      datasets: [{
+                        label: 'Projects',
+                        data: [
+                          projects.filter(p => p.projectType === 'turnkey-project').length,
+                          projects.filter(p => p.projectType === 'commercial-kitchen').length,
+                          projects.filter(p => p.projectType === 'mep-hvac').length,
+                          projects.filter(p => p.projectType === 'civil-interior').length,
+                          projects.filter(p => p.projectType === 'maintenance-amc').length,
+                          projects.filter(p => p.projectType === 'equipment-supply').length,
+                        ],
+                        backgroundColor: [
+                          '#700606',
+                          '#8b5cf6',
+                          '#06b6d4',
+                          '#10b981',
+                          '#f59e0b',
+                          '#ef4444',
+                        ],
+                        borderRadius: 4,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            stepSize: 1,
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 
