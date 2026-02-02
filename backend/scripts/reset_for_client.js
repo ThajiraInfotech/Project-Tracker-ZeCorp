@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const Attendance = require('../models/Attendance');
-const Notification = require('../models/Notification'); // Also clear notifications
+const Notification = require('../models/Notification');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -30,8 +30,11 @@ const resetData = async () => {
         const notifResult = await Notification.deleteMany({});
         console.log(`Deleted ${notifResult.deletedCount} Notifications.`);
 
-        // 4. Delete NON-ADMIN Users
-        // Safety check: Ensure we don't delete everyone if something is wrong
+        // 4. Delete all Attendance (User requested this)
+        const attendanceResult = await Attendance.deleteMany({});
+        console.log(`Deleted ${attendanceResult.deletedCount} Attendance records.`);
+
+        // 5. Delete NON-ADMIN Users
         const adminCount = await User.countDocuments({ role: 'admin' });
         if (adminCount === 0) {
             console.warn('WARNING: No admins found! Aborting user deletion to prevent lockout.');
@@ -39,10 +42,6 @@ const resetData = async () => {
             const usersResult = await User.deleteMany({ role: { $ne: 'admin' } });
             console.log(`Deleted ${usersResult.deletedCount} Users (kept ${adminCount} admins).`);
         }
-
-        // 5. Explicitly STATE that Attendance is skipped
-        const attendanceCount = await Attendance.countDocuments({});
-        console.log(`PRESERVED ${attendanceCount} Attendance records (Skipped deletion).`);
 
         console.log('--- COMPLETED DATA RESET ---');
         console.log('Ready for client handover.');
