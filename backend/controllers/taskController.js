@@ -269,12 +269,32 @@ exports.updateTask = async (req, res) => {
     }
 
     // Update task
+    const oldAssignedTo = task.assignedTo.toString();
     updates.forEach(update => task[update] = req.body[update]);
     syncProgressWithStatus(task);
     await task.save();
 
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
+
+    // EMIT EVENT: Task Re-Assigned
+    if (updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) {
+      const userExists = await User.findById(task.assignedTo);
+      const projectExists = await Project.findById(task.project);
+
+      console.log(`[Task] Re-assignment detected. Old: ${oldAssignedTo}, New: ${task.assignedTo}`);
+
+      await publishEvent('TASK_ASSIGNED', {
+        entityType: 'task',
+        entityId: task._id,
+        entityTitle: task.title,
+        assignedTo: userExists,
+        triggeredBy: req.user._id,
+        messageSnippet: `You have been assigned a task: ${task.title}`,
+        relatedLink: `/tasks?taskId=${task._id}`,
+        project: projectExists
+      });
+    }
 
     res.json({
       success: true,

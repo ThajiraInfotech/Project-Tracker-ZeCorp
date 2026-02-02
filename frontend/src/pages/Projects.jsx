@@ -300,6 +300,41 @@ const Projects = () => {
     setSortedProjects(sorted);
   }, [filteredProjects, sortColumn, sortDirection]);
 
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column) => {
+    if (sortColumn !== column) {
+      return (
+        <div className="flex flex-col ml-1">
+          <svg className="w-2 h-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <svg className="w-2 h-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+    return sortDirection === 'asc' ? (
+      <svg className="w-3 h-3 ml-1 text-[#700606]" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L10 5.414 5.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        <path fillRule="evenodd" d="M3 13a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+      </svg>
+    ) : (
+      <svg className="w-3 h-3 ml-1 text-[#700606]" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L10 14.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        <path fillRule="evenodd" d="M17 7a1 1 0 01-1 1H4a1 1 0 110-2h12a1 1 0 011 1z" clipRule="evenodd" />
+      </svg>
+    );
+  };
+
   // Fetch project details
 
 
@@ -424,7 +459,7 @@ const Projects = () => {
           endDate: '',
           priority: '',
           budget: '',
-          currency: 'INR',
+          currency: 'AED',
           manager: ''
         });
         setShowAddForm(false);
@@ -966,15 +1001,9 @@ const Projects = () => {
                     Project Budget
                   </label>
                   <div className="flex gap-2">
-                    <select
-                      name="currency"
-                      value={formData.currency}
-                      onChange={handleInputChange}
-                      className="px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-                    >
-                      <option value="INR">INR</option>
-                      <option value="AED">AED</option>
-                    </select>
+                    <div className="flex items-center justify-center px-4 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 font-medium">
+                      AED
+                    </div>
                     <input
                       type="number"
                       name="budget"
@@ -984,7 +1013,6 @@ const Projects = () => {
                         }`}
                       placeholder="Project budget"
                       min="0"
-                      step="1000"
                     />
                   </div>
                   {formErrors.budget && (

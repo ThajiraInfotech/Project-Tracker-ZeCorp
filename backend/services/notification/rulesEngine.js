@@ -21,12 +21,12 @@ const RULES = {
 
     // Project Events
     PROJECT_ASSIGNED: {
-        channels: ['IN_APP', 'WHATSAPP'], // Manager needs to know immediately
+        channels: ['IN_APP', 'WHATSAPP', 'EMAIL'], // Manager needs to know immediately
         getRecipients: (data) => [data.manager],
         priority: 'high'
     },
     ADDED_TO_TEAM: {
-        channels: ['IN_APP'],
+        channels: ['IN_APP', 'EMAIL'],
         getRecipients: (data) => [data.user],
         priority: 'medium'
     },
@@ -38,7 +38,7 @@ const RULES = {
 
     // Task Events
     TASK_ASSIGNED: {
-        channels: ['IN_APP', 'WHATSAPP'],
+        channels: ['IN_APP', 'WHATSAPP', 'EMAIL'],
         getRecipients: (data) => [data.assignedTo],
         priority: 'high'
     },

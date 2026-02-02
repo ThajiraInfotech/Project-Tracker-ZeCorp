@@ -44,7 +44,7 @@ import AttendanceExceptions from './pages/admin/AttendanceExceptions';
 
 
 // Initialize socket connection
-export const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+export const socket = io(import.meta.env.VITE_API_URL || '/');
 
 function App() {
   const dispatch = useDispatch();
