@@ -11,31 +11,59 @@ exports.uploadFile = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    const { mimetype, path: localPath, size } = req.file;
+
+    // --- GUARDRAIL: Size Limits ---
+    // Images: Max 5MB
+    if (mimetype.startsWith('image/') && size > 5 * 1024 * 1024) {
+      fs.unlinkSync(localPath); // Delete temp file
+      return res.status(400).json({ message: 'Image too large. Max 5MB allowed.' });
+    }
+    // PDFs: Max 15MB (Already checked by Multer limit, but good to be explicit)
+    if (mimetype === 'application/pdf' && size > 15 * 1024 * 1024) {
+      fs.unlinkSync(localPath);
+      return res.status(400).json({ message: 'PDF too large. Max 15MB allowed.' });
+    }
+
     let fileUrl;
-    if (req.file.mimetype === 'application/pdf') {
-      // Keep PDF local
+
+    // --- ROUTING LOGIC ---
+    if (mimetype === 'application/pdf') {
+      // 1. Keep PDF Local (VPS Disk)
       // Construct full URL
-      const protocol = req.protocol;
-      const host = req.get('host');
+      const protocol = req.protocol; // http or https
+      const host = req.get('host');  // e.g. api.zeecorp.com
+
+      // In production (Docker), we serve uploads via Express static or Nginx
+      // Since specific nginx config for backend uploads isn't set, Express static is safest fallback
       fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
     } else {
-      // Upload to Cloudinary
-      fileUrl = await cloudinaryService.uploadFile(req.file.path);
-      // Delete local file
-      fs.unlinkSync(req.file.path);
+      // 2. Upload Image to Cloudinary (Free Tier)
+      try {
+        fileUrl = await cloudinaryService.uploadFile(localPath);
+        // Delete local temp file after successful cloud upload
+        fs.unlinkSync(localPath);
+      } catch (cloudError) {
+        // If cloudinary fails, delete local file and error out
+        if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+        throw cloudError;
+      }
     }
 
     res.json({
       success: true,
-      fileUrl
+      fileUrl,
+      type: mimetype === 'application/pdf' ? 'local' : 'cloud'
     });
+
   } catch (error) {
     console.error('Upload file error:', error);
-    // Try to cleanup local file if it exists
+    // Cleanup
     if (req.file && fs.existsSync(req.file.path)) {
       try { fs.unlinkSync(req.file.path); } catch (e) { }
     }
-    res.status(500).json({ message: 'Failed to upload file' });
+    res.status(500).json({ message: 'Failed to upload file', error: error.message });
   }
 };
 

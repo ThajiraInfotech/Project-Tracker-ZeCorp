@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # --- Frontend Service (Nginx + React) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zeecorp_frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443" # Prepared for SSL
+    networks:
+      - zeecorp_net
+    depends_on:
+      - backend
+
+  # --- Backend Service (Node.js API) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zeecorp_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/zeecorp_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Add other env vars here or use .env file
+      - NODE_ENV=production
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Map VPS uploads folder to container
+      - /opt/zeecorp/uploads:/app/uploads
+    networks:
+      - zeecorp_net
+    depends_on:
+      - mongodb
+      - redis
+
+  # --- Database (MongoDB) ---
+  mongodb:
+    image: mongo:6.0
+    container_name: zeecorp_mongo
+    restart: always
+    volumes:
+      # Persist data to VPS disk
+      - /opt/zeecorp/mongo_data:/data/db
+    networks:
+      - zeecorp_net
+    # For production, enable auth:
+    # command: ["mongod", "--auth"]
+
+    # --- Queue/Cache (Redis) ---
+  redis:
+    image: redis/redis-stack:latest
+    container_name: zeecorp_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - zeecorp_net
+
+volumes:
+  redis_data:
+
+
+networks:
+  zeecorp_net:
+    driver: bridge
