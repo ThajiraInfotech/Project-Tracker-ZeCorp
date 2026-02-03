@@ -727,11 +727,11 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   }
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-4 md:p-6">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen py-4 md:p-6 w-full md:container md:mx-auto">
       {/* Header */}
       {/* Header - Only show if not embedded */}
       {!isEmbedded && (
-        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-4 md:p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl mx-2 md:mx-0 p-4 md:p-6 mb-6 text-white shadow-lg">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-2">Tasks Management</h1>
@@ -829,7 +829,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       )}
 
       {/* Search and Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+      <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-sm p-4 mb-6 border border-gray-100">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
@@ -872,40 +872,52 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               </button>
               <AnimatePresence>
                 {showKeyboardHelp && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4"
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-3">Keyboard Shortcuts</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Focus search</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+F</kbd>
+                  <>
+                    <div
+                      className="fixed inset-0 bg-black/20 z-40"
+                      onClick={() => setShowKeyboardHelp(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-50%' }}
+                      animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                      exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-50%' }}
+                      className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-6"
+                    >
+                      <h4 className="font-semibold text-gray-900 mb-3 border-b pb-2">Keyboard Shortcuts</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Focus search</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Ctrl+F</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Select all</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Ctrl+A</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Clear selection</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Esc</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Card view</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">1</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Table view</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">2</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Kanban view</span>
+                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">3</kbd>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Select all</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+A</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Clear selection</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Esc</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Card view</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">1</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Table view</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">2</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Kanban view</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">3</kbd>
-                      </div>
-                    </div>
-                  </motion.div>
+                      <button
+                        onClick={() => setShowKeyboardHelp(false)}
+                        className="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Close
+                      </button>
+                    </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>

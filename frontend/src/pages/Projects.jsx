@@ -139,8 +139,8 @@ const Projects = () => {
         project.clientName,
         project.manager?.fullName || 'Unassigned',
         project.status,
-        new Date(project.startDate).toLocaleDateString(),
-        new Date(project.endDate).toLocaleDateString(),
+        new Date(project.startDate).toLocaleDateString('en-GB'),
+        new Date(project.endDate).toLocaleDateString('en-GB'),
         project.budget || 'N/A',
         project.location,
         (project.progress || 0) + '%'
@@ -588,11 +588,11 @@ const Projects = () => {
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-500 font-medium">Start Date</p>
-            <p className="font-semibold text-gray-900">{new Date(project.startDate).toLocaleDateString()}</p>
+            <p className="font-semibold text-gray-900">{new Date(project.startDate).toLocaleDateString('en-GB')}</p>
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-500 font-medium">End Date</p>
-            <p className="font-semibold text-gray-900">{new Date(project.endDate).toLocaleDateString()}</p>
+            <p className="font-semibold text-gray-900">{new Date(project.endDate).toLocaleDateString('en-GB')}</p>
           </div>
         </div>
 
@@ -623,13 +623,13 @@ const Projects = () => {
 
 
   return (
-    <div className="container mx-auto px-4 py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5">
+    <div className="w-full px-0 py-4 md:container md:mx-auto md:px-4 md:py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-4 md:p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl mx-2 md:mx-0 p-4 md:p-6 mb-6 text-white shadow-lg">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Projects Management</h1>
-            <p className="text-white/80 text-sm">Manage and track all project initiatives with enterprise-level tools</p>
+            <p className="text-white/80 text-sm">Manage and track all project initiatives</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -656,7 +656,7 @@ const Projects = () => {
             {auth.user?.role === 'admin' && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium ml-auto lg:ml-0"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-gray-50 transition-colors font-medium ml-auto lg:ml-0 shadow-sm"
               >
                 <PlusIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">Add Project</span>
@@ -668,7 +668,7 @@ const Projects = () => {
       </div>
 
       {/* Search and Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+      <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-sm p-4 mb-6 border border-gray-100">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 w-full">
@@ -792,7 +792,7 @@ const Projects = () => {
 
       {/* Add Project Form */}
       {showAddForm && auth.user?.role === 'admin' && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
+        <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-lg border border-gray-200 overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-[#700606] to-[#900808] px-6 py-3">
             <h2 className="text-xl font-semibold text-white">Create New Project</h2>
             <p className="text-[#700606]/80 text-xs">Fill in the project details below</p>
@@ -1234,7 +1234,7 @@ const Projects = () => {
                                   <span className="text-xs font-medium text-gray-600">{project.progress || 0}%</span>
                                 </div>
                               </td>
-                              <td className="p-4 text-gray-700 text-sm">{new Date(project.endDate).toLocaleDateString()}</td>
+                              <td className="p-4 text-gray-700 text-sm">{new Date(project.endDate).toLocaleDateString('en-GB')}</td>
                               <td className="p-4 text-right">
                                 <button
                                   onClick={() => navigate(`/projects/${project._id}`)}

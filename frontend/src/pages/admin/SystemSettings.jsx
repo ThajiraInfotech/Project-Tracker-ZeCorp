@@ -17,6 +17,10 @@ const SystemSettings = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSetting, setSelectedSetting] = useState(null);
 
+  useEffect(() => {
+    dispatch(fetchSystemSettings());
+  }, [dispatch]);
+
   // Filter settings based on search term
   const filteredSettings = settings.filter(setting =>
     setting.settingName.toLowerCase().includes(searchTerm.toLowerCase()) ||

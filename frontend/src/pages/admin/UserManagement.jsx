@@ -297,10 +297,10 @@ const UserManagement = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-12">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="w-full px-0 py-4 md:container md:mx-auto md:px-4 md:py-8 max-w-7xl">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white shadow-lg">
+          <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl mx-2 md:mx-0 p-4 md:p-6 mb-6 text-white shadow-lg">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white tracking-tight">User Management</h1>
@@ -330,7 +330,7 @@ const UserManagement = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 mx-2 md:mx-0">
             <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm font-medium mb-1">Total Users</p>
@@ -370,7 +370,7 @@ const UserManagement = () => {
           </div>
 
           {/* Controls & Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-sm border border-gray-200">
             {/* Tabs */}
             <div className="flex overflow-x-auto border-b border-gray-100 px-4 scrollbar-hide">
               {tabs.map((tab) => (
@@ -432,11 +432,11 @@ const UserManagement = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#700606]"></div>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center mx-2 md:mx-0">
             <p className="text-red-600">{error}</p>
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200 mx-2 md:mx-0">
             <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               <FaUsers className="w-8 h-8 text-gray-300" />
             </div>
@@ -565,7 +565,7 @@ const UserManagement = () => {
             </div>
 
             {/* Mobile Card Grid View */}
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            <div className="grid grid-cols-1 gap-4 md:hidden mx-2">
               {paginatedUsers.map((user) => (
                 <div key={user._id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                   <div className="flex justify-between items-start mb-4">

@@ -283,16 +283,16 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-6">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-3 md:p-6">
       {/* Admin Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">Admin Dashboard</h1>
             <p className="text-white/80 text-sm">Enterprise Management Console</p>
           </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-right">
+          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6 w-full md:w-auto">
+            <div className="text-center md:text-right w-full md:w-auto">
               <p className="text-sm text-white">Welcome, {user?.fullName}</p>
               <p className="text-xs text-white/80">Administrator</p>
               {lastUpdated && (
@@ -302,10 +302,10 @@ const AdminDashboard = () => {
             <button
               onClick={fetchData}
               disabled={isRefreshing}
-              className="p-2 bg-[#700606]/20 hover:bg-[#700606]/30 rounded-full transition-all duration-300 disabled:opacity-50"
+              className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 disabled:opacity-50"
               title="Refresh Data"
             >
-              <svg className={`w-5 h-5 text-[#700606] ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-5 h-5 text-white ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
@@ -572,7 +572,7 @@ const AdminDashboard = () => {
           </h3>
           <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Company Financial Health</span>
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200/50">
             <p className="text-sm font-medium text-gray-600 mb-2">Total Revenue</p>
             <p className="text-2xl font-bold text-green-600">AED {adminDashboard.revenue.totalRevenue.toLocaleString()}</p>

@@ -193,7 +193,7 @@ const NotificationBell = ({ onNotificationClick }) => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
+        <div className="fixed top-16 left-4 right-4 z-50 md:absolute md:top-full md:right-0 md:left-auto md:w-96 md:mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[80vh] md:max-h-[600px] flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
