@@ -6,6 +6,7 @@ const Task = require('../models/Task');
 const Project = require('../models/Project');
 const Attendance = require('../models/Attendance');
 const Notification = require('../models/Notification');
+const Expense = require('../models/Expense');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -34,7 +35,11 @@ const resetData = async () => {
         const attendanceResult = await Attendance.deleteMany({});
         console.log(`Deleted ${attendanceResult.deletedCount} Attendance records.`);
 
-        // 5. Delete NON-ADMIN Users
+        // 5. Delete all Expenses
+        const expenseResult = await Expense.deleteMany({});
+        console.log(`Deleted ${expenseResult.deletedCount} Expenses.`);
+
+        // 6. Delete NON-ADMIN Users
         const adminCount = await User.countDocuments({ role: 'admin' });
         if (adminCount === 0) {
             console.warn('WARNING: No admins found! Aborting user deletion to prevent lockout.');
