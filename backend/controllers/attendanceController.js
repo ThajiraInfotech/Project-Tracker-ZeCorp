@@ -4,7 +4,7 @@ const Project = require('../models/Project');
 const Task = require('../models/Task');
 const SystemSetting = require('../models/SystemSetting');
 const calculatePayroll = require('../utils/payrollCalculator');
-const { getDubaiDate } = require('../utils/timeZoneUtil');
+const { getDubaiDate } = require('../utils/time-zone-util');
 
 // Check in
 exports.checkIn = async (req, res) => {
