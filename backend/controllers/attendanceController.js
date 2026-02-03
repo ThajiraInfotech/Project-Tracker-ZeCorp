@@ -4,11 +4,12 @@ const Project = require('../models/Project');
 const Task = require('../models/Task');
 const SystemSetting = require('../models/SystemSetting');
 const calculatePayroll = require('../utils/payrollCalculator');
+const { getDubaiDate } = require('../utils/timeZoneUtil');
 
 // Check in
 exports.checkIn = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getDubaiDate(); // YYYY-MM-DD (Dubai Time)
 
     // Check if already checked in today
     const existingAttendance = await Attendance.findOne({
@@ -25,7 +26,7 @@ exports.checkIn = async (req, res) => {
       userId: req.user._id,
       role: req.user.role,
       date: today,
-      checkIn: new Date()
+      checkIn: new Date() // Stored as UTC (Standard)
     });
 
     await attendance.save();
@@ -167,7 +168,7 @@ exports.getTeamAttendance = async (req, res) => {
     }
 
     // Daily View with "Not Checked In" (Absent) logic
-    const dateParam = req.query.date || new Date().toISOString().split('T')[0];
+    const dateParam = req.query.date || getDubaiDate();
 
     // 1. Get all team users
     const teamUsers = await User.find({
@@ -227,7 +228,7 @@ exports.getAllAttendance = async (req, res) => {
     // Daily View with "Not Checked In" (Absent) logic
     // If date is provided OR just default to viewing "today's status" for everyone
     // Ideally Admin Dashboard sends ?date=...
-    const dateParam = req.query.date || new Date().toISOString().split('T')[0];
+    const dateParam = req.query.date || getDubaiDate();
 
     // 1. Get all users (staff/managers)
     const allUsers = await User.find({

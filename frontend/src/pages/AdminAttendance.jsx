@@ -36,6 +36,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
 import { toast } from 'react-toastify';
+import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
 
 ChartJS.register(
   ArcElement,
@@ -47,17 +48,25 @@ ChartJS.register(
   Title
 );
 
+const getCurrentMonth = () => {
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
+  return `${yyyy}-${mm}`;
+};
+
 const AdminAttendance = () => {
   const [allAttendance, setAllAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateChanging, setDateChanging] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getDubaiToday());
 
   // Modal State
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [staffHistory, setStaffHistory] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
+  const [historySelectedMonth, setHistorySelectedMonth] = useState(getCurrentMonth());
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,6 +121,8 @@ const AdminAttendance = () => {
     if (!record.userId) return;
     setSelectedStaff(record.userId);
     setShowDetailModal(true);
+    // Reset to current month on open
+    setHistorySelectedMonth(getCurrentMonth());
     fetchStaffDetails(record.userId._id);
   };
 
@@ -119,11 +130,11 @@ const AdminAttendance = () => {
 
   const formatTime = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatTimeDubai(dateString);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return formatDateDubai(dateString);
   };
 
   // -- Filtering ---
@@ -135,6 +146,12 @@ const AdminAttendance = () => {
       const staffName = record.userId?.fullName || record.userId?.username || '';
       return staffName.toLowerCase().includes(searchQuery.toLowerCase());
     });
+
+  // --- Filtering (Modal History) ---
+  const staffFilteredHistory = staffHistory.filter(record => {
+    if (!record.date) return false;
+    return record.date.startsWith(historySelectedMonth);
+  });
 
   // Calculate totals
   const totalRecords = filteredRecords.length;
@@ -244,12 +261,7 @@ const AdminAttendance = () => {
               />
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-              >
-                <FunnelIcon className="w-5 h-5" /> Filter
-              </button>
+
               <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
                 <ArrowDownTrayIcon className="w-5 h-5" /> Export
               </button>
@@ -351,12 +363,24 @@ const AdminAttendance = () => {
                       <p className="text-sm text-gray-500">{selectedStaff.email} • {selectedStaff.role}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowDetailModal(false)}
-                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  >
-                    <XMarkIcon className="w-6 h-6 text-gray-500" />
-                  </button>
+
+                  {/* Modal Close & Month Filter */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                      <input
+                        type="month"
+                        value={historySelectedMonth}
+                        onChange={(e) => setHistorySelectedMonth(e.target.value)}
+                        className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowDetailModal(false)}
+                      className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                    >
+                      <XMarkIcon className="w-6 h-6 text-gray-500" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Modal Body */}
@@ -367,28 +391,27 @@ const AdminAttendance = () => {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {/* Stats Cards */}
+                      {/* Stats Cards - Updated with Filter Logic */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                          <p className="text-xs text-gray-500 uppercase">Total Pay (Month)</p>
-                          <p className="text-2xl font-bold text-gray-900">
-                            AED {staffHistory
-                              .filter(r => new Date(r.date).getMonth() === new Date().getMonth())
+                        <div className="bg-gradient-to-br from-[#700606] to-[#500404] p-4 rounded-xl text-white shadow-sm relative overflow-hidden">
+                          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+                          <p className="text-xs text-white/70 uppercase relative z-10">Total Pay ({historySelectedMonth})</p>
+                          <p className="text-2xl font-bold text-white relative z-10">
+                            AED {staffFilteredHistory
                               .reduce((sum, r) => sum + (r.dailyTotalPay || 0), 0).toFixed(2)}
                           </p>
                         </div>
                         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                           <p className="text-xs text-gray-500 uppercase">Total Overtime</p>
                           <p className="text-2xl font-bold text-purple-600">
-                            {staffHistory
-                              .filter(r => new Date(r.date).getMonth() === new Date().getMonth())
+                            {staffFilteredHistory
                               .reduce((sum, r) => sum + (r.overtimeHours || 0), 0)} hrs
                           </p>
                         </div>
                         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                           <p className="text-xs text-gray-500 uppercase">Days Present</p>
                           <p className="text-2xl font-bold text-green-600">
-                            {staffHistory.filter(r => r.status === 'Present').length}
+                            {staffFilteredHistory.filter(r => r.status === 'Present').length}
                           </p>
                         </div>
                       </div>
@@ -405,7 +428,7 @@ const AdminAttendance = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                            {staffHistory.map((record) => (
+                            {staffFilteredHistory.map((record) => (
                               <tr key={record._id} className="hover:bg-gray-50">
                                 <td className="px-6 py-3 text-sm font-medium text-gray-900">{formatDate(record.date)}</td>
                                 <td className="px-6 py-3 text-sm text-gray-600 font-mono">
@@ -419,6 +442,9 @@ const AdminAttendance = () => {
                                 <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">AED {record.dailyTotalPay || 0}</td>
                               </tr>
                             ))}
+                            {staffFilteredHistory.length === 0 && (
+                              <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">No records found for {historySelectedMonth}.</td></tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
