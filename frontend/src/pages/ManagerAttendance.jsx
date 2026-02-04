@@ -82,7 +82,7 @@ const ManagerAttendance = () => {
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
 
   const auth = useSelector((state) => state.auth);
 
@@ -280,7 +280,7 @@ const ManagerAttendance = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-sans">
+    <div className="min-h-full bg-gradient-to-br from-gray-50 via-white to-gray-100 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
@@ -288,17 +288,11 @@ const ManagerAttendance = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold mb-1">
-                Manager Dashboard
+                Attendance Management
               </h1>
               <p className="text-white/80 mt-1">Manage personal attendance and monitor team performance</p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 font-medium shadow-sm transition-all"
-              >
-                <span className="text-sm font-mono">⌨️</span>
-              </button>
               <button
                 onClick={() => { fetchTeamAttendance(); fetchMyAttendance(); }}
                 disabled={loading || dateChanging}
@@ -408,16 +402,17 @@ const ManagerAttendance = () => {
               </div>
 
               {/* Month Filter */}
-              <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+              <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200 min-w-[180px]">
                 <input
                   type="month"
                   value={mySelectedMonth}
                   onChange={(e) => setMySelectedMonth(e.target.value)}
-                  className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer"
+                  className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer w-full"
                 />
               </div>
             </div>
 
+            {/* Desktop Table View */}
             <div className="max-h-64 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50/50">
@@ -599,30 +594,30 @@ const ManagerAttendance = () => {
                 className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
               >
                 {/* Modal Header */}
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#700606] text-white flex items-center justify-center text-xl font-bold">
+                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="w-12 h-12 rounded-xl bg-[#700606] text-white flex items-center justify-center text-xl font-bold shrink-0">
                       {selectedStaff.fullName?.charAt(0) || selectedStaff.username.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">{selectedStaff.fullName || selectedStaff.username}</h3>
-                      <p className="text-sm text-gray-500">{selectedStaff.email}</p>
+                      <h3 className="text-xl font-bold text-gray-900 break-all">{selectedStaff.fullName || selectedStaff.username}</h3>
+                      <p className="text-sm text-gray-500 break-all">{selectedStaff.email}</p>
                     </div>
                   </div>
 
                   {/* Modal Close & Month Filter */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200 flex-1 sm:flex-none">
                       <input
                         type="month"
                         value={historySelectedMonth}
                         onChange={(e) => setHistorySelectedMonth(e.target.value)}
-                        className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer"
+                        className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer w-full"
                       />
                     </div>
                     <button
                       onClick={() => setShowDetailModal(false)}
-                      className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                      className="p-2 hover:bg-gray-200 rounded-full transition-colors shrink-0"
                     >
                       <XMarkIcon className="w-6 h-6 text-gray-500" />
                     </button>
@@ -663,7 +658,8 @@ const ManagerAttendance = () => {
                       </div>
 
                       {/* History Table */}
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
@@ -693,6 +689,43 @@ const ManagerAttendance = () => {
                             )}
                           </tbody>
                         </table>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-4">
+                        {staffFilteredHistory.map((record) => (
+                          <div key={record._id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h4 className="font-bold text-gray-900">{formatDate(record.date)}</h4>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 bg-gray-100 text-gray-800`}>
+                                  {record.status}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-gray-500 uppercase font-bold">Total Pay</p>
+                                <p className="text-lg font-bold text-[#700606]">AED {record.dailyTotalPay || 0}</p>
+                              </div>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <ClockIcon className="w-4 h-4 text-gray-400" />
+                                <span className="font-mono text-gray-700">{record.checkIn ? formatTime(record.checkIn) : '--:--'}</span>
+                              </div>
+                              <span className="text-gray-300">→</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-gray-700">{record.checkOut ? formatTime(record.checkOut) : '--:--'}</span>
+                                <ClockIcon className="w-4 h-4 text-gray-400" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {staffFilteredHistory.length === 0 && (
+                          <div className="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-500">
+                            No records found for {historySelectedMonth}.
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

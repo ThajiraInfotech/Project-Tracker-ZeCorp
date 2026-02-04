@@ -15,7 +15,9 @@ import {
   FaEdit,
   FaLock,
   FaUserSlash,
-  FaUserCheck
+  FaUserCheck,
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -57,6 +59,7 @@ const UserManagement = () => {
   // Loading states
   const [creatingUser, setCreatingUser] = useState(false);
   const [updatingUser, setUpdatingUser] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const auth = useSelector((state) => state.auth);
 
@@ -766,11 +769,11 @@ const UserManagement = () => {
                   </label>
                   <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       id="password"
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-theme-500 focus:border-transparent transition-colors"
+                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-theme-500 focus:border-transparent transition-colors"
                       placeholder="Enter password"
                       required
                       minLength={8}
@@ -778,6 +781,13 @@ const UserManagement = () => {
                     <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Minimum 8 characters</p>
                 </div>
@@ -817,7 +827,6 @@ const UserManagement = () => {
                       >
                         <option value="staff">Staff</option>
                         <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
                       </select>
                       <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

@@ -21,6 +21,7 @@ import UserAvatar from './UserAvatar';
 import ExpenseModal from './ExpenseModal';
 import expenseService from '../services/expenseService';
 import { BanknotesIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -78,6 +79,8 @@ const TaskDetailsModal = ({
         startDate: '',
         endDate: ''
     });
+    const [subtaskStartDateType, setSubtaskStartDateType] = useState('text');
+    const [subtaskEndDateType, setSubtaskEndDateType] = useState('text');
 
     // Expenses State
     const [taskExpenses, setTaskExpenses] = useState([]);
@@ -362,9 +365,9 @@ const TaskDetailsModal = ({
                                                                 {(subtask.startDate || subtask.endDate) && (
                                                                     <div className="flex items-center gap-1">
                                                                         <CalendarIcon className="w-3 h-3" />
-                                                                        {subtask.startDate ? new Date(subtask.startDate).toLocaleDateString() : 'Start'}
+                                                                        {subtask.startDate ? formatDateDDMMYYYY(subtask.startDate) : 'Start'}
                                                                         {' - '}
-                                                                        {subtask.endDate ? new Date(subtask.endDate).toLocaleDateString() : 'End'}
+                                                                        {subtask.endDate ? formatDateDDMMYYYY(subtask.endDate) : 'End'}
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -435,16 +438,22 @@ const TaskDetailsModal = ({
                                                 </select>
                                                 <div className="flex gap-2">
                                                     <input
-                                                        type="date"
-                                                        value={newSubtask.startDate}
+                                                        type={subtaskStartDateType}
+                                                        value={subtaskStartDateType === 'date' ? newSubtask.startDate : formatDateDDMMYYYY(newSubtask.startDate)}
                                                         onChange={(e) => setNewSubtask({ ...newSubtask, startDate: e.target.value })}
+                                                        onFocus={() => setSubtaskStartDateType('date')}
+                                                        onBlur={() => setSubtaskStartDateType('text')}
+                                                        placeholder="Start Date"
                                                         className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
                                                         title="Start Date"
                                                     />
                                                     <input
-                                                        type="date"
-                                                        value={newSubtask.endDate}
+                                                        type={subtaskEndDateType}
+                                                        value={subtaskEndDateType === 'date' ? newSubtask.endDate : formatDateDDMMYYYY(newSubtask.endDate)}
                                                         onChange={(e) => setNewSubtask({ ...newSubtask, endDate: e.target.value })}
+                                                        onFocus={() => setSubtaskEndDateType('date')}
+                                                        onBlur={() => setSubtaskEndDateType('text')}
+                                                        placeholder="End Date"
                                                         className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 text-gray-500"
                                                         title="End Date"
                                                     />
@@ -509,8 +518,8 @@ const TaskDetailsModal = ({
                                         </h3>
                                         <p className="text-gray-600">
                                             {task.status === 'completed'
-                                                ? (task.completionDate ? new Date(task.completionDate).toLocaleDateString() : 'N/A')
-                                                : new Date(task.deadline).toLocaleDateString()
+                                                ? (task.completionDate ? formatDateDDMMYYYY(task.completionDate) : 'N/A')
+                                                : formatDateDDMMYYYY(task.deadline)
                                             }
                                             {task.status !== 'completed' && task.isOverdue && <span className="text-red-600"> • Overdue</span>}
                                         </p>
@@ -610,7 +619,7 @@ const TaskDetailsModal = ({
                                         <div key={expense._id} className="p-3 border-b border-gray-100 last:border-0 flex justify-between items-center text-sm">
                                             <div>
                                                 <p className="font-medium text-gray-900">{expense.title}</p>
-                                                <p className="text-xs text-gray-500">{new Date(expense.date).toLocaleDateString()} • {expense.vendor}</p>
+                                                <p className="text-xs text-gray-500">{formatDateDDMMYYYY(expense.date)} • {expense.vendor}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-bold text-gray-900">AED {expense.amount.toLocaleString()}</p>

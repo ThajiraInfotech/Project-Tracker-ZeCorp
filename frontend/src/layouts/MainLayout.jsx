@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { getAdminDashboardData } from '../store/reportSlice';
@@ -31,6 +31,7 @@ const MainLayout = () => {
   const { adminDashboardData } = useSelector((state) => state.reports);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch admin dashboard data for sidebar stats
   useEffect(() => {
@@ -241,7 +242,7 @@ const MainLayout = () => {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4">
+        <main className={`flex-1 overflow-y-auto ${['/manager', '/attendance', '/team', '/staff', '/performance'].includes(location.pathname) ? 'p-0' : 'p-4'}`}>
           <Outlet />
         </main>
       </div>

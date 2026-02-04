@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../store/api';
@@ -30,6 +30,8 @@ const ProjectDetailPage = () => {
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [financials, setFinancials] = useState({ totalExpenses: 0, profit: 0, utilization: 0 });
+  const editStartDateRef = useRef(null);
+  const editEndDateRef = useRef(null);
 
   // Filter states for tasks tab
   const [taskFilters, setTaskFilters] = useState({
@@ -170,6 +172,13 @@ const ProjectDetailPage = () => {
   }, [auth.isAuthenticated, id, project?.manager]); // Fetch after project loaded
 
   // Helper functions
+  const formatDateForInput = (isoDate) => {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return isoDate;
+    return date.toLocaleDateString('en-GB'); // dd/mm/yyyy
+  };
+
   const getProgress = (status) => {
     switch (status) {
       case 'planning': return 25;
@@ -254,53 +263,60 @@ const ProjectDetailPage = () => {
   const OverviewTab = () => {
     if (!project) return null;
 
-    const progress = getProgress(project.status);
+    // Calculate real progress based on tasks
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'completed').length;
+    let progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Override if project is marked completed manually
+    if (project.status === 'completed') progress = 100;
+
     const risk = getRiskBadge(project);
     const manager = project.manager?.fullName || 'John Doe';
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* Description */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 shadow-sm border border-blue-100">
-          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-3 text-xl">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 md:p-8 shadow-sm border border-blue-100">
+          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-3 text-lg md:text-xl">
+            <svg className="w-6 h-6 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Project Description
           </h3>
-          <p className="text-gray-700 leading-relaxed text-lg">{project.description}</p>
+          <p className="text-gray-700 leading-relaxed text-base md:text-lg">{project.description}</p>
         </div>
 
         {/* Client Information and Project Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 shadow-sm border border-green-100">
-            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-xl">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 md:p-8 shadow-sm border border-green-100">
+            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-lg md:text-xl">
+              <svg className="w-6 h-6 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               Client Information
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-3 break-words">
               <p className="text-gray-700"><span className="font-semibold">Name:</span> {project.clientName}</p>
               <p className="text-gray-700"><span className="font-semibold">Email:</span> {project.clientEmail}</p>
               <p className="text-gray-700"><span className="font-semibold">Phone:</span> {project.clientPhone}</p>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-8 shadow-sm border border-purple-100">
-            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-xl">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 md:p-8 shadow-sm border border-purple-100">
+            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-lg md:text-xl">
+              <svg className="w-6 h-6 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
               Project Details
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-3 break-words">
               <p className="text-gray-700"><span className="font-semibold">Scope of Work:</span> {project.projectType}</p>
               <p className="text-gray-700 flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="font-semibold">Location:</span> {project.location}
+                <span className="font-semibold min-w-fit">Location:</span> <span className="truncate">{project.location}</span>
               </p>
               <p className="text-gray-700"><span className="font-semibold">Manager:</span> {manager}</p>
             </div>
@@ -308,17 +324,17 @@ const ProjectDetailPage = () => {
         </div>
 
         {/* Timeline and Financials */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-8 shadow-sm border border-yellow-100">
-            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-xl">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 md:p-8 shadow-sm border border-yellow-100">
+            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-lg md:text-xl">
+              <svg className="w-6 h-6 text-yellow-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Project Timeline
             </h3>
             <div className="space-y-3 mb-6">
-              <p className="text-gray-700"><span className="font-semibold">Start:</span> {new Date(project.startDate).toLocaleDateString()}</p>
-              <p className="text-gray-700"><span className="font-semibold">End:</span> {new Date(project.endDate).toLocaleDateString()}</p>
+              <p className="text-gray-700"><span className="font-semibold">Start:</span> {new Date(project.startDate).toLocaleDateString('en-GB')}</p>
+              <p className="text-gray-700"><span className="font-semibold">End:</span> {new Date(project.endDate).toLocaleDateString('en-GB')}</p>
             </div>
             <div>
               <div className="flex justify-between items-center text-sm mb-3">
@@ -332,20 +348,20 @@ const ProjectDetailPage = () => {
                 ></div>
               </div>
               <p className="text-sm text-gray-600">
-                <span className="font-medium">Tasks completed:</span> {tasks.filter(t => t.status === 'completed').length} / {tasks.length}
+                <span className="font-medium">Tasks completed:</span> {completedTasks} / {totalTasks}
               </p>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-8 shadow-sm border border-teal-100">
-            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-xl">
-              <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-6 md:p-8 shadow-sm border border-teal-100">
+            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-lg md:text-xl">
+              <svg className="w-6 h-6 text-teal-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
               Financial Overview
             </h3>
             <div className="space-y-3">
-              <p className="text-gray-700 text-lg"><span className="font-semibold">Budget:</span> AED {project.budget?.toLocaleString()}</p>
-              <p className="text-gray-700"><span className="font-semibold">Spent:</span> AED {financials?.totalExpenses?.toLocaleString() || '0'}</p>
+              <p className="text-gray-700 text-lg break-all"><span className="font-semibold">Budget:</span> AED {project.budget?.toLocaleString()}</p>
+              <p className="text-gray-700 break-all"><span className="font-semibold">Spent:</span> AED {financials?.totalExpenses?.toLocaleString() || '0'}</p>
               <p className="text-gray-700"><span className="font-semibold">Status:</span> <span className={`font-bold ${risk.color} px-2 py-1 rounded-full text-sm`}>{risk.text}</span></p>
             </div>
           </div>
@@ -353,20 +369,20 @@ const ProjectDetailPage = () => {
 
         {/* Team Members */}
         {project.teamMembers && project.teamMembers.length > 0 && (
-          <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-8 shadow-sm border border-pink-100">
-            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-xl">
-              <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 md:p-8 shadow-sm border border-pink-100">
+            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-3 text-lg md:text-xl">
+              <svg className="w-6 h-6 text-pink-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               Team Members
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {project.teamMembers.map((member, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
-                  <UserAvatar user={member} size="md" />
-                  <div>
-                    <p className="font-semibold text-gray-900">{member.fullName || `Member ${index + 1}`}</p>
-                    <p className="text-sm text-gray-500">Team Member</p>
+                <div key={index} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 min-w-0">
+                  <UserAvatar user={member} size="md" className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 truncate" title={member.fullName}>{member.fullName || `Member ${index + 1}`}</p>
+                    <p className="text-sm text-gray-500 truncate">Team Member</p>
                   </div>
                 </div>
               ))}
@@ -497,11 +513,11 @@ const ProjectDetailPage = () => {
                   </div>
 
                   <div className="space-y-2 text-sm border-t border-gray-50 pt-4 mt-2">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <svg className="w-4 h-4 text-theme-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-2 text-gray-600 min-w-0">
+                      <svg className="w-4 h-4 text-theme-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span className="truncate">{member.email || 'No email'}</span>
+                      <span className="truncate block flex-1" title={member.email}>{member.email || 'No email'}</span>
                     </div>
                     {member.phone && (
                       <div className="flex items-center gap-2 text-gray-600">
@@ -534,38 +550,38 @@ const ProjectDetailPage = () => {
   const BudgetTab = () => (
     <div className="space-y-8">
       {/* Financial Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {/* Total Budget */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4">
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Total Budget</p>
-            <h3 className="text-2xl font-bold text-gray-900">AED {project?.budget?.toLocaleString() || '0'}</h3>
+            <h3 className="text-2xl font-bold text-gray-900 break-all">AED {project?.budget?.toLocaleString() || '0'}</h3>
           </div>
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 shrink-0">
             <CurrencyDollarIcon className="w-6 h-6" />
           </div>
         </div>
 
         {/* Total Expenses */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4">
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Total Expenses</p>
-            <h3 className="text-2xl font-bold text-red-600">AED {financials.totalExpenses.toLocaleString()}</h3>
+            <h3 className="text-2xl font-bold text-red-600 break-all">AED {financials.totalExpenses.toLocaleString()}</h3>
           </div>
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 shrink-0">
             <ReceiptPercentIcon className="w-6 h-6" />
           </div>
         </div>
 
         {/* Remaining Budget (Profit) */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4">
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">Remaining Budget</p>
-            <h3 className={`text-2xl font-bold ${financials.profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            <h3 className={`text-2xl font-bold break-all ${financials.profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
               AED {financials.profit.toLocaleString()}
             </h3>
           </div>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${financials.profit >= 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${financials.profit >= 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
             <BanknotesIcon className="w-6 h-6" />
           </div>
         </div>
@@ -629,7 +645,7 @@ const ProjectDetailPage = () => {
               <tbody className="divide-y divide-gray-100">
                 {expenses.map((expense) => (
                   <tr key={expense._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 text-gray-700">{new Date(expense.date).toLocaleDateString()}</td>
+                    <td className="p-4 text-gray-700">{new Date(expense.date).toLocaleDateString('en-GB')}</td>
                     <td className="p-4 font-medium text-gray-900">
                       {expense.title}
                       {expense.task && <span className="block text-xs text-gray-500">Task: {expense.task.title}</span>}
@@ -707,7 +723,7 @@ const ProjectDetailPage = () => {
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <span>Assigned to: {selectedTaskForActions.assignedTo?.fullName || 'Unassigned'}</span>
-                  <span>Due: {new Date(selectedTaskForActions.deadline).toLocaleDateString()}</span>
+                  <span>Due: {new Date(selectedTaskForActions.deadline).toLocaleDateString('en-GB')}</span>
                 </div>
               </div>
             </div>
@@ -859,8 +875,6 @@ const ProjectDetailPage = () => {
                   value={editForm.budget}
                   onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="0"
-                  step="1000"
                 />
               </div>
             </div>
@@ -913,21 +927,43 @@ const ProjectDetailPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={editForm.startDate}
-                    onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(editForm.startDate)}
+                      readOnly
+                      onClick={() => editStartDateRef.current?.showPicker()}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    />
+                    <input
+                      type="date"
+                      ref={editStartDateRef}
+                      value={editForm.startDate ? new Date(editForm.startDate).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                      className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={editForm.endDate}
-                    onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(editForm.endDate)}
+                      readOnly
+                      onClick={() => editEndDateRef.current?.showPicker()}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    />
+                    <input
+                      type="date"
+                      ref={editEndDateRef}
+                      value={editForm.endDate ? new Date(editForm.endDate).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                      className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1009,27 +1045,27 @@ const ProjectDetailPage = () => {
   const ActiveTabComponent = tabs.find(tab => tab.id === activeTab)?.component || OverviewTab;
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="w-full px-2 py-4 md:px-6 md:py-8 max-w-[1920px] mx-auto">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-8 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-6">
+      <div className="bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-4 md:p-8 mb-6 md:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 md:gap-6">
             <button
               onClick={() => navigate('/projects')}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors self-start sm:self-center"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-1">{project.projectName}</h1>
-              <p className="text-gray-600 text-lg">Enterprise Project Management Hub</p>
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 break-words">{project.projectName}</h1>
+              <p className="text-gray-600 text-sm md:text-lg">Enterprise Project Management Hub</p>
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <StatusBadge status={project.status} />
-            <div className="text-right">
+            <div className="text-left lg:text-right">
               <p className="text-sm text-gray-500 font-medium">Project Manager</p>
               <p className="font-semibold text-gray-900">{project.manager?.fullName || 'John Doe'}</p>
             </div>
@@ -1037,10 +1073,10 @@ const ProjectDetailPage = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <button
             onClick={() => setShowChatSidebar(true)}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -1049,7 +1085,7 @@ const ProjectDetailPage = () => {
           </button>
           <button
             onClick={() => setShowTaskModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1059,7 +1095,7 @@ const ProjectDetailPage = () => {
 
           <button
             onClick={() => setShowEditModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1071,13 +1107,13 @@ const ProjectDetailPage = () => {
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
-        <div className="border-b border-gray-200 bg-gray-50">
-          <nav className="flex">
+        <div className="border-b border-gray-200 bg-gray-50 overflow-x-auto">
+          <nav className="flex min-w-max">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-8 py-5 text-sm font-semibold border-b-3 transition-all duration-200 ${activeTab === tab.id
+                className={`px-6 md:px-8 py-4 md:py-5 text-sm font-semibold border-b-3 transition-all duration-200 ${activeTab === tab.id
                   ? 'border-primary-500 text-primary-600 bg-white shadow-sm'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
@@ -1089,7 +1125,7 @@ const ProjectDetailPage = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <ActiveTabComponent />
         </div>
       </div>

@@ -93,7 +93,7 @@ const TeamPerformance = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#700606]/5">
+    <div className="min-h-full bg-gradient-to-br from-slate-50 to-[#700606]/5">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 mb-6 text-white mx-4 mt-4">
         <div className="max-w-7xl mx-auto">

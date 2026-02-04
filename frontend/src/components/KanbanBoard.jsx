@@ -1,6 +1,7 @@
 import React from 'react';
 import { DndContext, useDroppable, useDraggable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 const Droppable = ({ id, children }) => {
   const { setNodeRef } = useDroppable({ id });
@@ -52,7 +53,7 @@ const TaskCard = ({ task, onClick }) => {
       )}
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
         <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
-          Due: {new Date(task.deadline).toLocaleDateString()}
+          Due: {formatDateDDMMYYYY(task.deadline)}
         </span>
       </div>
       <div className="space-y-1">

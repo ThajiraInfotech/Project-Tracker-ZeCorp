@@ -141,7 +141,7 @@ const Performance = () => {
   }
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-4 md:p-6">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-full p-4 md:p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl p-6 md:p-8 text-white mb-6 md:mb-8 shadow-lg">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Performance Analytics</h1>

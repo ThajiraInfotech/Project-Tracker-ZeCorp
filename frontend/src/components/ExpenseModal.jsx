@@ -12,8 +12,7 @@ const ExpenseModal = ({ isOpen, onClose, projectId, taskId, onExpenseAdded }) =>
         category: 'Other',
         vendor: '',
         date: new Date().toISOString().split('T')[0],
-        notes: '',
-        receipt: null
+        notes: ''
     });
 
     if (!isOpen) return null;
@@ -57,8 +56,7 @@ const ExpenseModal = ({ isOpen, onClose, projectId, taskId, onExpenseAdded }) =>
                 category: 'Other',
                 vendor: '',
                 date: new Date().toISOString().split('T')[0],
-                notes: '',
-                receipt: null
+                notes: ''
             });
         } catch (error) {
             console.error('Error adding expense:', error);
@@ -207,30 +205,6 @@ const ExpenseModal = ({ isOpen, onClose, projectId, taskId, onExpenseAdded }) =>
                                     className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-theme-500 focus:border-theme-500 block w-full p-2.5 placeholder-gray-400 transition-all duration-200 hover:border-gray-400"
                                     placeholder="Additional details..."
                                 />
-                            </div>
-
-                            {/* Receipt Upload */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Receipt (Optional)</label>
-                                <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all duration-200 ${formData.receipt ? 'border-theme-500 bg-theme-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
-                                    <div className="space-y-1 text-center">
-                                        <Upload className={`mx-auto h-12 w-12 ${formData.receipt ? 'text-theme-600' : 'text-gray-400'}`} />
-                                        <div className="flex text-sm text-gray-500">
-                                            <label htmlFor="receipt-upload" className="relative cursor-pointer rounded-md font-medium text-theme-600 hover:text-theme-700 focus-within:outline-none transition-colors">
-                                                <span>Upload a file</span>
-                                                <input id="receipt-upload" name="receipt" type="file" className="sr-only" onChange={handleFileChange} accept="image/*,.pdf" />
-                                            </label>
-                                            <p className="pl-1">or drag and drop</p>
-                                        </div>
-                                        <p className="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
-                                        {formData.receipt && (
-                                            <div className="flex items-center justify-center gap-2 text-sm text-theme-700 mt-2 font-medium bg-theme-100 py-1 px-3 rounded-full mx-auto w-max">
-                                                <FileText size={14} />
-                                                {formData.receipt.name}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
 
                             <div className="mt-6 sm:mt-8 flex justify-end gap-3 pt-4 border-t border-gray-200">

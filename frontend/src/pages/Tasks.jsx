@@ -39,6 +39,7 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
 import { fetchProjects } from '../store/projectSlice';
 import { toast } from 'react-toastify';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import TaskCreateModal from '../components/TaskCreateModal';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
@@ -87,7 +88,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const auth = useSelector((state) => state.auth);
@@ -332,7 +333,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         task.assignedTo?.fullName || '',
         task.status,
         task.priority,
-        new Date(task.deadline).toLocaleDateString(),
+        formatDateDDMMYYYY(task.deadline),
         task.progress || 0
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -608,7 +609,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             <div>
               <p className="text-gray-500 text-xs">Due Date</p>
               <p className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-                {new Date(task.deadline).toLocaleDateString()}
+                {formatDateDDMMYYYY(task.deadline)}
                 {isOverdue && <span className="text-red-600 ml-1">• Overdue</span>}
               </p>
             </div>
@@ -862,65 +863,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               <span className="hidden sm:inline">Export</span>
             </button>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <span className="text-sm font-mono">⌨️</span>
-                <span className="hidden sm:inline">Help</span>
-              </button>
-              <AnimatePresence>
-                {showKeyboardHelp && (
-                  <>
-                    <div
-                      className="fixed inset-0 bg-black/20 z-40"
-                      onClick={() => setShowKeyboardHelp(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-50%' }}
-                      animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-                      exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-50%' }}
-                      className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-6"
-                    >
-                      <h4 className="font-semibold text-gray-900 mb-3 border-b pb-2">Keyboard Shortcuts</h4>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Focus search</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Ctrl+F</kbd>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Select all</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Ctrl+A</kbd>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Clear selection</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">Esc</kbd>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Card view</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">1</kbd>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Table view</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">2</kbd>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Kanban view</span>
-                          <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 font-mono">3</kbd>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setShowKeyboardHelp(false)}
-                        className="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Close
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
+
           </div>
         </div>
 

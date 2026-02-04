@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, projects, task, userRole, defaultProjectId }) => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
   });
   const [loading, setLoading] = useState(false);
   const [availableProjects, setAvailableProjects] = useState(projects || []);
+  const [deadlineInputType, setDeadlineInputType] = useState('text');
   const isEdit = !!task;
 
   useEffect(() => {
@@ -189,9 +191,12 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Deadline *</label>
               <input
-                type="date"
-                value={formData.deadline}
+                type={deadlineInputType}
+                value={deadlineInputType === 'date' ? formData.deadline : formatDateDDMMYYYY(formData.deadline)}
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                onFocus={() => setDeadlineInputType('date')}
+                onBlur={() => setDeadlineInputType('text')}
+                placeholder="dd/mm/yyyy"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />

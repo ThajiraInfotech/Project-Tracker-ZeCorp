@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
+import { socket } from '../App';
 import UserAvatar from './UserAvatar';
 
 const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entityData }) => {
@@ -94,13 +95,35 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
     return users;
   };
 
-  // Fetch comments when sidebar opens or entity changes
+  // Fetch comments and join socket room when sidebar opens or entity changes
   useEffect(() => {
-    if (isOpen && entityId) {
+    if (isOpen && entityId && entityType) {
       // Small delay to ensure animation triggers
       setTimeout(() => {
         fetchComments();
       }, 50);
+
+      // Socket logic
+      const room = `${entityType}_${entityId}`;
+      socket.emit('join_room', room);
+
+      const handleReceiveMessage = (message) => {
+        // Only append if it belongs to this entity (sanity check)
+        // Check if message is already in comments to prevent duplicates?
+        // Basic check by ID logic or optimistically adding
+        setComments((prev) => {
+          // Prevent duplicates if backend is slow/fast or polling
+          if (prev.some(c => c._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      };
+
+      socket.on('receive_message', handleReceiveMessage);
+
+      return () => {
+        socket.emit('leave_room', room);
+        socket.off('receive_message', handleReceiveMessage);
+      };
     } else {
       setComments([]);
       setNewComment('');

@@ -713,6 +713,11 @@ exports.addComment = async (req, res) => {
       // Don't fail comment creation if notification fails
     });
 
+    // EMIT SOCKET EVENT
+    if (req.io) {
+      req.io.to(`project_${req.params.id}`).emit('receive_message', newComment);
+    }
+
     res.json({
       success: true,
       message: 'Comment added successfully',

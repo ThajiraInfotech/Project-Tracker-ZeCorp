@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +19,7 @@ import {
   ArrowDownTrayIcon,
   AdjustmentsHorizontalIcon,
   BuildingOfficeIcon,
-  CurrencyRupeeIcon,
+  CurrencyDollarIcon,
   MapPinIcon
 } from '@heroicons/react/24/outline';
 import {
@@ -79,12 +79,15 @@ const Projects = () => {
 
   // New enterprise features
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   // Add project form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [managers, setManagers] = useState([]);
   const [managersLoading, setManagersLoading] = useState(false);
+  const startDateRef = useRef(null);
+  const endDateRef = useRef(null);
+  const filterStartDateRef = useRef(null);
+  const filterEndDateRef = useRef(null);
   const [formData, setFormData] = useState({
     projectName: '',
     projectType: '',
@@ -130,6 +133,13 @@ const Projects = () => {
     return { text: 'On Track', color: 'bg-green-100 text-green-800' };
   };
 
+  const formatDateForInput = (isoDate) => {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return isoDate;
+    return date.toLocaleDateString('en-GB'); // dd/mm/yyyy
+  };
+
   // Export functionality
   const handleExport = () => {
     const csvContent = [
@@ -157,24 +167,7 @@ const Projects = () => {
   };
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + F for search focus
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault();
-        document.querySelector('input[placeholder*="Search"]').focus();
-      }
 
-      // Number keys for view modes (1=card, 2=table)
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.key === '1') setViewMode('card');
-        if (e.key === '2') setViewMode('table');
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // Fetch projects data
   const fetchProjects = async () => {
@@ -600,7 +593,7 @@ const Projects = () => {
         <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-green-100 rounded-lg text-green-600">
-              <CurrencyRupeeIcon className="w-5 h-5" />
+              <CurrencyDollarIcon className="w-5 h-5" />
             </div>
             <span className="text-gray-600 font-medium">Project Budget</span>
           </div>
@@ -700,41 +693,6 @@ const Projects = () => {
               <ArrowDownTrayIcon className="w-5 h-5" />
               <span className="hidden sm:inline">Export</span>
             </button>
-            <div className="relative flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
-              >
-                <span className="text-sm font-mono">⌨️</span>
-                <span className="hidden sm:inline">Help</span>
-              </button>
-              <AnimatePresence>
-                {showKeyboardHelp && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4"
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-3">Keyboard Shortcuts</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Focus search</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+F</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Card view</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">1</kbd>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Table view</span>
-                        <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">2</kbd>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </div>
 
@@ -767,20 +725,42 @@ const Projects = () => {
                   <div className="sm:col-span-2 lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                     <div className="flex gap-2">
-                      <input
-                        type="date"
-                        value={startDateFilter}
-                        onChange={(e) => setStartDateFilter(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm"
-                        placeholder="Start"
-                      />
-                      <input
-                        type="date"
-                        value={endDateFilter}
-                        onChange={(e) => setEndDateFilter(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm"
-                        placeholder="End"
-                      />
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={formatDateForInput(startDateFilter)}
+                          readOnly
+                          onClick={() => filterStartDateRef.current?.showPicker()}
+                          placeholder="Start (dd/mm/yyyy)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm cursor-pointer"
+                        />
+                        <input
+                          type="date"
+                          ref={filterStartDateRef}
+                          value={startDateFilter}
+                          onChange={(e) => setStartDateFilter(e.target.value)}
+                          className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                          tabIndex={-1}
+                        />
+                      </div>
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={formatDateForInput(endDateFilter)}
+                          readOnly
+                          onClick={() => filterEndDateRef.current?.showPicker()}
+                          placeholder="End (dd/mm/yyyy)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent text-sm cursor-pointer"
+                        />
+                        <input
+                          type="date"
+                          ref={filterEndDateRef}
+                          value={endDateFilter}
+                          onChange={(e) => setEndDateFilter(e.target.value)}
+                          className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                          tabIndex={-1}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -945,14 +925,28 @@ const Projects = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Start Date *
                   </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.startDate ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(formData.startDate)}
+                      readOnly
+                      onClick={() => startDateRef.current?.showPicker()}
+                      placeholder="dd/mm/yyyy"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors cursor-pointer ${formErrors.startDate ? 'border-red-300' : 'border-gray-300'}`}
+                    />
+                    <input
+                      type="date"
+                      name="startDate"
+                      ref={startDateRef}
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                      tabIndex={-1}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                      <CalendarDaysIcon className="w-5 h-5" />
+                    </div>
+                  </div>
                   {formErrors.startDate && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.startDate}</p>
                   )}
@@ -962,14 +956,28 @@ const Projects = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     End Date *
                   </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.endDate ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(formData.endDate)}
+                      readOnly
+                      onClick={() => endDateRef.current?.showPicker()}
+                      placeholder="dd/mm/yyyy"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors cursor-pointer ${formErrors.endDate ? 'border-red-300' : 'border-gray-300'}`}
+                    />
+                    <input
+                      type="date"
+                      name="endDate"
+                      ref={endDateRef}
+                      value={formData.endDate}
+                      onChange={handleInputChange}
+                      className="absolute opacity-0 bottom-0 left-0 w-full h-full -z-10"
+                      tabIndex={-1}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                      <CalendarDaysIcon className="w-5 h-5" />
+                    </div>
+                  </div>
                   {formErrors.endDate && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.endDate}</p>
                   )}
@@ -1340,12 +1348,12 @@ const Projects = () => {
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                   <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <CurrencyRupeeIcon className="w-5 h-5 text-green-600" />
+                    <CurrencyDollarIcon className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Total Budget</p>
                     <p className="text-lg font-bold text-green-900">
-                      ₹{projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                      AED {projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -1398,43 +1406,81 @@ const Projects = () => {
                 <div className="h-64 sm:h-80">
                   <Bar
                     data={{
-                      labels: ['Turnkey', 'Kitchen', 'MEP/HVAC', 'Civil/Interior', 'Maintenance', 'Supply'],
+                      labels: ['Retail', 'Spare Parts', 'Service', 'Project', 'Design', 'Project Management'],
                       datasets: [{
                         label: 'Projects',
                         data: [
-                          projects.filter(p => p.projectType === 'turnkey-project').length,
-                          projects.filter(p => p.projectType === 'commercial-kitchen').length,
-                          projects.filter(p => p.projectType === 'mep-hvac').length,
-                          projects.filter(p => p.projectType === 'civil-interior').length,
-                          projects.filter(p => p.projectType === 'maintenance-amc').length,
-                          projects.filter(p => p.projectType === 'equipment-supply').length,
+                          projects.filter(p => p.projectType === 'Retail').length,
+                          projects.filter(p => p.projectType === 'Spare Parts').length,
+                          projects.filter(p => p.projectType === 'Service').length,
+                          projects.filter(p => p.projectType === 'Project').length,
+                          projects.filter(p => p.projectType === 'Design').length,
+                          projects.filter(p => p.projectType === 'Project Management').length,
                         ],
                         backgroundColor: [
-                          '#700606',
-                          '#8b5cf6',
-                          '#06b6d4',
-                          '#10b981',
-                          '#f59e0b',
-                          '#ef4444',
+                          'rgba(112, 6, 6, 0.8)',   // Theme Red
+                          'rgba(59, 130, 246, 0.8)', // Blue
+                          'rgba(16, 185, 129, 0.8)', // Green
+                          'rgba(245, 158, 11, 0.8)', // Amber
+                          'rgba(139, 92, 246, 0.8)', // Purple
+                          'rgba(236, 72, 153, 0.8)', // Pink
                         ],
-                        borderRadius: 4,
+                        borderColor: [
+                          '#700606',
+                          '#2563eb',
+                          '#059669',
+                          '#d97706',
+                          '#7c3aed',
+                          '#db2777',
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barThickness: 24,
                       }],
                     }}
                     options={{
+                      indexAxis: 'y',
                       responsive: true,
                       maintainAspectRatio: false,
                       plugins: {
                         legend: {
                           display: false,
                         },
+                        tooltip: {
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          titleColor: '#1f2937',
+                          bodyColor: '#4b5563',
+                          borderColor: '#e5e7eb',
+                          borderWidth: 1,
+                          padding: 10,
+                          cornerRadius: 8,
+                          displayColors: true,
+                        }
                       },
                       scales: {
-                        y: {
+                        x: {
                           beginAtZero: true,
+                          grid: {
+                            display: false,
+                          },
                           ticks: {
                             stepSize: 1,
-                          },
+                            font: {
+                              size: 11
+                            }
+                          }
                         },
+                        y: {
+                          grid: {
+                            color: '#f3f4f6',
+                          },
+                          ticks: {
+                            font: {
+                              weight: '500',
+                              size: 12
+                            }
+                          }
+                        }
                       },
                     }}
                   />
