@@ -44,7 +44,18 @@ import AttendanceExceptions from './pages/admin/AttendanceExceptions';
 
 
 // Initialize socket connection
-export const socket = io(import.meta.env.VITE_API_URL || '/');
+const getSocketUrl = () => {
+  let url = import.meta.env.VITE_API_URL || '/';
+  if (url.startsWith('http:')) {
+    url = url.replace('http:', 'https:');
+  }
+  return url;
+};
+
+export const socket = io(getSocketUrl(), {
+  secure: true,
+  transports: ['websocket', 'polling'] // prioritize websocket
+});
 
 function App() {
   const dispatch = useDispatch();

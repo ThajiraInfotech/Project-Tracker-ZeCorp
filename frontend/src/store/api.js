@@ -1,9 +1,15 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const getApiUrl = () => {
+  let url = import.meta.env.VITE_API_URL || '/api';
+  if (url.startsWith('http:')) {
+    url = url.replace('http:', 'https:');
+  }
+  return url;
+};
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: getApiUrl(),
 });
 
 // Request interceptor to always read the latest token from localStorage
