@@ -24,24 +24,30 @@ class EmailService {
           pass: process.env.SENDGRID_API_KEY
         }
       });
-    } else {
-      // Fallback to SMTP
+    } else if (process.env.EMAIL_SERVICE === 'smtp') {
+      // SMTP (Standard) - Explicit check
+      const isSecure = process.env.SMTP_PORT == 465 || process.env.SMTP_SECURE === 'true';
       return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.example.com',
         port: process.env.SMTP_PORT || 587,
-        secure: false,
+        secure: isSecure, // true for 465, false for other ports
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD
+        },
+        tls: {
+          rejectUnauthorized: false // Helps with self-signed certs or strict corporate firewalls
         }
       });
+    } else {
+      throw new Error(`Invalid EMAIL_SERVICE configuration: ${process.env.EMAIL_SERVICE}`);
     }
   }
 
   async sendEmail(to, subject, htmlContent, attachments = []) {
     try {
       const mailOptions = {
-        from: process.env.EMAIL_FROM || '"Thajira WorkFlow" <noreply@thajiraworkflow.com>',
+        from: process.env.EMAIL_FROM || '"ZeCorp WorkFlow" <noreply@zecorp.ae>',
         to: to,
         subject: subject,
         html: htmlContent,
@@ -74,8 +80,8 @@ class EmailService {
           <p><strong>Description:</strong> ${taskDetails.description || 'No description provided'}</p>
         </div>
 
-        <p>Please log in to the Thajira WorkFlow system to view and update this task.</p>
-        <p>Thank you,<br/>Thajira WorkFlow Team</p>
+        <p>Please log in to the ZeCorp WorkFlow system to view and update this task.</p>
+        <p>Thank you,<br/>ZeCorp WorkFlow Team</p>
       </div>
     `;
 
@@ -100,7 +106,7 @@ class EmailService {
         </div>
 
         <p>Keep up the good work!</p>
-        <p>Thank you,<br/>Thajira WorkFlow Team</p>
+        <p>Thank you,<br/>ZeCorp WorkFlow Team</p>
       </div>
     `;
 
