@@ -10,7 +10,9 @@ services:
     restart: always
     ports:
       - "80:80"
-      - "443:443" # Prepared for SSL
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
     networks:
       - zeecorp_net
     depends_on:

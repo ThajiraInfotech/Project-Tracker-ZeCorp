@@ -3,7 +3,7 @@ const fs = require('fs');
 const FormData = require('form-data');
 const path = require('path');
 
-const BASE_URL = 'http://76.13.36.70/api';
+const BASE_URL = 'https://app.zecorp.ae/api';
 const ADMIN_CREDS = { username: 'admin', password: 'admin123' };
 
 // Helpers
@@ -14,7 +14,7 @@ let createdProjectId = '';
 let createdTaskId = '';
 
 async function runTests() {
-    console.log('🚀 Starting ZEECORP Production QA Test Plan (VPS: 76.13.36.70)\n');
+    console.log('🚀 Starting ZEECORP Production QA Test Plan (VPS: app.zecorp.ae)\n');
 
     try {
         // --- TEST 1: Admin Login ---
