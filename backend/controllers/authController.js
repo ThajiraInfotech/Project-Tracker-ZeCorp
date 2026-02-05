@@ -98,6 +98,9 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Registration failed', error: error.message });
   }
 };
@@ -511,9 +514,9 @@ exports.getUsersByRole = async (req, res) => {
 // Manager: Get all staff for task assignment
 exports.getStaffForManager = async (req, res) => {
   try {
-    // Get all active staff users
+    // Get all active staff and manager users
     const staff = await User.find({
-      role: 'staff',
+      role: { $in: ['staff', 'manager'] },
       isActive: true
     }).select('-password');
 

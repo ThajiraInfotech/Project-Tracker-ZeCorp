@@ -432,7 +432,8 @@ const ProjectDetailPage = () => {
     return (
       <div className="space-y-8">
         {/* Project Manager Section */}
-        {project?.manager && (
+        {/* Project Manager Section */}
+        {project?.manager ? (
           <div className="bg-gradient-to-br from-theme-50 to-red-50 rounded-xl p-8 shadow-sm border border-theme-100">
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
               <svg className="w-6 h-6 text-theme-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -477,6 +478,22 @@ const ProjectDetailPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="bg-orange-50 rounded-xl p-8 shadow-sm border border-orange-100 text-center">
+            <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No Project Manager Assigned</h3>
+            <p className="text-gray-600 mb-6">Assign a manager to lead this project and manage tasks.</p>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors"
+            >
+              Assign Manager
+            </button>
           </div>
         )}
 
@@ -813,7 +830,9 @@ const ProjectDetailPage = () => {
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
       budget: project?.budget || '',
-      location: project?.location || ''
+      location: project?.location || '',
+      manager: project?.manager?._id || project?.manager || '',
+      projectType: project?.projectType || 'Retail'
     });
     const [updating, setUpdating] = useState(false);
 
@@ -823,7 +842,9 @@ const ProjectDetailPage = () => {
       try {
         const updateData = {
           ...editForm,
-          budget: editForm.budget ? parseFloat(editForm.budget) : undefined
+          budget: editForm.budget ? parseFloat(editForm.budget) : undefined,
+          manager: editForm.manager || undefined,
+          projectType: editForm.projectType || undefined
         };
         const response = await api.put(`/projects/${id}`, updateData);
         if (response.data.success) {
@@ -867,6 +888,38 @@ const ProjectDetailPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Scope of Work</label>
+                <select
+                  value={editForm.projectType}
+                  onChange={(e) => setEditForm({ ...editForm, projectType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Retail">Retail</option>
+                  <option value="Spare Parts">Spare Parts</option>
+                  <option value="Service">Service</option>
+                  <option value="Project">Project</option>
+                  <option value="Design">Design</option>
+                  <option value="Project Management">Project Management</option>
+                  <option value="Administration">Administration</option>
+                  <option value="Operation">Operation</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Manager</label>
+                <select
+                  value={editForm.manager}
+                  onChange={(e) => setEditForm({ ...editForm, manager: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Manager</option>
+                  {staff.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.fullName || user.username}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Budget (₹)</label>
@@ -1067,7 +1120,7 @@ const ProjectDetailPage = () => {
             <StatusBadge status={project.status} />
             <div className="text-left lg:text-right">
               <p className="text-sm text-gray-500 font-medium">Project Manager</p>
-              <p className="font-semibold text-gray-900">{project.manager?.fullName || 'John Doe'}</p>
+              <p className="font-semibold text-gray-900">{project.manager?.fullName || 'Unassigned'}</p>
             </div>
           </div>
         </div>

@@ -142,7 +142,7 @@ exports.getProjectById = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['projectName', 'description', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location'];
+    const allowedUpdates = ['projectName', 'description', 'projectType', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location', 'manager'];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
@@ -155,7 +155,8 @@ exports.updateProject = async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && project.manager.toString() !== req.user._id.toString()) {
+    const isManager = project.manager && project.manager.toString() === req.user._id.toString();
+    if (req.user.role !== 'admin' && !isManager) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

@@ -119,7 +119,9 @@ const Projects = () => {
     { value: 'Service', label: 'Service' },
     { value: 'Project', label: 'Project' },
     { value: 'Design', label: 'Design' },
-    { value: 'Project Management', label: 'Project Management' }
+    { value: 'Project Management', label: 'Project Management' },
+    { value: 'Administration', label: 'Administration' },
+    { value: 'Operation', label: 'Operation' }
   ];
 
   // Helper functions
@@ -509,7 +511,7 @@ const Projects = () => {
   const ProjectCard = ({ project }) => {
     const progress = project.progress || 0;
     const risk = getRiskBadge(project);
-    const manager = project.manager?.fullName || 'John Doe';
+    const manager = project.manager?.fullName || 'Unassigned';
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
@@ -1405,7 +1407,7 @@ const Projects = () => {
                 <div className="h-64 sm:h-80">
                   <Bar
                     data={{
-                      labels: ['Retail', 'Spare Parts', 'Service', 'Project', 'Design', 'Project Management'],
+                      labels: ['Retail', 'Spare Parts', 'Service', 'Project', 'Design', 'Project Management', 'Administration', 'Operation'],
                       datasets: [{
                         label: 'Projects',
                         data: [
@@ -1415,6 +1417,8 @@ const Projects = () => {
                           projects.filter(p => p.projectType === 'Project').length,
                           projects.filter(p => p.projectType === 'Design').length,
                           projects.filter(p => p.projectType === 'Project Management').length,
+                          projects.filter(p => p.projectType === 'Administration').length,
+                          projects.filter(p => p.projectType === 'Operation').length,
                         ],
                         backgroundColor: [
                           'rgba(112, 6, 6, 0.8)',   // Theme Red
@@ -1423,6 +1427,8 @@ const Projects = () => {
                           'rgba(245, 158, 11, 0.8)', // Amber
                           'rgba(139, 92, 246, 0.8)', // Purple
                           'rgba(236, 72, 153, 0.8)', // Pink
+                          'rgba(99, 102, 241, 0.8)', // Indigo (Admin)
+                          'rgba(20, 184, 166, 0.8)', // Teal (Operation)
                         ],
                         borderColor: [
                           '#700606',
@@ -1431,6 +1437,8 @@ const Projects = () => {
                           '#d97706',
                           '#7c3aed',
                           '#db2777',
+                          '#4f46e5',
+                          '#0d9488',
                         ],
                         borderWidth: 1,
                         borderRadius: 6,
