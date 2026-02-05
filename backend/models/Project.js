@@ -19,13 +19,13 @@ const projectSchema = new mongoose.Schema({
   },
   clientName: {
     type: String,
-    required: [true, 'Please provide client name'],
     trim: true
   },
   clientEmail: {
     type: String,
     validate: {
       validator: function (v) {
+        if (!v) return true; // Allow empty
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
       },
       message: props => `${props.value} is not a valid email!`
@@ -35,6 +35,7 @@ const projectSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator: function (v) {
+        if (!v) return true; // Allow empty
         return /^[0-9]{10}$/.test(v);
       },
       message: props => `${props.value} is not a valid phone number!`

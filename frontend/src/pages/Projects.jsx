@@ -367,14 +367,13 @@ const Projects = () => {
     if (!formData.projectName.trim()) errors.projectName = 'Project name is required';
     if (!formData.projectType) errors.projectType = 'Project type is required';
     if (!formData.description.trim()) errors.description = 'Description is required';
-    if (!formData.clientName.trim()) errors.clientName = 'Client name is required';
     if (!formData.clientEmail.trim()) {
-      errors.clientEmail = 'Client email is required';
+      // Optional
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) {
       errors.clientEmail = 'Invalid email format';
     }
     if (!formData.clientPhone.trim()) {
-      errors.clientPhone = 'Client phone is required';
+      // Optional
     } else if (!/^[0-9]{10}$/.test(formData.clientPhone.replace(/\D/g, ''))) {
       errors.clientPhone = 'Phone number must be 10 digits';
     }
@@ -422,14 +421,14 @@ const Projects = () => {
         projectName: formData.projectName,
         description: formData.description,
         projectType: formData.projectType,
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone.replace(/\D/g, ''),
+        clientName: formData.clientName || undefined,
+        clientEmail: formData.clientEmail || undefined,
+        clientPhone: formData.clientPhone ? formData.clientPhone.replace(/\D/g, '') : undefined,
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: formData.budget ? parseFloat(formData.budget.toString().replace(/,/g, '')) : undefined,
-        location: formData.location,
-        manager: formData.manager
+        location: formData.location || undefined,
+        manager: formData.manager || undefined
       };
 
       console.log("Create Project Payload:", apiPayload);
@@ -863,7 +862,7 @@ const Projects = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client Name *
+                    Client Name
                   </label>
                   <input
                     type="text"
@@ -872,7 +871,7 @@ const Projects = () => {
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientName ? 'border-red-300' : 'border-gray-300'
                       }`}
-                    placeholder="Client full name"
+                    placeholder="Client full name (optional)"
                   />
                   {formErrors.clientName && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.clientName}</p>
@@ -881,7 +880,7 @@ const Projects = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client Email *
+                    Client Email
                   </label>
                   <input
                     type="email"
@@ -890,7 +889,7 @@ const Projects = () => {
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientEmail ? 'border-red-300' : 'border-gray-300'
                       }`}
-                    placeholder="client@example.com"
+                    placeholder="client@example.com (optional)"
                   />
                   {formErrors.clientEmail && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.clientEmail}</p>
@@ -899,7 +898,7 @@ const Projects = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Client Phone *
+                    Client Phone
                   </label>
                   <input
                     type="tel"
@@ -908,7 +907,7 @@ const Projects = () => {
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.clientPhone ? 'border-red-300' : 'border-gray-300'
                       }`}
-                    placeholder="10-digit phone number"
+                    placeholder="10-digit phone number (optional)"
                   />
                   {formErrors.clientPhone && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.clientPhone}</p>
