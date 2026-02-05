@@ -14,7 +14,7 @@ import { PlusIcon, BanknotesIcon, CurrencyDollarIcon, ReceiptPercentIcon } from 
 const ProjectDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +26,7 @@ const ProjectDetailPage = () => {
   const [showTaskActionsModal, setShowTaskActionsModal] = useState(false);
   const [selectedTaskForActions, setSelectedTaskForActions] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -77,16 +78,20 @@ const ProjectDetailPage = () => {
     }
   };
 
-  // Fetch staff for task assignment
-  const fetchStaff = async () => {
+  // Fetch staff and managers for task assignment
+  const fetchStaffAndManagers = async () => {
     try {
+      // accessable to both admin and manager
       const response = await api.get('/auth/staff-for-manager');
       if (response.data.success && response.data.users) {
-        setStaff(response.data.users);
+        const allUsers = response.data.users;
+        setStaff(allUsers.filter(u => u.role === 'staff'));
+        setManagers(allUsers.filter(u => u.role === 'manager'));
       }
     } catch (error) {
-      console.error('Error fetching staff:', error);
+      console.error('Error fetching staff and managers:', error);
       setStaff([]);
+      setManagers([]);
     }
   };
 
@@ -149,7 +154,7 @@ const ProjectDetailPage = () => {
     if (auth.isAuthenticated && id) {
       fetchProject();
       fetchProjectTasks();
-      fetchStaff();
+      fetchStaffAndManagers();
     }
   }, [auth.isAuthenticated, id]);
 
@@ -850,6 +855,12 @@ const ProjectDetailPage = () => {
         if (response.data.success) {
           toast.success('Project updated successfully!');
           setShowEditModal(false);
+          // Remove the action param so it doesn't reopen on refetch
+          setSearchParams(params => {
+            const newParams = new URLSearchParams(params);
+            newParams.delete('action');
+            return newParams;
+          });
           fetchProject(); // Refresh project data
         }
       } catch (error) {
@@ -914,7 +925,8 @@ const ProjectDetailPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select Manager</option>
-                  {staff.map((user) => (
+
+                  {managers.map((user) => (
                     <option key={user._id} value={user._id}>
                       {user.fullName || user.username}
                     </option>
@@ -1189,6 +1201,8 @@ const ProjectDetailPage = () => {
         onClose={() => setShowTaskModal(false)}
         project={project}
         staff={staff}
+        managers={managers}
+        userRole={auth.user?.role}
         onTaskCreated={() => {
           fetchProjectTasks();
         }}

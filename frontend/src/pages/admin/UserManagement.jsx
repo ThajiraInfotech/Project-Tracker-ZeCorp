@@ -39,8 +39,6 @@ const UserManagement = () => {
     fullName: '',
     role: 'staff',
     phone: '',
-    role: 'staff',
-    phone: '',
     password: '',
     salaryPerHour: ''
   });
@@ -99,7 +97,6 @@ const UserManagement = () => {
           fullName: '',
           role: 'staff',
           phone: '',
-          phone: '',
           password: '',
           salaryPerHour: ''
         });
@@ -122,7 +119,6 @@ const UserManagement = () => {
         username: selectedUser.username,
         email: selectedUser.email,
         fullName: selectedUser.fullName,
-        role: selectedUser.role,
         role: selectedUser.role,
         phone: selectedUser.phone,
         salaryPerHour: selectedUser.salaryPerHour || 0

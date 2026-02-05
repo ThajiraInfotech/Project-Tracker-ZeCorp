@@ -9,14 +9,27 @@ const { publishEvent } = require('../infrastructure/queue');
 
 // Helper function to sync progress based on status
 // Helper function to sync progress based on status
+// Helper function to sync progress based on status
 const syncProgressWithStatus = (task) => {
   // Guard: If subtasks exist, recalculate progress from them
   if (task.subtasks && task.subtasks.length > 0) {
     const totalSubtasks = task.subtasks.length;
     const completedSubtasks = task.subtasks.filter(st => st.status === 'completed').length;
 
-    // Calculate progress ONLY, do not touch status
-    task.progress = Math.round((completedSubtasks / totalSubtasks) * 100);
+    // Subtasks contribute max 75% of the progress
+    // The remaining 25% is achieved when the parent task is explicitly marked as 'completed'
+    let calculatedProgress = Math.round((completedSubtasks / totalSubtasks) * 75);
+
+    // If task is manually marked as completed, force 100%
+    if (task.status === 'completed') {
+      calculatedProgress = 100;
+      task.completionDate = task.completionDate || new Date();
+    } else {
+      // Ensure completion date is cleared if not completed
+      task.completionDate = undefined;
+    }
+
+    task.progress = calculatedProgress;
     return;
   }
 
@@ -62,7 +75,8 @@ exports.createTask = async (req, res) => {
       assignedTo,
       createdBy: req.user._id,
       deadline,
-      priority: priority || 'medium'
+      priority: priority || 'medium',
+      cc: req.body.cc || undefined
     });
 
     syncProgressWithStatus(task);
@@ -74,7 +88,7 @@ exports.createTask = async (req, res) => {
     // Update project progress and status
     await updateProjectProgressAndStatus(task.project);
 
-    // EMIT EVENT: Task Assigned
+    // EMIT EVENT: Task Assigned (to Assignee)
     await publishEvent('TASK_ASSIGNED', {
       entityType: 'task',
       entityId: task._id,
@@ -85,6 +99,27 @@ exports.createTask = async (req, res) => {
       relatedLink: `/tasks?taskId=${task._id}`, // Deep link for modal
       project: projectExists
     });
+
+    // EMIT EVENT: Task Supervisor Added (to CC)
+    if (task.cc) {
+      try {
+        const ccUser = await User.findById(task.cc);
+        if (ccUser) {
+          await publishEvent('TASK_SUPERVISOR_ADDED', {
+            entityType: 'task',
+            entityId: task._id,
+            entityTitle: task.title,
+            cc: ccUser,
+            triggeredBy: req.user._id,
+            messageSnippet: `You have been added as a Supervisor to task: ${task.title}`,
+            relatedLink: `/tasks?taskId=${task._id}`,
+            project: projectExists
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching CC user for create notification:', err);
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -106,7 +141,8 @@ exports.getAllTasks = async (req, res) => {
     if (req.user.role === 'staff') {
       query.$or = [
         { assignedTo: req.user._id.toString() },
-        { 'subtasks.assignedTo': req.user._id.toString() }
+        { 'subtasks.assignedTo': req.user._id.toString() },
+        { cc: req.user._id.toString() }
       ];
     } else if (req.user.role === 'manager') {
       // Get projects managed by this user
@@ -133,13 +169,16 @@ exports.getAllTasks = async (req, res) => {
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email')
+      .populate('cc', 'username fullName email')
       .sort({ deadline: 1 });
 
     const tasksWithReadOnly = tasks.map(task => {
       const t = task.toObject();
       const isParentAssignee = t.assignedTo?._id?.toString() === req.user._id.toString() || t.assignedTo?.toString() === req.user._id.toString();
+      const isCC = t.cc?._id?.toString() === req.user._id.toString() || t.cc?.toString() === req.user._id.toString();
       const isManager = ['admin', 'manager'].includes(req.user.role);
       t.readOnly = !isManager && !isParentAssignee;
+      if (isCC && !isManager) t.readOnly = true;
       return t;
     });
 
@@ -159,20 +198,25 @@ exports.getMyTasks = async (req, res) => {
     const tasks = await Task.find({
       $or: [
         { assignedTo: req.user._id.toString() },
-        { 'subtasks.assignedTo': req.user._id.toString() }
+        { assignedTo: req.user._id.toString() },
+        { 'subtasks.assignedTo': req.user._id.toString() },
+        { cc: req.user._id.toString() }
       ]
     })
       .populate('project', 'projectName projectType')
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email')
+      .populate('cc', 'username fullName email')
       .sort({ deadline: 1 });
 
     const tasksWithReadOnly = tasks.map(task => {
       const t = task.toObject();
       const isParentAssignee = t.assignedTo?._id?.toString() === req.user._id.toString() || t.assignedTo?.toString() === req.user._id.toString();
+      const isCC = t.cc?._id?.toString() === req.user._id.toString() || t.cc?.toString() === req.user._id.toString();
       const isManager = ['admin', 'manager'].includes(req.user.role);
       t.readOnly = !isManager && !isParentAssignee;
+      if (isCC && !isManager) t.readOnly = true;
       return t;
     });
 
@@ -199,6 +243,7 @@ exports.getTaskById = async (req, res) => {
         ]
       })
       .populate('assignedTo', 'username fullName email profileImage')
+      .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email');
 
@@ -215,7 +260,10 @@ exports.getTaskById = async (req, res) => {
         (st.assignedTo?.toString() === req.user._id.toString())
       );
 
-      if (assignedToId !== req.user._id.toString() && !isSubtaskAssignee) {
+
+      const isCC = task.cc?._id?.toString() === req.user._id.toString() || task.cc?.toString() === req.user._id.toString();
+
+      if (assignedToId !== req.user._id.toString() && !isSubtaskAssignee && !isCC) {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
@@ -223,8 +271,10 @@ exports.getTaskById = async (req, res) => {
     // Inject readOnly flag
     const taskObj = task.toObject();
     const isParentAssignee = task.assignedTo?._id?.toString() === req.user._id.toString() || task.assignedTo?.toString() === req.user._id.toString();
+    const isCC = task.cc?._id?.toString() === req.user._id.toString() || task.cc?.toString() === req.user._id.toString();
     const isManager = ['admin', 'manager'].includes(req.user.role);
     taskObj.readOnly = !isManager && !isParentAssignee;
+    if (isCC && !isManager) taskObj.readOnly = true;
 
     res.json({
       success: true,
@@ -241,8 +291,9 @@ exports.updateTask = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
     let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress', 'subtasks'];
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'manager') {
       allowedUpdates.push('assignedTo');
+      allowedUpdates.push('cc');
     }
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
@@ -255,8 +306,13 @@ exports.updateTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -269,7 +325,9 @@ exports.updateTask = async (req, res) => {
     }
 
     // Update task
+    // Update task
     const oldAssignedTo = task.assignedTo.toString();
+    const oldCC = task.cc ? task.cc.toString() : null;
     updates.forEach(update => task[update] = req.body[update]);
     syncProgressWithStatus(task);
     await task.save();
@@ -278,28 +336,72 @@ exports.updateTask = async (req, res) => {
     await updateProjectProgressAndStatus(task.project);
 
     // EMIT EVENT: Task Re-Assigned
-    if (updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) {
+    if ((updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) ||
+      (updates.includes('cc') && oldCC !== (task.cc ? task.cc.toString() : null))) {
+
       const userExists = await User.findById(task.assignedTo);
       const projectExists = await Project.findById(task.project);
 
-      console.log(`[Task] Re-assignment detected. Old: ${oldAssignedTo}, New: ${task.assignedTo}`);
+      let ccUser = null;
+      if (task.cc) {
+        try {
+          ccUser = await User.findById(task.cc);
+        } catch (err) {
+          console.error('Error fetching CC user for notification:', err);
+        }
+      }
 
-      await publishEvent('TASK_ASSIGNED', {
-        entityType: 'task',
-        entityId: task._id,
-        entityTitle: task.title,
-        assignedTo: userExists,
-        triggeredBy: req.user._id,
-        messageSnippet: `You have been assigned a task: ${task.title}`,
-        relatedLink: `/tasks?taskId=${task._id}`,
-        project: projectExists
-      });
+      // 1. Notify Assignee if Changed
+      if (updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) {
+        console.log(`[Task] Assignee changed to: ${userExists?._id}`);
+        await publishEvent('TASK_ASSIGNED', {
+          entityType: 'task',
+          entityId: task._id,
+          entityTitle: task.title,
+          assignedTo: userExists,
+          triggeredBy: req.user._id,
+          messageSnippet: `You have been assigned a task: ${task.title}`,
+          relatedLink: `/tasks?taskId=${task._id}`,
+          project: projectExists
+        });
+      }
+
+      // 2. Notify Supervisor if Changed
+      if (updates.includes('cc') && oldCC !== (task.cc ? task.cc.toString() : null)) {
+        console.log(`[Task] Supervisor (CC) changed to: ${ccUser?._id}`);
+        await publishEvent('TASK_SUPERVISOR_ADDED', {
+          entityType: 'task',
+          entityId: task._id,
+          entityTitle: task.title,
+          cc: ccUser,
+          triggeredBy: req.user._id,
+          messageSnippet: `You have been added as a Supervisor to task: ${task.title}`,
+          relatedLink: `/tasks?taskId=${task._id}`,
+          project: projectExists
+        });
+      }
     }
+
+    // Populate task before returning
+    const populatedTask = await Task.findById(task._id)
+      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('assignedTo', 'username fullName email profileImage')
+      .populate('cc', 'username fullName email profileImage')
+      .populate('createdBy', 'username fullName email')
+      .populate('subtasks.assignedTo', 'username fullName email');
+
+    // Inject readOnly flag
+    const taskObj = populatedTask.toObject();
+    const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const updatedTaskIsCC = populatedTask.cc?._id?.toString() === req.user._id.toString() || populatedTask.cc?.toString() === req.user._id.toString();
+    const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
+    if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
     res.json({
       success: true,
       message: 'Task updated successfully',
-      task
+      task: taskObj
     });
   } catch (error) {
     console.error('Update task error:', error);
@@ -315,8 +417,13 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -346,8 +453,13 @@ exports.updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -383,14 +495,17 @@ exports.updateTaskStatus = async (req, res) => {
     const populatedTask = await Task.findById(task._id)
       .populate('project', 'projectName projectType manager teamMembers')
       .populate('assignedTo', 'username fullName email profileImage')
+      .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email');
 
     // Inject readOnly flag
     const taskObj = populatedTask.toObject();
     const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
-    const isManager = ['admin', 'manager'].includes(req.user.role);
-    taskObj.readOnly = !isManager && !isParentAssignee;
+    const updatedTaskIsCC = populatedTask.cc?._id?.toString() === req.user._id.toString() || populatedTask.cc?.toString() === req.user._id.toString();
+    const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
+    if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
     res.json({
       success: true,
@@ -413,8 +528,13 @@ exports.updateTaskProgress = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -440,14 +560,17 @@ exports.updateTaskProgress = async (req, res) => {
     const populatedTask = await Task.findById(task._id)
       .populate('project', 'projectName projectType manager teamMembers')
       .populate('assignedTo', 'username fullName email profileImage')
+      .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email');
 
     // Inject readOnly flag
     const taskObj = populatedTask.toObject();
     const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
-    const isManager = ['admin', 'manager'].includes(req.user.role);
-    taskObj.readOnly = !isManager && !isParentAssignee;
+    const updatedTaskIsCC = populatedTask.cc?._id?.toString() === req.user._id.toString() || populatedTask.cc?.toString() === req.user._id.toString();
+    const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
+    if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
     res.json({
       success: true,
@@ -470,8 +593,23 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization - only staff assigned to the task can update
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+
+    // DEBUG LOGGING
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+      console.log('Access Denied Debug:', {
+        userId: req.user._id,
+        role: req.user.role,
+        isAssigned,
+        isCC,
+        isSubtaskAssignee,
+        taskAssignedTo: task.assignedTo,
+        taskCC: task.cc,
+        subtasksCount: task.subtasks?.length
+      });
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -524,14 +662,17 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     const populatedTask = await Task.findById(task._id)
       .populate('project', 'projectName projectType manager teamMembers')
       .populate('assignedTo', 'username fullName email profileImage')
+      .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email');
 
     // Inject readOnly flag
     const taskObj = populatedTask.toObject();
     const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
-    const isManager = ['admin', 'manager'].includes(req.user.role);
-    taskObj.readOnly = !isManager && !isParentAssignee;
+    const updatedTaskIsCC = populatedTask.cc?._id?.toString() === req.user._id.toString() || populatedTask.cc?.toString() === req.user._id.toString();
+    const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
+    taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
+    if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
     res.json({
       success: true,
@@ -554,8 +695,13 @@ exports.addComment = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -614,8 +760,23 @@ exports.getComments = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    // DEBUG LOGS
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+      console.log('DEBUG 403 Access Denied:', {
+        user: req.user._id,
+        role: req.user.role,
+        isAssigned,
+        isCC,
+        isSubtaskAssignee,
+        subtaskAssignees: task.subtasks?.map(st => st.assignedTo),
+        taskId: task._id
+      });
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -637,8 +798,13 @@ exports.uploadTaskFiles = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -668,8 +834,13 @@ exports.getTaskFiles = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -691,8 +862,13 @@ exports.deleteTaskFile = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -725,8 +901,13 @@ exports.sendTaskNotification = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check authorization
-    if (req.user.role === 'staff' && task.assignedTo.toString() !== req.user._id.toString()) {
+    // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
+    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isCC = task.cc && task.cc.toString() === req.user._id.toString();
+    const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
+    const isManager = ['admin', 'manager'].includes(req.user.role);
+
+    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -813,8 +994,10 @@ exports.updateSubtaskStatus = async (req, res) => {
     // Inject readOnly flag
     const taskObj = populatedTask.toObject();
     const isParentAssignee = populatedTask.assignedTo?._id?.toString() === req.user._id.toString() || populatedTask.assignedTo?.toString() === req.user._id.toString();
+    const isCC = populatedTask.cc?._id?.toString() === req.user._id.toString() || populatedTask.cc?.toString() === req.user._id.toString();
     const isManager = ['admin', 'manager'].includes(req.user.role);
     taskObj.readOnly = !isManager && !isParentAssignee;
+    if (isCC && !isManager) taskObj.readOnly = true;
 
     res.json({
       success: true,

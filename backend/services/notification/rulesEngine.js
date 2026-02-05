@@ -39,22 +39,27 @@ const RULES = {
     // Task Events
     TASK_ASSIGNED: {
         channels: ['IN_APP', 'WHATSAPP', 'EMAIL'],
-        getRecipients: (data) => [data.assignedTo],
+        getRecipients: (data) => [data.assignedTo].filter(Boolean),
+        priority: 'high'
+    },
+    TASK_SUPERVISOR_ADDED: {
+        channels: ['IN_APP', 'WHATSAPP', 'EMAIL'],
+        getRecipients: (data) => [data.cc].filter(Boolean),
         priority: 'high'
     },
     TASK_DUE_SOON: {
         channels: ['IN_APP', 'EMAIL'],
-        getRecipients: (data) => [data.assignedTo],
+        getRecipients: (data) => [data.assignedTo, data.cc].filter(Boolean),
         priority: 'medium'
     },
     TASK_DUE_TODAY: {
         channels: ['IN_APP', 'WHATSAPP'],
-        getRecipients: (data) => [data.assignedTo],
+        getRecipients: (data) => [data.assignedTo, data.cc].filter(Boolean),
         priority: 'high'
     },
     TASK_OVERDUE: {
         channels: ['IN_APP', 'WHATSAPP', 'EMAIL'], // Escalation
-        getRecipients: (data) => [data.assignedTo],
+        getRecipients: (data) => [data.assignedTo, data.cc].filter(Boolean),
         priority: 'critical'
     }
 };

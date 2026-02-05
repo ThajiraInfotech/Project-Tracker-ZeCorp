@@ -25,6 +25,10 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  cc: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   deadline: {
     type: Date,
     required: [true, 'Please provide a deadline']

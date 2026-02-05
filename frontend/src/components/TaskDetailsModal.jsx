@@ -13,7 +13,8 @@ import {
     TrashIcon,
     PencilIcon,
     UserIcon,
-    CalendarIcon
+    CalendarIcon,
+    EyeIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import ChatSidebar from './ChatSidebar';
@@ -102,7 +103,7 @@ const TaskDetailsModal = ({
         return assignedId?.toString() === currentUserId;
     });
     const isAssignedStaff = currentUserRole === 'staff' && (task?.assignedTo?._id === currentUserId || isAssignedToSubtask);
-    const canManageSubtasks = currentUserRole === 'admin' || currentUserRole === 'manager';
+    const canManageSubtasks = currentUserRole === 'admin' || currentUserRole === 'manager' || (currentUserRole === 'staff' && task?.assignedTo?._id === currentUserId);
     const canUpdateParent = isAssignedStaff || canManageSubtasks;
 
     // Fetch all users for assignment (only for managers/admins)
@@ -110,7 +111,8 @@ const TaskDetailsModal = ({
         const fetchAllUsers = async () => {
             if (canManageSubtasks) {
                 try {
-                    const response = await api.get('/auth/users');
+                    // accessible to staff as well (per authRoutes)
+                    const response = await api.get('/auth/staff-for-manager');
                     if (response.data.success && response.data.users) {
                         setAllUsers(response.data.users);
                     }
@@ -174,6 +176,7 @@ const TaskDetailsModal = ({
                     setTask(response.data.task);
                     if (onTaskUpdated) onTaskUpdated(response.data.task);
                     toast.success('Task updated successfully!');
+                    onClose(); // Close the modal
                 }
             }
         } catch (error) {
@@ -307,8 +310,8 @@ const TaskDetailsModal = ({
                                 <p className="text-gray-600">{task.description}</p>
                             </div>
 
-                            {/* Read Only Banner */}
-                            {task.readOnly && (
+                            {/* Read Only Banner (Hide if Supervisor, as they have their own banner) */}
+                            {task.readOnly && (!task.cc || (currentUserId !== task.cc._id && currentUserId !== task.cc)) && (
                                 <div className="bg-yellow-50 border border-yellow-100 rounded-md p-3 mb-4 flex items-center gap-2">
                                     <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -316,6 +319,14 @@ const TaskDetailsModal = ({
                                     <p className="text-sm text-yellow-800">
                                         You can view this task because you are assigned to a subtask.
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Supervisor Banner (Visible to CC even if readOnly) */}
+                            {task.cc && (currentUserId === task.cc._id || currentUserId === task.cc) && (
+                                <div className="bg-purple-50 border border-purple-100 rounded-md p-3 mb-4 flex items-center gap-2">
+                                    <EyeIcon className="w-5 h-5 text-purple-500" />
+                                    <p className="text-sm text-purple-700">You can view this task because you are assigned as a Supervisor (CC).</p>
                                 </div>
                             )}
 
@@ -577,6 +588,22 @@ const TaskDetailsModal = ({
                                         <p className="text-gray-600">{task.project?.projectName || 'N/A'}</p>
                                     </div>
                                     <div>
+                                        <h3 className="font-medium text-gray-700 mb-1">Supervisor (CC)</h3>
+                                        <div className="flex items-center gap-2">
+                                            {task.cc ? (
+                                                <>
+                                                    <UserAvatar
+                                                        user={task.cc}
+                                                        size="sm"
+                                                    />
+                                                    <p className="text-gray-600">{task.cc.fullName}</p>
+                                                </>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">None</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
                                         <h3 className="font-medium text-gray-700 mb-1">Priority</h3>
                                         <span className="text-sm text-gray-500">{task.priority} priority</span>
                                     </div>
@@ -643,6 +670,14 @@ const TaskDetailsModal = ({
                             <div className="border-t pt-4">
                                 <h3 className="font-medium text-gray-700 mb-4">Task Updates</h3>
 
+                                {/* Supervisor Banner */}
+                                {/* Supervisor Banner */}
+                                {task.cc && (currentUserId === task.cc._id || currentUserId === task.cc) && (
+                                    <div className="bg-purple-50 border border-purple-100 rounded-md p-3 mb-4 flex items-center gap-2">
+                                        <EyeIcon className="w-5 h-5 text-purple-500" />
+                                        <p className="text-sm text-purple-700">You can view this task because you are assigned as a Supervisor (CC).</p>
+                                    </div>
+                                )}
                                 {!hasIncompleteSubtasks && (
                                     <div className="grid grid-cols-2 gap-4 mb-4">
                                         <div>

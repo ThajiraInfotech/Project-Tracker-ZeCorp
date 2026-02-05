@@ -74,6 +74,20 @@ const ChatSidebar = ({ isOpen, onClose, entityType, entityId, entityTitle, entit
       // For tasks, include assigned user and project team
       addUser(entityData.assignedTo, 'Assigned To');
 
+      // Add Supervisor (CC)
+      if (entityData.cc) {
+        addUser(entityData.cc, 'Supervisor (CC)');
+      }
+
+      // Add Subtask Assignees
+      if (entityData.subtasks && entityData.subtasks.length > 0) {
+        entityData.subtasks.forEach(st => {
+          if (st.assignedTo) {
+            addUser(st.assignedTo, 'Subtask Staff');
+          }
+        });
+      }
+
       if (entityData.project?.manager) {
         addUser(entityData.project.manager, 'Project Manager');
       }

@@ -46,14 +46,18 @@ import AttendanceExceptions from './pages/admin/AttendanceExceptions';
 // Initialize socket connection
 const getSocketUrl = () => {
   let url = import.meta.env.VITE_API_URL || '/';
-  if (url.startsWith('http:')) {
-    url = url.replace('http:', 'https:');
+
+  // If URL is relative (proxy), connect to root for socket.io
+  // This prevents connecting to '/api' namespace when VITE_API_URL is '/api'
+  if (url.startsWith('/')) {
+    return '/';
   }
+
+  // Removed forced HTTPS replacement to allow local dev on HTTP
   return url;
 };
 
 export const socket = io(getSocketUrl(), {
-  secure: true,
   transports: ['websocket', 'polling'] // prioritize websocket
 });
 

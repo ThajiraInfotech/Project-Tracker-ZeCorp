@@ -264,6 +264,9 @@ const NotificationBell = ({ onNotificationClick }) => {
                                 {notification.type === 'TASK_ASSIGNED' && (
                                   <span> assigned you to task <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
                                 )}
+                                {notification.type === 'TASK_SUPERVISOR_ADDED' && (
+                                  <span> added you as a Supervisor to task <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
+                                )}
                                 {notification.type === 'ADDED_TO_TEAM' && (
                                   <span> added you to the team of <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
                                 )}
@@ -273,7 +276,7 @@ const NotificationBell = ({ onNotificationClick }) => {
                                 {['mention', 'comment'].includes(notification.type) && (
                                   <span> mentioned you in <span className="font-semibold text-primary-600">{notification.entityTitle}</span></span>
                                 )}
-                                {!['PROJECT_ASSIGNED', 'TASK_ASSIGNED', 'ADDED_TO_TEAM', 'USER_CREATED', 'mention', 'comment'].includes(notification.type) && (
+                                {!['PROJECT_ASSIGNED', 'TASK_ASSIGNED', 'TASK_SUPERVISOR_ADDED', 'ADDED_TO_TEAM', 'USER_CREATED', 'mention', 'comment'].includes(notification.type) && (
                                   <span> {notification.messageSnippet}</span>
                                 )}
                               </p>

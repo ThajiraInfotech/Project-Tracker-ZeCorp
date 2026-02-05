@@ -3,13 +3,14 @@ import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
-const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, projects, task, userRole, defaultProjectId }) => {
+const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCreated, projects, task, userRole, defaultProjectId }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'medium',
     deadline: '',
     assignedTo: '',
+    cc: '',
     estimatedHours: '',
     project: project ? project._id : ''
   });
@@ -33,6 +34,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
         priority: task.priority || 'medium',
         deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
         assignedTo: task.assignedTo?._id || '',
+        cc: task.cc?._id || '',
         estimatedHours: task.estimatedHours || '',
         project: task.project?._id || ''
       });
@@ -43,6 +45,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
         priority: 'medium',
         deadline: '',
         assignedTo: '',
+        cc: '',
         estimatedHours: '',
         project: project ? project._id : ''
       });
@@ -73,6 +76,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
         description: formData.description,
         project: selectedProject._id,
         assignedTo: formData.assignedTo || undefined,
+        cc: formData.cc || undefined,
         deadline: formData.deadline,
         priority: formData.priority,
         estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined
@@ -87,8 +91,9 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
           deadline: taskData.deadline,
           priority: taskData.priority
         };
-        if (userRole === 'admin') {
+        if (userRole === 'admin' || userRole === 'manager') {
           editData.assignedTo = taskData.assignedTo || undefined;
+          editData.cc = taskData.cc || undefined;
         }
         response = await api.put(`/tasks/${task._id}`, editData);
         if (response.data.success) {
@@ -120,6 +125,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
       priority: 'medium',
       deadline: '',
       assignedTo: '',
+      cc: '',
       estimatedHours: '',
       project: project ? project._id : (defaultProjectId || '')
     });
@@ -203,7 +209,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {(isEdit ? userRole === 'admin' : true) && (
+            {(userRole === 'admin' || userRole === 'manager') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assign to Staff</label>
                 <select
@@ -232,6 +238,27 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, onTaskCreated, proje
                   step="0.5"
                 />
                 <p className="text-xs text-gray-500 mt-1">Optional — total estimated effort in hours</p>
+              </div>
+            )}
+            {(userRole === 'admin' || userRole === 'manager') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign Supervisor (CC)</label>
+                <select
+                  value={formData.cc}
+                  onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">No Supervisor</option>
+                  {managers && staff ? [...managers, ...staff].map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.fullName} ({member.username}) - {member.role}
+                    </option>
+                  )) : staff?.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.fullName} ({member.username})
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>

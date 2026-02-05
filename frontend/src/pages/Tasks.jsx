@@ -71,6 +71,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [updateForm, setUpdateForm] = useState({
     status: '',
@@ -185,16 +186,20 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     }
   };
 
-  // Fetch staff for task assignment
-  const fetchStaff = async () => {
+  // Fetch staff and managers for task assignment
+  const fetchStaffAndManagers = async () => {
     try {
-      const response = await api.get('/auth/users/by-role?role=staff');
-      if (response.data.success) {
-        setStaff(response.data.users || []);
+      // accessible to both admin and manager
+      const response = await api.get('/auth/staff-for-manager');
+
+      if (response.data.success && response.data.users) {
+        const allUsers = response.data.users;
+        setStaff(allUsers.filter(u => u.role === 'staff'));
+        setManagers(allUsers.filter(u => u.role === 'manager' || u.role === 'admin'));
       }
     } catch (error) {
-      console.error('Error fetching staff:', error);
-      toast.error('Failed to fetch staff list');
+      console.error('Error fetching staff and managers:', error);
+      // Don't show error toast for this background fetch to avoid clutter
     }
   };
 
@@ -351,8 +356,9 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     if (auth.isAuthenticated) {
       fetchTasks();
       dispatch(fetchProjects());
-      if (auth.user?.role === 'admin') {
-        fetchStaff();
+      dispatch(fetchProjects());
+      if (auth.user?.role === 'admin' || auth.user?.role === 'manager') {
+        fetchStaffAndManagers();
       }
 
       // Check for deep link to task (e.g. from notification)
@@ -1447,6 +1453,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         isOpen={showCreateModal}
         onClose={() => { setShowCreateModal(false); setEditingTask(null); }}
         staff={staff}
+        managers={managers}
         projects={projects}
         task={editingTask}
         userRole={auth.user?.role}

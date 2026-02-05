@@ -516,7 +516,7 @@ exports.getStaffForManager = async (req, res) => {
   try {
     // Get all active staff and manager users
     const staff = await User.find({
-      role: { $in: ['staff', 'manager'] },
+      role: { $in: ['staff', 'manager', 'admin'] },
       isActive: true
     }).select('-password');
 
