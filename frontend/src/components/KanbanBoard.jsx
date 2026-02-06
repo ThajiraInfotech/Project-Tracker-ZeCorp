@@ -2,6 +2,7 @@ import React from 'react';
 import { DndContext, useDroppable, useDraggable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 
 const Droppable = ({ id, children }) => {
   const { setNodeRef } = useDroppable({ id });
@@ -28,7 +29,7 @@ const Draggable = ({ id, children, data, disabled }) => {
   );
 };
 
-const TaskCard = ({ task, onClick }) => {
+const TaskCard = ({ task, onClick, onChatClick }) => {
   const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab">
@@ -68,26 +69,44 @@ const TaskCard = ({ task, onClick }) => {
           ></div>
         </div>
       </div>
-      {task.comments && task.comments.length > 0 && (
-        <div className="mt-2 flex items-center text-xs text-gray-500">
-          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-          </svg>
-          {task.comments.length} comment{task.comments.length !== 1 ? 's' : ''}
-        </div>
-      )}
-      <button
-        onClick={() => onClick(task)}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="mt-2 w-full text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
-      >
-        View Details
-      </button>
-    </div>
+      <div className="flex justify-between items-center mt-2">
+        <button
+          onClick={() => onClick(task)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
+        >
+          View Details
+        </button>
+        {onChatClick && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onChatClick(task, e);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#700606]/10 text-[#700606] hover:bg-[#700606]/20 rounded-lg transition-colors font-medium text-xs shadow-sm"
+            title="Open Chat"
+          >
+            <ChatBubbleLeftRightIcon className="w-4 h-4" />
+            Chat
+          </button>
+        )}
+      </div>
+      {
+        task.comments && task.comments.length > 0 && (
+          <div className="mt-2 flex items-center text-xs text-gray-500">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+            </svg>
+            {task.comments.length} comment{task.comments.length !== 1 ? 's' : ''}
+          </div>
+        )
+      }
+    </div >
   );
 };
 
-const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick }) => {
+const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick }) => {
   const statuses = [
     { id: 'todo', name: 'To Do', color: 'bg-blue-50' },
     { id: 'in-progress', name: 'In Progress', color: 'bg-yellow-50' },
@@ -137,7 +156,7 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick }) => {
                         data={{ status: task.status }}
                         disabled={(task.subtasks && task.subtasks.some(st => st.status !== 'completed')) || task.readOnly}
                       >
-                        <TaskCard task={task} onClick={onTaskClick} />
+                        <TaskCard task={task} onClick={onTaskClick} onChatClick={onChatClick} />
                       </Draggable>
                     ))}
                     {statusTasks.length === 0 && (

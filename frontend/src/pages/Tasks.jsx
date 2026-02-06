@@ -19,6 +19,7 @@ import {
   ExclamationTriangleIcon,
   ArrowDownTrayIcon,
   ClipboardDocumentListIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -302,6 +303,12 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     }
   };
 
+  const handleChatClick = (task, e) => {
+    if (e) e.stopPropagation();
+    setSelectedTask(task);
+    setShowChatSidebar(true);
+  };
+
   const handleBulkDelete = async () => {
     if (selectedTasks.length === 0) return;
 
@@ -543,42 +550,52 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         {/* Header with title and kebab menu */}
         <div className="flex justify-between items-start mb-3 pt-3 pr-3 pl-10">
           <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight">{task.title}</h3>
-          <div className="relative">
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => handleChatClick(task, e)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#700606]/10 text-[#700606] hover:bg-[#700606]/20 rounded-lg transition-colors font-medium text-xs shadow-sm"
+              title="Open Chat"
             >
-              <EllipsisVerticalIcon className="w-5 h-5 text-gray-500" />
+              <ChatBubbleLeftRightIcon className="w-4 h-4" />
+              Chat
             </button>
-            <AnimatePresence>
-              {menuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20"
-                >
-                  <div className="py-1">
-                    <button
-                      onClick={() => { fetchTaskDetails(task._id); setMenuOpen(false); }}
-                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                      View Details
-                    </button>
-                    {auth.user?.role !== 'staff' && (
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+              >
+                <EllipsisVerticalIcon className="w-5 h-5" />
+              </button>
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20"
+                  >
+                    <div className="py-1">
                       <button
-                        onClick={() => { handleEditTask(task); setMenuOpen(false); }}
+                        onClick={() => { fetchTaskDetails(task._id); setMenuOpen(false); }}
                         className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        <PencilIcon className="w-4 h-4" />
-                        Edit Task
+                        <EyeIcon className="w-4 h-4" />
+                        View Details
                       </button>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      {auth.user?.role !== 'staff' && (
+                        <button
+                          onClick={() => { handleEditTask(task); setMenuOpen(false); }}
+                          className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                          Edit Task
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
@@ -696,6 +713,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               setSelectedTask(task);
               setShowModal(true);
             }}
+            onChatClick={handleChatClick}
           />
         )}
 
@@ -1142,12 +1160,22 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                             />
                           </div>
                         </div>
-                        <button
-                          onClick={() => fetchTaskDetails(task._id)}
-                          className="mt-3 w-full text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none text-center"
-                        >
-                          View Details
-                        </button>
+                        <div className="flex justify-between items-center mt-3">
+                          <button
+                            onClick={() => fetchTaskDetails(task._id)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
+                          >
+                            View Details
+                          </button>
+                          <button
+                            onClick={(e) => handleChatClick(task, e)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#700606]/10 text-[#700606] hover:bg-[#700606]/20 rounded-lg transition-colors font-medium text-xs shadow-sm"
+                            title="Open Chat"
+                          >
+                            <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                            Chat
+                          </button>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
@@ -1197,13 +1225,21 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {tasks.map((task) => (
-                    <tr key={task._id} className={`hover:bg-gray-50 ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}>
+                    <tr
+                      key={task._id}
+                      className={`hover:bg-gray-50 cursor-pointer ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}
+                      onClick={(e) => handleChatClick(task, e)}
+                    >
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
                           checked={selectedTasks.includes(task._id)}
-                          onChange={() => handleSelectTask(task._id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleSelectTask(task._id);
+                          }}
                           className="w-4 h-4 text-blue-600"
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1249,13 +1285,19 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => fetchTaskDetails(task._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchTaskDetails(task._id);
+                          }}
                           className="text-blue-600 hover:text-blue-800 mr-4"
                         >
                           View
                         </button>
                         <button
-                          onClick={() => handleEditTask(task)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditTask(task);
+                          }}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           Edit

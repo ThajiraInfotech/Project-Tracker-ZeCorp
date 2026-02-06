@@ -55,11 +55,30 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
   const fetchProjects = async () => {
     try {
       const response = await api.get('/projects');
-      setAvailableProjects(response.data.projects || []);
+      let fetchedProjects = response.data.projects || [];
+
+      // If editing a task, ensure its project is in the list
+      if (task?.project && !fetchedProjects.find(p => p._id === task.project._id)) {
+        fetchedProjects = [...fetchedProjects, task.project];
+      }
+
+      setAvailableProjects(fetchedProjects);
     } catch (error) {
       console.error('Error fetching projects:', error);
     }
   };
+
+  // Ensure task project is in availableProjects when task changes or projects prop changes
+  useEffect(() => {
+    if (task?.project) {
+      setAvailableProjects(prev => {
+        if (!prev.find(p => p._id === task.project._id)) {
+          return [...prev, task.project];
+        }
+        return prev;
+      });
+    }
+  }, [task]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

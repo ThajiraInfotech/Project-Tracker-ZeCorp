@@ -165,7 +165,14 @@ exports.getAllTasks = async (req, res) => {
     }
 
     const tasks = await Task.find(query)
-      .populate('project', 'projectName projectType')
+      .populate({
+        path: 'project',
+        select: 'projectName projectType manager',
+        populate: {
+          path: 'manager',
+          select: 'username fullName email'
+        }
+      })
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email')
@@ -203,7 +210,14 @@ exports.getMyTasks = async (req, res) => {
         { cc: req.user._id.toString() }
       ]
     })
-      .populate('project', 'projectName projectType')
+      .populate({
+        path: 'project',
+        select: 'projectName projectType manager',
+        populate: {
+          path: 'manager',
+          select: 'username fullName email'
+        }
+      })
       .populate('assignedTo', 'username fullName email')
       .populate('createdBy', 'username fullName email')
       .populate('subtasks.assignedTo', 'username fullName email')
