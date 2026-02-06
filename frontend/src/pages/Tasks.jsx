@@ -130,25 +130,19 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             task.status !== 'completed' &&
             new Date(task.deadline) < now
           );
-        } else if (filter === 'upcoming') {
+        } else if (filter === 'upcoming' || filter === 'at-risk') {
           const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          // today.setHours(0, 0, 0, 0); // Keep time for strict comparison or reset? "Within 7 days" usually implies date range.
+          // Matching Projects.jsx standardized logic which uses current time vs 7 days from now. 
+          // Projects.jsx used: endDate >= now && endDate <= nextWeek
 
           const nextWeek = new Date(today);
           nextWeek.setDate(today.getDate() + 7);
-          nextWeek.setHours(23, 59, 59, 999); // Include the end of the 7th day
 
           allTasks = allTasks.filter(task => {
             if (task.status === 'completed') return false;
             const deadline = new Date(task.deadline);
-            // Reset deadline time to 00:00:00 to compare dates properly
-            // OR keep deadline time if we want exact timing. 
-            // Matching ManagerDashboard: it uses diffDays based on Midnight.
-            // So we should compare date parts.
-            const deadlineDate = new Date(deadline);
-            deadlineDate.setHours(0, 0, 0, 0);
-
-            return deadlineDate >= today && deadlineDate <= nextWeek;
+            return deadline >= today && deadline <= nextWeek;
           });
         }
 

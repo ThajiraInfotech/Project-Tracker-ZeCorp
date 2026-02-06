@@ -126,11 +126,16 @@ const Projects = () => {
 
   // Helper functions
   const getRiskBadge = (project) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date(); // Use current time for consistency
     const endDate = new Date(project.endDate);
-    if (project.status === 'delayed' || project.status === 'on-hold' || (endDate < today && project.status !== 'completed')) {
-      return { text: 'At Risk', color: 'bg-red-100 text-red-800' };
+
+    if (project.status === 'delayed' || project.status === 'on-hold' || (endDate < now && project.status !== 'completed')) {
+      return { text: 'Delayed', color: 'bg-red-100 text-red-800' };
+    }
+    const nextWeek = new Date(now);
+    nextWeek.setDate(now.getDate() + 7);
+    if (endDate >= now && endDate <= nextWeek && project.status !== 'completed') {
+      return { text: 'At Risk', color: 'bg-yellow-100 text-yellow-800' };
     }
     return { text: 'On Track', color: 'bg-green-100 text-green-800' };
   };
@@ -213,7 +218,7 @@ const Projects = () => {
       nextWeek.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(project => {
-        if (!project.endDate || project.status !== 'in-progress') return false;
+        if (!project.endDate || project.status === 'completed' || project.status === 'delayed' || project.status === 'on-hold') return false;
 
         const endDate = new Date(project.endDate);
         // Normalize endDate to local midnight to match 'today' for start check
@@ -223,9 +228,10 @@ const Projects = () => {
         return endDate >= today && endDate <= nextWeek;
       });
     } else if (filter === 'delayed') {
+      const now = new Date();
       filtered = filtered.filter(project =>
         project.status === 'on-hold' ||
-        (project.endDate && new Date(project.endDate) < today && project.status !== 'completed') ||
+        (project.endDate && new Date(project.endDate) < now && project.status !== 'completed') ||
         project.status === 'delayed'
       );
     } else if (filter === 'active') {

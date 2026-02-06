@@ -846,7 +846,17 @@ exports.getManagerDashboardData = async (req, res) => {
     // Calculate statistics
     const totalPresent = attendance.length;
     const totalTasksCompleted = tasks.filter(t => t.status === 'completed').length;
-    const totalTasksOverdue = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < endDate).length;
+    const totalTasksOverdue = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < new Date()).length;
+    const tasksAtRisk = tasks.filter(t => {
+      if (t.status === 'completed') return false;
+      const deadline = new Date(t.deadline);
+      const now = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(now.getDate() + 7);
+      // Reset hours for day comparison if desired, but standard logic was direct comparison or day window.
+      // Matching standard: deadline >= now && deadline <= nextWeek
+      return deadline >= now && deadline <= nextWeek;
+    });
 
     res.json({
       success: true,
@@ -861,12 +871,14 @@ exports.getManagerDashboardData = async (req, res) => {
           totalProjects: managedProjects.length,
           totalProjectsInProgress: managedProjects.filter(p => p.status === 'in-progress').length,
           totalProjectsCompleted: managedProjects.filter(p => p.status === 'completed').length,
+          totalProjectsDelayed: managedProjects.filter(p => p.status === 'on-hold' || p.status === 'delayed' || (p.endDate && new Date(p.endDate) < new Date() && p.status !== 'completed')).length,
           averageProgress: managedProjects.length > 0 ?
             managedProjects.reduce((sum, project) => sum + project.progress, 0) / managedProjects.length : 0
         },
         tasks: {
           totalTasksCompleted,
           totalTasksOverdue,
+          totalTasksAtRisk: tasksAtRisk.length,
           tasksDueToday: tasks.filter(t => t.status !== 'completed' && new Date(t.deadline).toDateString() === today.toDateString()).length
         }
       }
@@ -948,17 +960,27 @@ exports.getAdminDashboardData = async (req, res) => {
     const totalProjects = projects.length;
     const totalProjectsInProgress = projects.filter(p => p.status === 'in-progress').length;
     const totalProjectsCompleted = projects.filter(p => p.status === 'completed').length;
-    const totalProjectsDelayed = projects.filter(p => p.status === 'on-hold' || (p.endDate && p.endDate < now && p.status !== 'completed')).length;
 
-    // Calculate At-Risk Projects (In Progress AND Due within next 7 days)
+    // Delayed: Deadline passed OR explicitly on-hold/delayed
+    const totalProjectsDelayed = projects.filter(p =>
+      p.status === 'on-hold' ||
+      p.status === 'delayed' ||
+      (p.endDate && new Date(p.endDate) < now && p.status !== 'completed')
+    ).length;
+
+    // At-Risk: Deadline within next 7 days AND not completed (and not already delayed)
     const nextWeek = new Date(now);
     nextWeek.setDate(now.getDate() + 7);
-    const totalProjectsAtRisk = projects.filter(p =>
-      p.status === 'in-progress' &&
+
+    const projectsAtRiskList = projects.filter(p =>
+      p.status !== 'completed' &&
+      p.status !== 'on-hold' &&
+      p.status !== 'delayed' &&
       p.endDate &&
       new Date(p.endDate) >= now &&
       new Date(p.endDate) <= nextWeek
-    ).length;
+    );
+    const totalProjectsAtRisk = projectsAtRiskList.length;
 
     // Calculate productivity (tasks completed vs total tasks in the period)
     const periodTasks = await Task.find({
@@ -980,11 +1002,11 @@ exports.getAdminDashboardData = async (req, res) => {
       .filter(p => p.status === 'completed')
       .reduce((sum, project) => sum + (project.budget || 0), 0);
 
-    // Get delayed projects
+    // Get delayed projects list
     const delayedProjects = projects.filter(p =>
       p.status === 'on-hold' ||
-      (p.endDate && p.endDate < now && p.status !== 'completed') ||
-      p.status === 'delayed'
+      p.status === 'delayed' ||
+      (p.endDate && new Date(p.endDate) < now && p.status !== 'completed')
     );
 
     res.json({
@@ -1028,8 +1050,8 @@ exports.getAdminDashboardData = async (req, res) => {
           id: p._id,
           name: p.projectName,
           status: p.status,
-          delayReason: p.endDate && p.endDate < now ? 'Past deadline' : 'On hold',
-          daysDelayed: p.endDate && p.endDate < now ? Math.floor((now - p.endDate) / (1000 * 60 * 60 * 24)) : 0,
+          delayReason: p.endDate && new Date(p.endDate) < now ? 'Past deadline' : 'On hold',
+          daysDelayed: p.endDate && new Date(p.endDate) < now ? Math.floor((now - new Date(p.endDate)) / (1000 * 60 * 60 * 24)) : 0,
           potentialRevenueLoss: p.budget || 0,
           impact: p.status === 'on-hold' ? 'Temporarily paused' : 'Significantly delayed'
         }))
@@ -1277,14 +1299,18 @@ exports.getDelayRiskAnalysisReport = async (req, res) => {
 
     const delayedProjects = projects.filter(p =>
       p.status === 'on-hold' ||
-      (p.endDate < today && p.status !== 'completed') ||
-      p.status === 'delayed'
+      p.status === 'delayed' ||
+      (p.endDate && new Date(p.endDate) < today && p.status !== 'completed')
     );
 
+    // At Risk: Deadline within 7 days (and not already delayed/completed)
     const atRiskProjects = projects.filter(p =>
-      p.status === 'in-progress' &&
-      p.progress < 50 &&
-      new Date(p.endDate) < new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000) // Within 1 week of deadline
+      p.status !== 'completed' &&
+      p.status !== 'on-hold' &&
+      p.status !== 'delayed' &&
+      p.endDate &&
+      new Date(p.endDate) >= today &&
+      new Date(p.endDate) < new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
     );
 
     const overdueTasks = tasks.filter(t =>
