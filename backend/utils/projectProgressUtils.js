@@ -32,45 +32,28 @@ async function deriveProjectStatus(projectId) {
   try {
     const project = await Project.findById(projectId);
     if (!project) {
-      return 'planning';
+      return 'in-progress';
     }
 
     const tasks = await Task.find({ project: projectId });
-    const now = new Date();
 
-    // No tasks = Planning
+    // No tasks = In Progress (per "Complete and Inprocess" simplification)
     if (tasks.length === 0) {
-      return 'planning';
+      return 'in-progress';
     }
 
-    // Check for delayed tasks (highest priority)
-    const hasDelayedTasks = tasks.some(task => task.status === 'delayed');
-    if (hasDelayedTasks) {
-      return 'on-hold'; // Using existing 'on-hold' for delayed
-    }
-
-    // Check if deadline passed and not completed
+    // Check if all tasks are completed
     const allCompleted = tasks.every(task => task.status === 'completed');
-    if (!allCompleted && project.endDate < now) {
-      return 'cancelled'; // Using existing 'cancelled' for delayed projects
-    }
 
-    // All tasks completed
     if (allCompleted) {
       return 'completed';
     }
 
-    // At least one task started (not todo)
-    const hasStartedTasks = tasks.some(task => task.status !== 'todo');
-    if (hasStartedTasks) {
-      return 'in-progress';
-    }
-
-    // Default to planning if all tasks are todo
-    return 'planning';
+    // Default to in-progress for everything else
+    return 'in-progress';
   } catch (error) {
     console.error('Error deriving project status:', error);
-    return 'planning';
+    return 'in-progress';
   }
 }
 

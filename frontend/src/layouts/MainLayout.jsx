@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../store/api';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
@@ -33,12 +34,29 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch admin dashboard data for sidebar stats
+  const [sidebarUsers, setSidebarUsers] = useState([]);
+
+  // Fetch admin dashboard data and users for sidebar
   useEffect(() => {
     if (user?.role === 'admin') {
       dispatch(getAdminDashboardData('today'));
+
+      const fetchSidebarUsers = async () => {
+        try {
+          const response = await api.get('/auth/users');
+          if (response.data.success) {
+            const users = response.data.users;
+            setSidebarUsers(users.filter(u => u.role !== 'admin'));
+          }
+        } catch (error) {
+          console.error('Failed to fetch users for sidebar:', error);
+        }
+      };
+
+      fetchSidebarUsers();
     }
   }, [dispatch, user?.role]);
+
 
   const navigation = [
     { name: 'Dashboard', href: user?.role === 'admin' ? '/admin' : '/', icon: HomeIcon },
@@ -109,7 +127,6 @@ const MainLayout = () => {
                 ))}
               </div>
 
-              {/* Admin-specific navigation - only show for admin users */}
               {user?.role === 'admin' && (
                 <div className="space-y-1">
                   <div className="px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 mt-6">
@@ -126,6 +143,30 @@ const MainLayout = () => {
                       <span className="text-slate-700 group-hover:text-slate-900">{item.name}</span>
                     </Link>
                   ))}
+
+                  {/* User Workspaces Section */}
+                  <div className="px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 mt-6">
+                    User Workspaces
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {sidebarUsers.map((u) => (
+                      <Link
+                        key={u._id}
+                        to={u.role === 'manager' ? `/projects?manager=${u._id}` : `/tasks?assignedTo=${u._id}`}
+                        onClick={() => setSidebarOpen(false)}
+                        className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200"
+                      >
+                        <UserAvatar user={u} size="xs" className="mr-3" />
+                        <div className="flex flex-col">
+                          <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
+                          <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                        </div>
+                      </Link>
+                    ))}
+                    {sidebarUsers.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-slate-400 italic">No users found</div>
+                    )}
+                  </div>
                 </div>
               )}
             </nav>

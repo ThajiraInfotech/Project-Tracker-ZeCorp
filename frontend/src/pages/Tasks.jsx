@@ -66,6 +66,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all');
   const [filterPriority, setFilterPriority] = useState(searchParams.get('priority') || 'all');
   const [filterProject, setFilterProject] = useState(projectId || 'all');
+  const [filterAssignedTo, setFilterAssignedTo] = useState(searchParams.get('assignedTo') || '');
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', or 'kanban'
   const [selectedTask, setSelectedTask] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -369,17 +370,20 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       if (taskIdParam) {
         fetchTaskDetails(taskIdParam).then(() => {
           if (openChatParam === 'true') {
-            // Delay slightly to ensure modal/state doesn't conflict? 
-            // Actually, usually we might want chat to open ALONGSIDE or instead of modal?
-            // User said "chat discussion bar should open".
-            // If we rely on TaskDetailsModal, does it block sidebar?
-            // Tasks.jsx renders ChatSidebar explicitly.
             setShowChatSidebar(true);
           }
         });
       }
     }
   }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
+
+  // Sync assignedTo filter from URL
+  useEffect(() => {
+    const assignedToParam = searchParams.get('assignedTo');
+    if (assignedToParam !== filterAssignedTo) {
+      setFilterAssignedTo(assignedToParam || '');
+    }
+  }, [searchParams]);
 
   // Reset logic inside filter effect
   useEffect(() => {
@@ -399,6 +403,15 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       // Filter by project
       if (filterProject && filterProject !== 'all') {
         result = result.filter(task => task.project?._id === filterProject);
+      }
+
+      // Filter by Assigned User (including subtasks)
+      if (filterAssignedTo) {
+        result = result.filter(task => {
+          const isDirectlyAssigned = task.assignedTo?._id === filterAssignedTo || task.assignedTo === filterAssignedTo;
+          const hasSubtaskAssigned = task.subtasks?.some(st => st.assignedTo?._id === filterAssignedTo || st.assignedTo === filterAssignedTo);
+          return isDirectlyAssigned || hasSubtaskAssigned;
+        });
       }
 
       // Filter by search query
@@ -423,7 +436,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       setCurrentPage(1); // Reset to first page on filter change
     };
     filterTasks();
-  }, [tasks, filterStatus, filterPriority, filterProject, searchQuery, dateRange.start, dateRange.end, selectedTasks, searchParams]);
+  }, [tasks, filterStatus, filterPriority, filterProject, filterAssignedTo, searchQuery, dateRange.start, dateRange.end, selectedTasks, searchParams]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -707,7 +720,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         {/* Task List with Progress Updates */}
         {!loading && !error && tasks.length > 0 && (
           <KanbanBoard
-            tasks={tasks}
+            tasks={filteredTasks}
             onUpdateTaskStatus={(taskId, status, progress) => handleUpdateTask({ status, progress }, taskId)}
             onTaskClick={(task) => {
               setSelectedTask(task);
@@ -959,6 +972,25 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                       />
                     </div>
                   </div>
+                  {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
+                      <select
+                        value={filterAssignedTo}
+                        onChange={(e) => setFilterAssignedTo(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                      >
+                        <option value="">All Users</option>
+                        {[...managers, ...staff]
+                          .filter(user => user.role !== 'admin')
+                          .map((user) => (
+                            <option key={user._id} value={user._id}>
+                              {user.fullName} ({user.role})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1099,7 +1131,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             animate={{ opacity: 1 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {tasks.map((task) => (
+            {filteredTasks.map((task) => (
               <TaskCard
                 key={task._id}
                 task={task}
@@ -1111,7 +1143,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         ) : viewMode === 'kanban' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {['todo', 'in-progress', 'completed', 'delayed'].map((status) => {
-              const statusTasks = tasks.filter(task => task.status === status);
+              const statusTasks = filteredTasks.filter(task => task.status === status);
               const statusConfig = {
                 'todo': { title: 'To Do', color: 'bg-slate-100 border-slate-200' },
                 'in-progress': { title: 'In Progress', color: 'bg-amber-100 border-amber-200' },
@@ -1192,7 +1224,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     <th className="px-6 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedTasks.length === tasks.length && tasks.length > 0}
+                        checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
                         onChange={handleSelectAll}
                         className="w-4 h-4 text-blue-600"
                       />
@@ -1224,7 +1256,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {tasks.map((task) => (
+                  {filteredTasks.map((task) => (
                     <tr
                       key={task._id}
                       className={`hover:bg-gray-50 cursor-pointer ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}
@@ -1333,7 +1365,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
       {/* Summary section */}
       {
-        !loading && !error && tasks.length > 0 && (
+        !loading && !error && filteredTasks.length > 0 && (
           <div className="mt-8 space-y-6">
             {/* Stats Cards - Mobile First */}
             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1344,7 +1376,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   <div>
                     <p className="text-xs text-gray-600">To Do</p>
                     <p className="text-lg font-bold text-slate-900">
-                      {tasks.filter(t => t.status === 'todo').length}
+                      {filteredTasks.filter(t => t.status === 'todo').length}
                     </p>
                   </div>
                 </div>
@@ -1353,7 +1385,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   <div>
                     <p className="text-xs text-gray-600">In Progress</p>
                     <p className="text-lg font-bold text-amber-900">
-                      {tasks.filter(t => t.status === 'in-progress').length}
+                      {filteredTasks.filter(t => t.status === 'in-progress').length}
                     </p>
                   </div>
                 </div>
@@ -1362,7 +1394,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   <div>
                     <p className="text-xs text-gray-600">Completed</p>
                     <p className="text-lg font-bold text-emerald-900">
-                      {tasks.filter(t => t.status === 'completed').length}
+                      {filteredTasks.filter(t => t.status === 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -1371,7 +1403,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                   <div>
                     <p className="text-xs text-gray-600">Overdue</p>
                     <p className="text-lg font-bold text-red-900">
-                      {tasks.filter(t => t.isOverdue).length}
+                      {filteredTasks.filter(t => t.isOverdue).length}
                     </p>
                   </div>
                 </div>
@@ -1389,10 +1421,10 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                       labels: ['To Do', 'In Progress', 'Completed', 'Delayed'],
                       datasets: [{
                         data: [
-                          tasks.filter(t => t.status === 'todo').length,
-                          tasks.filter(t => t.status === 'in-progress').length,
-                          tasks.filter(t => t.status === 'completed').length,
-                          tasks.filter(t => t.status === 'delayed').length,
+                          filteredTasks.filter(t => t.status === 'todo').length,
+                          filteredTasks.filter(t => t.status === 'in-progress').length,
+                          filteredTasks.filter(t => t.status === 'completed').length,
+                          filteredTasks.filter(t => t.status === 'delayed').length,
                         ],
                         backgroundColor: [
                           '#700606',
@@ -1426,9 +1458,9 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                       datasets: [{
                         label: 'Tasks',
                         data: [
-                          tasks.filter(t => t.priority === 'low').length,
-                          tasks.filter(t => t.priority === 'medium').length,
-                          tasks.filter(t => t.priority === 'high').length,
+                          filteredTasks.filter(t => t.priority === 'low').length,
+                          filteredTasks.filter(t => t.priority === 'medium').length,
+                          filteredTasks.filter(t => t.priority === 'high').length,
                         ],
                         backgroundColor: [
                           '#700606',

@@ -12,6 +12,15 @@ const projectSchema = new mongoose.Schema({
     enum: ['Retail', 'Spare Parts', 'Service', 'Project', 'Design', 'Project Management', 'Administration', 'Operation'],
     required: [true, 'Please specify Scope of Work']
   },
+  category: {
+    type: String,
+    enum: ['Zecorp Kitchen', 'Zecorp Solutions'],
+    required: [true, 'Please select a category']
+  },
+  jobOrder: {
+    type: String,
+    trim: true
+  },
   description: {
     type: String,
     required: [true, 'Please provide project description'],
@@ -51,7 +60,7 @@ const projectSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['planning', 'in-progress', 'on-hold', 'completed', 'cancelled'],
+    enum: ['planning', 'in-progress', 'on-hold', 'completed'],
     default: 'planning'
   },
   budget: {

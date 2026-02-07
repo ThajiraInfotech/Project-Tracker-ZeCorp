@@ -186,11 +186,8 @@ const ProjectDetailPage = () => {
 
   const getProgress = (status) => {
     switch (status) {
-      case 'planning': return 25;
       case 'in-progress': return 60;
       case 'completed': return 100;
-      case 'on-hold': return 40;
-      case 'cancelled': return 0;
       default: return 50;
     }
   };
@@ -208,11 +205,8 @@ const ProjectDetailPage = () => {
   // Status badge component
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'planning': 'bg-blue-100 text-blue-800',
       'in-progress': 'bg-yellow-100 text-yellow-800',
-      'on-hold': 'bg-orange-100 text-orange-800',
-      'completed': 'bg-green-100 text-green-800',
-      'cancelled': 'bg-red-100 text-red-800'
+      'completed': 'bg-green-100 text-green-800'
     };
 
     return (
@@ -316,6 +310,10 @@ const ProjectDetailPage = () => {
             </h3>
             <div className="space-y-3 break-words">
               <p className="text-gray-700"><span className="font-semibold">Scope of Work:</span> {project.projectType}</p>
+              <p className="text-gray-700"><span className="font-semibold">Category:</span> {project.category || 'N/A'}</p>
+              {project.jobOrder && (
+                <p className="text-gray-700"><span className="font-semibold">Job Order:</span> {project.jobOrder}</p>
+              )}
               <p className="text-gray-700 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

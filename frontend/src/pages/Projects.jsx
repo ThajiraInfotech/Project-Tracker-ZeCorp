@@ -66,6 +66,8 @@ const Projects = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [startDateFilter, setStartDateFilter] = useState(searchParams.get('startDate') || '');
   const [endDateFilter, setEndDateFilter] = useState(searchParams.get('endDate') || '');
+  const [managerFilter, setManagerFilter] = useState(searchParams.get('manager') || '');
+  const [categoryFilter, setCategoryFilter] = useState('');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +93,8 @@ const Projects = () => {
   const [formData, setFormData] = useState({
     projectName: '',
     projectType: '',
+    category: '',
+    jobOrder: '',
     description: '',
     clientCompanyName: '',
     clientName: '',
@@ -129,7 +133,7 @@ const Projects = () => {
     const now = new Date(); // Use current time for consistency
     const endDate = new Date(project.endDate);
 
-    if (project.status === 'delayed' || project.status === 'on-hold' || (endDate < now && project.status !== 'completed')) {
+    if (endDate < now && project.status !== 'completed') {
       return { text: 'Delayed', color: 'bg-red-100 text-red-800' };
     }
     const nextWeek = new Date(now);
@@ -150,7 +154,7 @@ const Projects = () => {
   // Export functionality
   const handleExport = () => {
     const csvContent = [
-      ['Project Name', 'Client Name', 'Manager', 'Status', 'Start Date', 'End Date', 'Budget', 'Location', 'Progress'],
+      ['Project Name', 'Client Name', 'Manager', 'Status', 'Start Date', 'End Date', 'Budget', 'Location', 'Progress', 'Category', 'Job Order'],
       ...sortedProjects.map(project => [
         project.projectName,
         project.clientName,
@@ -160,7 +164,9 @@ const Projects = () => {
         new Date(project.endDate).toLocaleDateString('en-GB'),
         project.budget || 'N/A',
         project.location,
-        (project.progress || 0) + '%'
+        (project.progress || 0) + '%',
+        project.category || 'N/A',
+        project.jobOrder || 'N/A'
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
@@ -199,6 +205,14 @@ const Projects = () => {
     }
   };
 
+  // Sync manager filter from URL
+  useEffect(() => {
+    const managerParam = searchParams.get('manager');
+    if (managerParam !== managerFilter) {
+      setManagerFilter(managerParam || '');
+    }
+  }, [searchParams]);
+
   // Apply filters
   useEffect(() => {
     let filtered = projects;
@@ -218,7 +232,7 @@ const Projects = () => {
       nextWeek.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(project => {
-        if (!project.endDate || project.status === 'completed' || project.status === 'delayed' || project.status === 'on-hold') return false;
+        if (!project.endDate || project.status === 'completed') return false;
 
         const endDate = new Date(project.endDate);
         // Normalize endDate to local midnight to match 'today' for start check
@@ -230,9 +244,7 @@ const Projects = () => {
     } else if (filter === 'delayed') {
       const now = new Date();
       filtered = filtered.filter(project =>
-        project.status === 'on-hold' ||
-        (project.endDate && new Date(project.endDate) < now && project.status !== 'completed') ||
-        project.status === 'delayed'
+        (project.endDate && new Date(project.endDate) < now && project.status !== 'completed')
       );
     } else if (filter === 'active') {
       filtered = filtered.filter(project => project.status === 'in-progress');
@@ -244,9 +256,10 @@ const Projects = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(project =>
-        project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+        (project.projectName && project.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.clientName && project.clientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.jobOrder && project.jobOrder.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -264,14 +277,19 @@ const Projects = () => {
       filtered = filtered.filter(project => new Date(project.endDate) <= end);
     }
 
-    if (endDateFilter) {
-      const end = new Date(endDateFilter);
-      filtered = filtered.filter(project => new Date(project.endDate) <= end);
+    // Manager filter
+    if (managerFilter) {
+      filtered = filtered.filter(project => project.manager?._id === managerFilter || project.manager === managerFilter);
+    }
+
+    // Category filter
+    if (categoryFilter) {
+      filtered = filtered.filter(project => project.category === categoryFilter);
     }
 
     setFilteredProjects(filtered);
     setCurrentPage(1); // Reset to first page on filter change
-  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, searchParams]);
+  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, managerFilter, categoryFilter, searchParams]);
 
   // Apply sorting
   useEffect(() => {
@@ -281,8 +299,8 @@ const Projects = () => {
       sorted.sort((a, b) => {
         let aVal, bVal;
         switch (sortColumn) {
-          case 'projectName': aVal = a.projectName.toLowerCase(); bVal = b.projectName.toLowerCase(); break;
-          case 'clientName': aVal = a.clientName.toLowerCase(); bVal = b.clientName.toLowerCase(); break;
+          case 'projectName': aVal = (a.projectName || '').toLowerCase(); bVal = (b.projectName || '').toLowerCase(); break;
+          case 'clientName': aVal = (a.clientName || '').toLowerCase(); bVal = (b.clientName || '').toLowerCase(); break;
           case 'manager': aVal = (a.manager?.fullName || 'John Doe').toLowerCase(); bVal = (b.manager?.fullName || 'John Doe').toLowerCase(); break;
           case 'status': aVal = a.status; bVal = b.status; break;
           case 'progress': aVal = a.progress || 0; bVal = b.progress || 0; break;
@@ -290,6 +308,8 @@ const Projects = () => {
           case 'endDate': aVal = new Date(a.endDate); bVal = new Date(b.endDate); break;
           case 'budget': aVal = a.budget || 0; bVal = b.budget || 0; break;
           case 'risk': aVal = getRiskBadge(a).text; bVal = getRiskBadge(b).text; break;
+          case 'category': aVal = a.category || ''; bVal = b.category || ''; break;
+          case 'jobOrder': aVal = a.jobOrder || ''; bVal = b.jobOrder || ''; break;
           default: return 0;
         }
         if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -374,6 +394,7 @@ const Projects = () => {
 
     if (!formData.projectName.trim()) errors.projectName = 'Project name is required';
     if (!formData.projectType) errors.projectType = 'Project type is required';
+    if (!formData.category) errors.category = 'Category is required';
     if (!formData.description.trim()) errors.description = 'Description is required';
     if (!formData.clientEmail.trim()) {
       // Optional
@@ -429,6 +450,8 @@ const Projects = () => {
         projectName: formData.projectName,
         description: formData.description,
         projectType: formData.projectType,
+        category: formData.category,
+        jobOrder: formData.jobOrder,
         clientName: formData.clientName || undefined,
         clientEmail: formData.clientEmail || undefined,
         clientPhone: formData.clientPhone ? formData.clientPhone.replace(/\D/g, '') : undefined,
@@ -448,6 +471,8 @@ const Projects = () => {
         setFormData({
           projectName: '',
           projectType: '',
+          category: '',
+          jobOrder: '',
           description: '',
           clientCompanyName: '',
           clientName: '',
@@ -476,34 +501,19 @@ const Projects = () => {
   // Status badge component
   const StatusBadge = ({ status, size = 'sm' }) => {
     const statusConfig = {
-      'planning': {
-        color: 'bg-blue-100 text-blue-700 border-blue-200',
-        icon: <ClockIcon className="w-3 h-3" />,
-        label: 'Planning'
-      },
       'in-progress': {
         color: 'bg-[#700606]/10 text-[#700606] border-[#700606]/20',
         icon: <ClockSolid className="w-3 h-3" />,
         label: 'In Progress'
       },
-      'on-hold': {
-        color: 'bg-orange-100 text-orange-700 border-orange-200',
-        icon: <ExclamationTriangleIcon className="w-3 h-3" />,
-        label: 'On Hold'
-      },
       'completed': {
         color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
         icon: <CheckCircleSolid className="w-3 h-3" />,
         label: 'Completed'
-      },
-      'cancelled': {
-        color: 'bg-red-100 text-red-700 border-red-200',
-        icon: <ExclamationTriangleSolid className="w-3 h-3" />,
-        label: 'Cancelled'
       }
     };
 
-    const config = statusConfig[status] || statusConfig['planning'];
+    const config = statusConfig[status] || statusConfig['in-progress'];
 
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
@@ -525,7 +535,8 @@ const Projects = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{project.projectName}</h3>
-            <p className="text-sm text-gray-500 capitalize">{project.projectType}</p>
+            <p className="text-sm text-gray-500 capitalize">{project.projectType} • {project.category}</p>
+            {project.jobOrder && <p className="text-xs text-gray-400 mt-1">Job Order: {project.jobOrder}</p>}
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={project.status} />
@@ -715,6 +726,18 @@ const Projects = () => {
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="Zecorp Kitchen">Zecorp Kitchen</option>
+                      <option value="Zecorp Solutions">Zecorp Solutions</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <select
                       value={statusFilter}
@@ -722,13 +745,27 @@ const Projects = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
                     >
                       <option value="">All Statuses</option>
-                      <option value="planning">Planning</option>
                       <option value="in-progress">In Progress</option>
                       <option value="completed">Completed</option>
-                      <option value="on-hold">On Hold</option>
-                      <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
+                  {auth.user?.role === 'admin' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Manager</label>
+                      <select
+                        value={managerFilter}
+                        onChange={(e) => setManagerFilter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                      >
+                        <option value="">All Managers</option>
+                        {managers.map(manager => (
+                          <option key={manager._id} value={manager._id}>
+                            {manager.fullName} ({manager.username})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="sm:col-span-2 lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                     <div className="flex gap-2">
@@ -827,6 +864,45 @@ const Projects = () => {
                   {formErrors.projectType && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.projectType}</p>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Category and Job Order */}
+            <div className="bg-white rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${formErrors.category ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Zecorp Kitchen">Zecorp Kitchen</option>
+                    <option value="Zecorp Solutions">Zecorp Solutions</option>
+                  </select>
+                  {formErrors.category && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.category}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Order
+                  </label>
+                  <input
+                    type="text"
+                    name="jobOrder"
+                    value={formData.jobOrder}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors"
+                    placeholder="Enter job order number"
+                  />
                 </div>
               </div>
             </div>
@@ -1202,6 +1278,12 @@ const Projects = () => {
                           <th onClick={() => handleSort('clientName')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
                             <div className="flex items-center gap-1">Client {getSortIcon('clientName')}</div>
                           </th>
+                          <th onClick={() => handleSort('category')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Category {getSortIcon('category')}</div>
+                          </th>
+                          <th onClick={() => handleSort('jobOrder')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
+                            <div className="flex items-center gap-1">Job Order {getSortIcon('jobOrder')}</div>
+                          </th>
                           <th onClick={() => handleSort('manager')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
                             <div className="flex items-center gap-1">Manager {getSortIcon('manager')}</div>
                           </th>
@@ -1227,6 +1309,8 @@ const Projects = () => {
                                 <p className="text-xs text-gray-500">{project.projectType}</p>
                               </td>
                               <td className="p-4 text-gray-700">{project.clientName}</td>
+                              <td className="p-4 text-gray-700">{project.category}</td>
+                              <td className="p-4 text-gray-700">{project.jobOrder || '-'}</td>
                               <td className="p-4">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
@@ -1301,7 +1385,7 @@ const Projects = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Total</p>
-                    <p className="text-lg font-bold text-blue-900">{projects.length}</p>
+                    <p className="text-lg font-bold text-blue-900">{filteredProjects.length}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
@@ -1311,7 +1395,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">In Progress</p>
                     <p className="text-lg font-bold text-amber-900">
-                      {projects.filter(p => p.status === 'in-progress').length}
+                      {filteredProjects.filter(p => p.status === 'in-progress').length}
                     </p>
                   </div>
                 </div>
@@ -1322,7 +1406,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">Planning</p>
                     <p className="text-lg font-bold text-indigo-900">
-                      {projects.filter(p => p.status === 'planning').length}
+                      {filteredProjects.filter(p => p.status === 'planning').length}
                     </p>
                   </div>
                 </div>
@@ -1333,7 +1417,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">Completed</p>
                     <p className="text-lg font-bold text-emerald-900">
-                      {projects.filter(p => p.status === 'completed').length}
+                      {filteredProjects.filter(p => p.status === 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -1344,7 +1428,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">At Risk</p>
                     <p className="text-lg font-bold text-red-900">
-                      {projects.filter(p => {
+                      {filteredProjects.filter(p => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const endDate = new Date(p.endDate);
@@ -1360,7 +1444,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">Total Budget</p>
                     <p className="text-lg font-bold text-green-900">
-                      AED {projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                      AED {filteredProjects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -1375,21 +1459,15 @@ const Projects = () => {
                 <div className="h-64 sm:h-80">
                   <Doughnut
                     data={{
-                      labels: ['Planning', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
+                      labels: ['In Progress', 'Completed'],
                       datasets: [{
                         data: [
-                          projects.filter(p => p.status === 'planning').length,
-                          projects.filter(p => p.status === 'in-progress').length,
-                          projects.filter(p => p.status === 'completed').length,
-                          projects.filter(p => p.status === 'on-hold').length,
-                          projects.filter(p => p.status === 'cancelled').length,
+                          filteredProjects.filter(p => p.status === 'in-progress').length,
+                          filteredProjects.filter(p => p.status === 'completed').length,
                         ],
                         backgroundColor: [
-                          '#700606',
                           '#f59e0b',
                           '#10b981',
-                          '#f97316',
-                          '#ef4444',
                         ],
                         borderWidth: 0,
                       }],
@@ -1417,14 +1495,14 @@ const Projects = () => {
                       datasets: [{
                         label: 'Projects',
                         data: [
-                          projects.filter(p => p.projectType === 'Retail').length,
-                          projects.filter(p => p.projectType === 'Spare Parts').length,
-                          projects.filter(p => p.projectType === 'Service').length,
-                          projects.filter(p => p.projectType === 'Project').length,
-                          projects.filter(p => p.projectType === 'Design').length,
-                          projects.filter(p => p.projectType === 'Project Management').length,
-                          projects.filter(p => p.projectType === 'Administration').length,
-                          projects.filter(p => p.projectType === 'Operation').length,
+                          filteredProjects.filter(p => p.projectType === 'Retail').length,
+                          filteredProjects.filter(p => p.projectType === 'Spare Parts').length,
+                          filteredProjects.filter(p => p.projectType === 'Service').length,
+                          filteredProjects.filter(p => p.projectType === 'Project').length,
+                          filteredProjects.filter(p => p.projectType === 'Design').length,
+                          filteredProjects.filter(p => p.projectType === 'Project Management').length,
+                          filteredProjects.filter(p => p.projectType === 'Administration').length,
+                          filteredProjects.filter(p => p.projectType === 'Operation').length,
                         ],
                         backgroundColor: [
                           'rgba(112, 6, 6, 0.8)',   // Theme Red
