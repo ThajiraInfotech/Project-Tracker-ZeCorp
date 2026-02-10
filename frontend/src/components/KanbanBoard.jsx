@@ -32,7 +32,10 @@ const Draggable = ({ id, children, data, disabled }) => {
 const TaskCard = ({ task, onClick, onChatClick }) => {
   const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab">
+    <div
+      onClick={() => onClick && onClick(task)}
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab"
+    >
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-medium text-gray-900 text-sm leading-tight">{task.title}</h4>
         <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
@@ -71,7 +74,10 @@ const TaskCard = ({ task, onClick, onChatClick }) => {
       </div>
       <div className="flex justify-between items-center mt-2">
         <button
-          onClick={() => onClick(task)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick(task);
+          }}
           onPointerDown={(e) => e.stopPropagation()}
           className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
         >

@@ -530,7 +530,10 @@ const Projects = () => {
     const manager = project.manager?.fullName || 'Unassigned';
 
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
+      <div
+        onClick={() => navigate(`/projects/${project._id}`)}
+        className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group cursor-pointer"
+      >
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -540,7 +543,7 @@ const Projects = () => {
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={project.status} />
-            <div className="relative">
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => setShowMenu(showMenu === project._id ? null : project._id)} className="text-gray-500 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -620,7 +623,10 @@ const Projects = () => {
 
         {/* Action Button */}
         <button
-          onClick={() => navigate(`/projects/${project._id}`)}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/projects/${project._id}`);
+          }}
           className="w-full py-3 bg-gradient-to-r from-[#700606] to-[#900808] text-white rounded-xl hover:from-[#900808] hover:to-[#a03030] shadow-md hover:shadow-lg transition-all duration-300 font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 group/btn transform hover:-translate-y-0.5"
         >
           <span>View Project Details</span>

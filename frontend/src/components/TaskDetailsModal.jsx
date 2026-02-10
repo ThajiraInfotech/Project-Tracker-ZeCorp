@@ -17,7 +17,7 @@ import {
     EyeIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import ChatSidebar from './ChatSidebar';
+import ChatInterface from './ChatInterface';
 import UserAvatar from './UserAvatar';
 import ExpenseModal from './ExpenseModal';
 import expenseService from '../services/expenseService';
@@ -68,7 +68,7 @@ const TaskDetailsModal = ({
 }) => {
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showChatSidebar, setShowChatSidebar] = useState(false);
+
     const [updateForm, setUpdateForm] = useState({
         status: ''
     });
@@ -288,7 +288,18 @@ const TaskDetailsModal = ({
                     {/* Header */}
                     <div className="px-6 py-4 bg-theme-50 border-b border-theme-100 flex justify-between items-start shrink-0">
                         <div>
-                            <p className="text-xs font-semibold text-theme-600 uppercase tracking-wider mb-1">Tasks › Detail View</p>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                {task.project?.projectName && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                        <UserGroupIcon className="w-3 h-3" />
+                                        {task.project.projectName}
+                                    </span>
+                                )}
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium ${task.status !== 'completed' && new Date(task.deadline) < new Date() ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100' : 'text-gray-500'}`}>
+                                    <CalendarDaysIcon className="w-3 h-3" />
+                                    {task.deadline ? formatDateDDMMYYYY(task.deadline) : 'No Deadline'}
+                                </span>
+                            </div>
                             <h2 className="text-xl font-bold text-theme-900 leading-tight">{task.title}</h2>
                         </div>
                         <button
@@ -723,21 +734,34 @@ const TaskDetailsModal = ({
                                 )}
                             </div>
                         )}
+
+                        <div className="border-t border-gray-100"></div>
+
+                        {/* Discussion Section */}
+                        <div className="flex flex-col h-[500px]">
+                            <div className="flex items-center gap-2 mb-3 border-b border-theme-100 pb-2 pt-4">
+                                <h4 className="text-xs font-bold text-theme-800 uppercase tracking-widest flex items-center gap-2">
+                                    <span className="text-theme-500">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                    </span>
+                                    Discussion
+                                </h4>
+                            </div>
+                            <ChatInterface
+                                entityType="task"
+                                entityId={taskId}
+                                entityTitle={task.title}
+                                entityData={task}
+                                className="border border-gray-200 rounded-lg overflow-hidden flex-1"
+                            />
+                        </div>
                         {/* Footer / Actions */}
                     </div>
                     {/* Footer / Actions */}
                     <div className="px-6 py-4 bg-theme-50 border-t border-theme-100 shrink-0 flex justify-end gap-3 rounded-b-xl">
-                        <button
-                            onClick={() => {
-                                setShowChatSidebar(true);
-                            }}
-                            className="px-4 py-2 bg-theme-600 text-white text-sm font-medium rounded-lg hover:bg-theme-700 shadow-sm flex items-center gap-2 transition-all"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            Task Chat
-                        </button>
+
 
                         {canManageSubtasks && (
                             <button
@@ -758,17 +782,7 @@ const TaskDetailsModal = ({
                 </div>
             </div>
 
-            {/* Chat Sidebar */}
-            {showChatSidebar && (
-                <ChatSidebar
-                    isOpen={showChatSidebar}
-                    onClose={() => setShowChatSidebar(false)}
-                    entityType="task"
-                    entityId={taskId}
-                    entityTitle={task.title}
-                    entityData={task}
-                />
-            )}
+
 
             {/* Expense Modal */}
             <ExpenseModal

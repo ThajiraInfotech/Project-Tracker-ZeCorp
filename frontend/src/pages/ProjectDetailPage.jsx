@@ -271,7 +271,7 @@ const ProjectDetailPage = () => {
     if (project.status === 'completed') progress = 100;
 
     const risk = getRiskBadge(project);
-    const manager = project.manager?.fullName || 'John Doe';
+    const manager = project.manager?.fullName || 'Unassigned';
 
     return (
       <div className="space-y-6 md:space-y-8">
@@ -835,7 +835,9 @@ const ProjectDetailPage = () => {
       budget: project?.budget || '',
       location: project?.location || '',
       manager: project?.manager?._id || project?.manager || '',
-      projectType: project?.projectType || 'Retail'
+      projectType: project?.projectType || 'Retail',
+      category: project?.category || '',
+      jobOrder: project?.jobOrder || ''
     });
     const [updating, setUpdating] = useState(false);
 
@@ -847,7 +849,9 @@ const ProjectDetailPage = () => {
           ...editForm,
           budget: editForm.budget ? parseFloat(editForm.budget) : undefined,
           manager: editForm.manager || undefined,
-          projectType: editForm.projectType || undefined
+          projectType: editForm.projectType || undefined,
+          category: editForm.category || undefined,
+          jobOrder: editForm.jobOrder || undefined
         };
         const response = await api.put(`/projects/${id}`, updateData);
         if (response.data.success) {
@@ -914,6 +918,28 @@ const ProjectDetailPage = () => {
                   <option value="Administration">Administration</option>
                   <option value="Operation">Operation</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select
+                  value={editForm.category}
+                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Category</option>
+                  <option value="Zecorp Kitchen">Zecorp Kitchen</option>
+                  <option value="Zecorp Solutions">Zecorp Solutions</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job Order</label>
+                <input
+                  type="text"
+                  value={editForm.jobOrder}
+                  onChange={(e) => setEditForm({ ...editForm, jobOrder: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="JO-XXXX"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Project Manager</label>

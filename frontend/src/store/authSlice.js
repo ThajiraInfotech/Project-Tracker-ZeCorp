@@ -27,8 +27,13 @@ export const login = createAsyncThunk(
         withCredentials: true
       });
       if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        if (credentials.rememberMe) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        } else {
+          sessionStorage.setItem('token', response.data.token);
+          sessionStorage.setItem('user', JSON.stringify(response.data.user));
+        }
         return response.data;
       } else {
         toast.error(response.data?.message || 'Login failed - no token received');
@@ -45,8 +50,15 @@ export const login = createAsyncThunk(
 export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { rejectWithValue }) => {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
+    // Check localStorage first, then sessionStorage
+    let token = localStorage.getItem('token');
+    let userStr = localStorage.getItem('user');
+
+    if (!token || !userStr) {
+      token = sessionStorage.getItem('token');
+      userStr = sessionStorage.getItem('user');
+    }
+
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -54,12 +66,16 @@ export const checkAuth = createAsyncThunk(
       } catch (error) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         delete api.defaults.headers.common.Authorization;
         return rejectWithValue('Invalid stored data');
       }
     } else {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       delete api.defaults.headers.common.Authorization;
       return rejectWithValue('No auth data');
     }
@@ -71,17 +87,21 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (token) {
         await api.post('/auth/logout', {});
       }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       delete api.defaults.headers.common.Authorization;
       return;
     } catch (error) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       delete api.defaults.headers.common.Authorization;
       return rejectWithValue(error.response?.data?.message || 'Logout failed');
     }

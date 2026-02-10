@@ -9,7 +9,8 @@ import { motion } from 'framer-motion';
 const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
-    password: ''
+    password: '',
+    rememberMe: true
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +20,10 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
   };
 
@@ -122,12 +124,14 @@ const Login = () => {
 
         <div className="flex items-center">
           <input
-            id="remember-me"
-            name="remember-me"
+            id="rememberMe"
+            name="rememberMe"
             type="checkbox"
+            checked={formData.rememberMe}
+            onChange={handleChange}
             className="h-4 w-4 text-[#700606] focus:ring-[#700606] border-gray-300 rounded"
           />
-          <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+          <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
             Remember me
           </label>
         </div>

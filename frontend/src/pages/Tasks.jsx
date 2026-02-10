@@ -44,7 +44,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import TaskCreateModal from '../components/TaskCreateModal';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
-import ChatSidebar from '../components/ChatSidebar';
+
 import Pagination from '../components/Pagination';
 
 ChartJS.register(
@@ -74,7 +74,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [editingTask, setEditingTask] = useState(null);
   const [staff, setStaff] = useState([]);
   const [managers, setManagers] = useState([]);
-  const [showChatSidebar, setShowChatSidebar] = useState(false);
+
   const [updateForm, setUpdateForm] = useState({
     status: '',
     progress: 0,
@@ -304,11 +304,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     }
   };
 
-  const handleChatClick = (task, e) => {
-    if (e) e.stopPropagation();
-    setSelectedTask(task);
-    setShowChatSidebar(true);
-  };
+
 
   const handleBulkDelete = async () => {
     if (selectedTasks.length === 0) return;
@@ -368,11 +364,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       const openChatParam = searchParams.get('openChat');
 
       if (taskIdParam) {
-        fetchTaskDetails(taskIdParam).then(() => {
-          if (openChatParam === 'true') {
-            setShowChatSidebar(true);
-          }
-        });
+        fetchTaskDetails(taskIdParam);
       }
     }
   }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
@@ -536,7 +528,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   };
 
   // Task card component
-  const TaskCard = ({ task, isSelected, onSelect }) => {
+  const TaskCard = ({ task, isSelected, onSelect, onTaskClick }) => {
     const [menuOpen, setMenuOpen] = useState(false);
 
     const isOverdue = task.isOverdue;
@@ -547,11 +539,12 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className={`bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 relative group min-h-[280px] flex flex-col border-2 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100'
+        onClick={() => onTaskClick && onTaskClick(task)}
+        className={`bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 relative group min-h-[280px] flex flex-col border-2 cursor-pointer ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100'
           }`}
       >
         {/* Selection checkbox */}
-        <div className="absolute top-3 left-3 z-10">
+        <div className="absolute top-3 left-3 z-10" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
             checked={isSelected}
@@ -564,15 +557,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         <div className="flex justify-between items-start mb-3 pt-3 pr-3 pl-10">
           <h3 className="text-lg font-bold text-gray-900 flex-1 pr-2 leading-tight">{task.title}</h3>
           <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => handleChatClick(task, e)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#700606]/10 text-[#700606] hover:bg-[#700606]/20 rounded-lg transition-colors font-medium text-xs shadow-sm"
-              title="Open Chat"
-            >
-              <ChatBubbleLeftRightIcon className="w-4 h-4" />
-              Chat
-            </button>
-            <div className="relative">
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
@@ -726,7 +711,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               setSelectedTask(task);
               setShowModal(true);
             }}
-            onChatClick={handleChatClick}
+
           />
         )}
 
@@ -744,15 +729,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
           />
         )}
 
-        {/* Chat Sidebar for Staff */}
-        <ChatSidebar
-          isOpen={showChatSidebar}
-          onClose={() => setShowChatSidebar(false)}
-          entityType="task"
-          entityId={selectedTask?._id}
-          entityTitle={selectedTask?.title || 'Task'}
-          entityData={selectedTask}
-        />
+
       </div >
 
     );
@@ -1137,6 +1114,10 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                 task={task}
                 isSelected={selectedTasks.includes(task._id)}
                 onSelect={handleSelectTask}
+                onTaskClick={(task) => {
+                  setSelectedTask(task);
+                  setShowModal(true);
+                }}
               />
             ))}
           </motion.div>
@@ -1165,7 +1146,11 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                         key={task._id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`bg-white rounded-lg p-3 shadow-sm border-2 ${selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setShowModal(true);
+                        }}
+                        className={`bg-white rounded-lg p-3 shadow-sm border-2 cursor-pointer ${selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
                           }`}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -1173,6 +1158,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                             type="checkbox"
                             checked={selectedTasks.includes(task._id)}
                             onChange={() => handleSelectTask(task._id)}
+                            onClick={(e) => e.stopPropagation()}
                             className="mt-1 mr-2"
                           />
                           <h4 className="font-medium text-gray-900 flex-1">{task.title}</h4>
@@ -1194,19 +1180,15 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                         </div>
                         <div className="flex justify-between items-center mt-3">
                           <button
-                            onClick={() => fetchTaskDetails(task._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fetchTaskDetails(task._id);
+                            }}
                             className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
                           >
                             View Details
                           </button>
-                          <button
-                            onClick={(e) => handleChatClick(task, e)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#700606]/10 text-[#700606] hover:bg-[#700606]/20 rounded-lg transition-colors font-medium text-xs shadow-sm"
-                            title="Open Chat"
-                          >
-                            <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                            Chat
-                          </button>
+
                         </div>
                       </motion.div>
                     ))}
@@ -1260,7 +1242,11 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     <tr
                       key={task._id}
                       className={`hover:bg-gray-50 cursor-pointer ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}
-                      onClick={(e) => handleChatClick(task, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTask(task);
+                        setShowModal(true);
+                      }}
                     >
                       <td className="px-6 py-4">
                         <input
@@ -1319,7 +1305,8 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            fetchTaskDetails(task._id);
+                            setSelectedTask(task);
+                            setShowModal(true);
                           }}
                           className="text-blue-600 hover:text-blue-800 mr-4"
                         >
@@ -1532,15 +1519,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         }}
       />
 
-      {/* Chat Sidebar */}
-      <ChatSidebar
-        isOpen={showChatSidebar}
-        onClose={() => setShowChatSidebar(false)}
-        entityType="task"
-        entityId={selectedTask?._id}
-        entityTitle={selectedTask?.title || 'Task'}
-        entityData={selectedTask}
-      />
+
     </div >
   );
 };
