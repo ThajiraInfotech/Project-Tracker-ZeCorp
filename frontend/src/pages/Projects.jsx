@@ -1091,8 +1091,8 @@ const Projects = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Project Budget
                   </label>
-                  <div className="flex gap-2">
-                    <div className="flex items-center justify-center px-4 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 font-medium">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold text-xs">
                       AED
                     </div>
                     <input
@@ -1100,7 +1100,8 @@ const Projects = () => {
                       name="budget"
                       value={formData.budget}
                       onChange={handleInputChange}
-                      className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${formErrors.budget ? 'border-red-300' : 'border-gray-300'
+                      step="0.01"
+                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors ${formErrors.budget ? 'border-red-300' : 'border-gray-300'
                         }`}
                       placeholder="Project budget"
                       min="0"
