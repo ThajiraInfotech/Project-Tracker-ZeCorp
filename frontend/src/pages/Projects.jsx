@@ -1537,7 +1537,7 @@ const Projects = () => {
                     <ExclamationTriangleSolid className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">At Risk</p>
+                    <p className="text-xs text-gray-600">Delayed</p>
                     <p className="text-lg font-bold text-red-900">
                       {filteredProjects.filter(p => {
                         const today = new Date();
