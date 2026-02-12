@@ -256,7 +256,7 @@ const Projects = () => {
         (project.endDate && new Date(project.endDate) < today && project.status !== 'completed')
       );
     } else if (filter === 'active') {
-      filtered = filtered.filter(project => project.status === 'in-progress');
+      filtered = filtered.filter(project => project.status !== 'completed');
     } else if (filter === 'pending') {
       filtered = filtered.filter(project => project.status !== 'completed');
     } else if (statusParam) {
@@ -274,7 +274,11 @@ const Projects = () => {
     }
 
     if (statusFilter) {
-      filtered = filtered.filter(project => project.status === statusFilter);
+      if (statusFilter === 'in-progress') {
+        filtered = filtered.filter(project => project.status !== 'completed');
+      } else {
+        filtered = filtered.filter(project => project.status === statusFilter);
+      }
     }
 
     // Date range filter
@@ -1496,7 +1500,7 @@ const Projects = () => {
                 <BuildingOfficeIcon className="w-6 h-6 text-emerald-600" />
                 Projects Overview
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
@@ -1513,18 +1517,7 @@ const Projects = () => {
                   <div>
                     <p className="text-xs text-gray-600">In Progress</p>
                     <p className="text-lg font-bold text-amber-900">
-                      {filteredProjects.filter(p => p.status === 'in-progress').length}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <ClockIcon className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Planning</p>
-                    <p className="text-lg font-bold text-indigo-900">
-                      {filteredProjects.filter(p => p.status === 'planning').length}
+                      {filteredProjects.filter(p => p.status !== 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -1580,7 +1573,7 @@ const Projects = () => {
                       labels: ['In Progress', 'Completed'],
                       datasets: [{
                         data: [
-                          filteredProjects.filter(p => p.status === 'in-progress').length,
+                          filteredProjects.filter(p => p.status !== 'completed').length,
                           filteredProjects.filter(p => p.status === 'completed').length,
                         ],
                         backgroundColor: [

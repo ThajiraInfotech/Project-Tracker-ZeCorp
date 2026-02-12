@@ -65,7 +65,7 @@ const projectSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['planning', 'in-progress', 'on-hold', 'completed'],
-    default: 'planning'
+    default: 'in-progress'
   },
   budget: {
     type: Number,
