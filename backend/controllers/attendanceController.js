@@ -126,8 +126,22 @@ exports.checkOut = async (req, res) => {
 // Get my attendance
 exports.getMyAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.find({ userId: req.user._id })
+    let attendance = await Attendance.find({ userId: req.user._id })
       .sort({ date: -1 });
+
+    // If not admin, sanitize sensitive fields
+    if (req.user.role !== 'admin') {
+      attendance = attendance.map(record => {
+        const doc = record.toObject ? record.toObject() : record;
+        // Remove pay and hours info
+        const {
+          dailyRegularPay, dailyOvertimePay, dailyTotalPay,
+          totalHours, regularHours, overtimeHours,
+          ...safeRecord
+        } = doc;
+        return safeRecord;
+      });
+    }
 
     res.json({
       success: true,
@@ -139,7 +153,7 @@ exports.getMyAttendance = async (req, res) => {
   }
 };
 
-// Get team attendance (manager only)
+// Get team attendance (Deprecated for Managers, effectively Admin-only via route)
 exports.getTeamAttendance = async (req, res) => {
   try {
     // Get projects managed by this manager

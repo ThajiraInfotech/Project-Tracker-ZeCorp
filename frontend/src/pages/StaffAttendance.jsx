@@ -2,46 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import {
-  MagnifyingGlassIcon,
   ArrowDownTrayIcon,
-  AdjustmentsHorizontalIcon,
-  ClockIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon,
   CalendarDaysIcon,
-  UserIcon,
-  CurrencyDollarIcon,
-  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
-  ClockIcon as ClockSolid,
-  ExclamationTriangleIcon as ExclamationTriangleSolid
 } from '@heroicons/react/24/solid';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
-
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title
-);
 
 const StaffAttendance = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
@@ -133,16 +103,12 @@ const StaffAttendance = () => {
   const formatDate = (dateString) => formatDateDubai(dateString);
 
   // Filter History by Selected Month
+  // Calculate stats for the selected month
   const filteredHistory = attendanceHistory.filter(record => {
     if (!record.date) return false;
     // record.date is YYYY-MM-DD
     return record.date.startsWith(selectedMonth);
   });
-
-  // Calculate stats for the selected month
-  const totalPayMonth = filteredHistory.reduce((sum, r) => sum + (r.dailyTotalPay || 0), 0);
-  const totalOtPayMonth = filteredHistory.reduce((sum, r) => sum + (r.dailyOvertimePay || 0), 0);
-  const totalOtHoursMonth = filteredHistory.reduce((sum, r) => sum + (r.overtimeHours || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50/50 font-sans pb-12">
@@ -212,8 +178,8 @@ const StaffAttendance = () => {
               </div>
 
               {/* Today's Status Summary */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
                   <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
                   <p className={`text-lg font-bold mt-1 ${todayRecord?.status === 'Present' ? 'text-green-600' :
                     todayRecord?.status === 'Half-day' ? 'text-yellow-600' :
@@ -222,61 +188,20 @@ const StaffAttendance = () => {
                     {todayRecord?.status || 'Pending'}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Total Hours</p>
-                  <p className="text-lg font-bold text-gray-900 mt-1">{todayRecord?.totalHours || '0'}h</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Overtime</p>
-                  <p className={`text-lg font-bold mt-1 ${todayRecord?.overtimeHours > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                    {todayRecord?.overtimeHours || '0'}h
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">
+                    {todayRecord?.checkIn ? 'Started' : 'Not Started'}
                   </p>
-                </div>
-                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                  <p className="text-xs text-indigo-600 font-semibold uppercase">Today's Pay</p>
-                  <p className="text-lg font-bold text-indigo-900 mt-1">AED {todayRecord?.dailyTotalPay || 0}</p>
                 </div>
               </div>
             </div>
 
             {/* Monthly Earnings & History Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Earnings Forecast Card */}
-              <div className="bg-gradient-to-br from-[#700606] to-[#500404] rounded-3xl p-8 text-white shadow-xl shadow-[#700606]/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-                <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-black/20 rounded-full blur-2xl" />
+            <div className="grid grid-cols-1 gap-8">
 
-                <div className="relative z-10">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-6 opacity-90">
-                    <BanknotesIcon className="w-5 h-5" /> Earnings ({selectedMonth})
-                  </h3>
-
-                  <div>
-                    <p className="text-white/60 text-sm mb-1">Total Estimated Pay</p>
-                    <p className="text-4xl font-bold tracking-tight">
-                      AED {totalPayMonth.toFixed(2)}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-white/10">
-                    <div>
-                      <p className="text-white/60 text-xs mb-1">Overtime Pay</p>
-                      <p className="text-lg font-semibold text-green-300">
-                        +AED {totalOtPayMonth.toFixed(2)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-white/60 text-xs mb-1">OT Hours</p>
-                      <p className="text-lg font-semibold text-yellow-300">
-                        {totalOtHoursMonth}h
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* History Table Container - Spans 2 columns */}
-              <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+              {/* History Table Container - Full width */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                 <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <h3 className="text-xl font-bold text-gray-900">History</h3>
 
@@ -297,9 +222,7 @@ const StaffAttendance = () => {
                       <tr>
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hours</th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pay</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
@@ -329,11 +252,6 @@ const StaffAttendance = () => {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {record.totalHours || 0} hrs
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
                                 record.status === 'Half-day' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                   record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
@@ -341,16 +259,11 @@ const StaffAttendance = () => {
                                 {record.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <span className="text-sm font-bold text-gray-900">AED {record.dailyTotalPay || 0}</span>
-                              </div>
-                            </td>
                           </motion.tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                          <td colSpan="3" className="px-6 py-12 text-center text-gray-400">
                             No attendance records found for {selectedMonth}.
                           </td>
                         </tr>

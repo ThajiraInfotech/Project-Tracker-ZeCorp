@@ -10,10 +10,10 @@ router.post('/check-out', authMiddleware, attendanceController.checkOut);
 // Get my attendance (all authenticated users)
 router.get('/me', authMiddleware, attendanceController.getMyAttendance);
 
-// Get team attendance (manager only)
+// Get team attendance (admin only now)
 router.get('/team', authMiddleware, (req, res, next) => {
-  if (req.user.role !== 'manager') {
-    return res.status(403).json({ message: 'Access denied' });
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
   next();
 }, attendanceController.getTeamAttendance);
