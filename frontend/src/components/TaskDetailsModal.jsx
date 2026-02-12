@@ -290,9 +290,20 @@ const TaskDetailsModal = ({
                         <div>
                             <div className="flex flex-wrap items-center gap-2 mb-2">
                                 {task.project?.projectName && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                        <UserGroupIcon className="w-3 h-3" />
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
+                                        <UserGroupIcon className="w-4 h-4" />
                                         {task.project.projectName}
+                                        {task.project.jobOrder && (
+                                            <span className="text-blue-600 font-medium ml-1 opacity-90">
+                                                #{task.project.jobOrder}
+                                            </span>
+                                        )}
+                                    </span>
+                                )}
+                                {task.label && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-bold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+                                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                                        {task.label}
                                     </span>
                                 )}
                                 <span className={`inline-flex items-center gap-1 text-xs font-medium ${task.status !== 'completed' && new Date(task.deadline) < new Date() ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100' : 'text-gray-500'}`}>

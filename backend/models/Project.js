@@ -21,6 +21,10 @@ const projectSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  outlet: {
+    type: String,
+    trim: true
+  },
   description: {
     type: String,
     required: [true, 'Please provide project description'],

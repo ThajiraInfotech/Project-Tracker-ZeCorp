@@ -65,6 +65,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all');
   const [filterPriority, setFilterPriority] = useState(searchParams.get('priority') || 'all');
+  const [filterLabel, setFilterLabel] = useState(searchParams.get('label') || 'all');
   const [filterProject, setFilterProject] = useState(projectId || 'all');
   const [filterAssignedTo, setFilterAssignedTo] = useState(searchParams.get('assignedTo') || '');
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', or 'kanban'
@@ -101,7 +102,12 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   // Fetch tasks data
   const fetchTasks = async () => {
     try {
-      setLoading(true);
+      // Only show full loading spinner if we don't have data yet
+      if (tasks.length === 0) {
+        setLoading(true);
+      } else {
+        // Optional: Add a refetching state if you want a subtle indicator
+      }
       setError(null);
 
       const params = {};
@@ -112,6 +118,10 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
       if (filterPriority !== 'all') {
         params.priority = filterPriority;
+      }
+
+      if (filterLabel !== 'all') {
+        params.label = filterLabel;
       }
 
       if (filterProject !== 'all') {
@@ -128,6 +138,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         const filter = searchParams.get('filter');
         if (filter === 'overdue') {
           const now = new Date();
+          now.setHours(0, 0, 0, 0);
           allTasks = allTasks.filter(task =>
             task.status !== 'completed' &&
             new Date(task.deadline) < now
@@ -150,11 +161,13 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
         // Apply client-side filters
         if (searchQuery.trim()) {
+          const query = searchQuery.trim().toLowerCase();
           allTasks = allTasks.filter(task =>
-            task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.assignedTo?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.project?.projectName.toLowerCase().includes(searchQuery.toLowerCase())
+            task.title.toLowerCase().includes(query) ||
+            task.description.toLowerCase().includes(query) ||
+            task.assignedTo?.fullName.toLowerCase().includes(query) ||
+            task.project?.projectName.toLowerCase().includes(query) ||
+            (task.project?.jobOrder && String(task.project.jobOrder).toLowerCase().includes(query))
           );
         }
 
@@ -326,6 +339,29 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
     }
   };
 
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/tasks/${taskId}`);
+      if (response.data.success) {
+        toast.success('Task deleted successfully');
+        // Update local state
+        setTasks(tasks.filter(t => t._id !== taskId));
+        setFilteredTasks(filteredTasks.filter(t => t._id !== taskId));
+        if (selectedTask && selectedTask._id === taskId) {
+          setSelectedTask(null);
+          setShowModal(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete task');
+    }
+  };
+
   const handleExport = () => {
     const csvContent = [
       ['Title', 'Description', 'Project', 'Assigned To', 'Status', 'Priority', 'Deadline', 'Progress'],
@@ -367,7 +403,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         fetchTaskDetails(taskIdParam);
       }
     }
-  }, [auth.isAuthenticated, filterStatus, filterPriority, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
+  }, [auth.isAuthenticated, filterStatus, filterPriority, filterLabel, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
 
   // Sync assignedTo filter from URL
   useEffect(() => {
@@ -397,6 +433,11 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         result = result.filter(task => task.project?._id === filterProject);
       }
 
+      // Filter by label
+      if (filterLabel && filterLabel !== 'all') {
+        result = result.filter(task => task.label === filterLabel);
+      }
+
       // Filter by Assigned User (including subtasks)
       if (filterAssignedTo) {
         result = result.filter(task => {
@@ -406,13 +447,24 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         });
       }
 
-      // Filter by search query
       if (searchQuery) {
-        result = result.filter(task =>
-          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.assignedTo?.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const query = searchQuery.toLowerCase();
+        console.log('Search Query:', query);
+        result = result.filter(task => {
+          const jobOrder = task.project?.jobOrder ? String(task.project.jobOrder).toLowerCase() : '';
+          const match =
+            task.title.toLowerCase().includes(query) ||
+            task.description.toLowerCase().includes(query) ||
+            task.assignedTo?.fullName.toLowerCase().includes(query) ||
+            task.project?.projectName.toLowerCase().includes(query) ||
+            (task.label && task.label.toLowerCase().includes(query)) ||
+            jobOrder.includes(query);
+
+          if (query === '13211' && match) console.log('Found match:', task.title, jobOrder);
+          if (query === '13211' && !match && jobOrder) console.log('Missed match:', task.title, jobOrder);
+
+          return match;
+        });
       }
 
       // Filter by date range
@@ -428,7 +480,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       setCurrentPage(1); // Reset to first page on filter change
     };
     filterTasks();
-  }, [tasks, filterStatus, filterPriority, filterProject, filterAssignedTo, searchQuery, dateRange.start, dateRange.end, selectedTasks, searchParams]);
+  }, [tasks, filterStatus, filterPriority, filterLabel, filterProject, filterAssignedTo, searchQuery, dateRange.start, dateRange.end, selectedTasks, searchParams]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -528,7 +580,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
   };
 
   // Task card component
-  const TaskCard = ({ task, isSelected, onSelect, onTaskClick }) => {
+  const TaskCard = ({ task, isSelected, onSelect, onTaskClick, onDelete }) => {
     const [menuOpen, setMenuOpen] = useState(false);
 
     const isOverdue = task.isOverdue;
@@ -589,6 +641,19 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                           Edit Task
                         </button>
                       )}
+                      {auth.user?.role === 'admin' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpen(false);
+                            onDelete(task._id);
+                          }}
+                          className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <ExclamationTriangleIcon className="w-4 h-4" />
+                          Delete Task
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -603,6 +668,21 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
               <UserGroupIcon className="w-3 h-3" />
               {task.project.projectName}
+              {task.project.jobOrder && (
+                <span className="text-blue-600 opacity-80 ml-1 border-l border-blue-200 pl-1">
+                  #{task.project.jobOrder}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Label - only show if exists */}
+        {task.label && (
+          <div className="px-3 mb-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+              {task.label}
             </span>
           </div>
         )}
@@ -673,46 +753,38 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
           </div>
         )}
 
-        {/* Error state */}
-        {error && !loading && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 101.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && tasks.length === 0 && (
-          <div className="text-center py-12">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks Found</h3>
-            <p className="text-gray-500">There are no tasks available. {auth.user?.role !== 'staff' && 'Create your first task to get started!'}</p>
-          </div>
-        )}
-
         {/* Task List with Progress Updates */}
-        {!loading && !error && tasks.length > 0 && (
-          <KanbanBoard
-            tasks={filteredTasks}
-            onUpdateTaskStatus={(taskId, status, progress) => handleUpdateTask({ status, progress }, taskId)}
-            onTaskClick={(task) => {
-              setSelectedTask(task);
-              setShowModal(true);
-            }}
+        {error && <div className="text-red-500">{error}</div>}
 
-          />
+        {/* Show list if we have tasks (even if loading) OR if not loading and no error */}
+        {(tasks.length > 0 || (!loading && !error)) && (
+          <div className={loading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}>
+            {tasks.length > 0 ? (
+              <KanbanBoard
+                tasks={filteredTasks}
+                onUpdateTaskStatus={handleUpdateTaskStatus}
+                onTaskClick={(task) => fetchTaskDetails(task._id)}
+                onChatClick={(task, e) => {
+                  e.stopPropagation();
+                  // logic to open chat
+                }}
+                onDelete={handleDeleteTask}
+                currentUser={auth.user}
+              />
+            ) : (
+              !loading && (
+                <div className="text-center py-12">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks Found</h3>
+                  <p className="text-gray-500">There are no tasks available.</p>
+                </div>
+              )
+            )}
+          </div>
         )}
 
         {/* Task Details Modal */}
@@ -931,6 +1003,19 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Label</label>
+                    <select
+                      value={filterLabel}
+                      onChange={(e) => setFilterLabel(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                    >
+                      <option value="all">All Labels</option>
+                      {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => (
+                        <option key={label} value={label}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Due Date Range</label>
                     <div className="flex gap-2">
                       <input
@@ -976,360 +1061,391 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       </div>
 
       {/* Bulk Actions */}
-      {selectedTasks.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-blue-900">
-                {selectedTasks.length} task{selectedTasks.length > 1 ? 's' : ''} selected
-              </span>
-              <button
-                onClick={handleSelectAll}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                {selectedTasks.length === tasks.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+      {
+        selectedTasks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedTasks.length} task{selectedTasks.length > 1 ? 's' : ''} selected
+                </span>
                 <button
-                  onClick={() => setShowStatusMenu(!showStatusMenu)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={handleSelectAll}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Change Status
-                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${showStatusMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  {selectedTasks.length === tasks.length ? 'Deselect All' : 'Select All'}
                 </button>
-
-                <AnimatePresence>
-                  {showStatusMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden"
-                    >
-                      <div className="py-1">
-                        <button
-                          onClick={() => { handleBulkStatusUpdate('todo'); setShowStatusMenu(false); }}
-                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                          To Do
-                        </button>
-                        <button
-                          onClick={() => { handleBulkStatusUpdate('in-progress'); setShowStatusMenu(false); }}
-                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          In Progress
-                        </button>
-                        <button
-                          onClick={() => { handleBulkStatusUpdate('completed'); setShowStatusMenu(false); }}
-                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 transition-colors"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                          Completed
-                        </button>
-                        <button
-                          onClick={() => { handleBulkStatusUpdate('delayed'); setShowStatusMenu(false); }}
-                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-red-50 transition-colors"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                          Delayed
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-              {auth.user?.role === 'admin' && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
-                >
-                  Delete Selected
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowStatusMenu(!showStatusMenu)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Change Status
+                    <svg className={`w-4 h-4 text-gray-500 transition-transform ${showStatusMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  <AnimatePresence>
+                    {showStatusMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden"
+                      >
+                        <div className="py-1">
+                          <button
+                            onClick={() => { handleBulkStatusUpdate('todo'); setShowStatusMenu(false); }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                            To Do
+                          </button>
+                          <button
+                            onClick={() => { handleBulkStatusUpdate('in-progress'); setShowStatusMenu(false); }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            In Progress
+                          </button>
+                          <button
+                            onClick={() => { handleBulkStatusUpdate('completed'); setShowStatusMenu(false); }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 transition-colors"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                            Completed
+                          </button>
+                          <button
+                            onClick={() => { handleBulkStatusUpdate('delayed'); setShowStatusMenu(false); }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-red-50 transition-colors"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            Delayed
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                {auth.user?.role === 'admin' && (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                  >
+                    Delete Selected
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )
+      }
 
 
 
 
       {/* Loading state */}
-      {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-        </div>
-      )}
+      {
+        loading && (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+          </div>
+        )
+      }
 
       {/* Error state */}
-      {error && !loading && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 101.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && tasks.length === 0 && (
-        <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks Found</h3>
-          <p className="text-gray-500">There are no tasks available. {auth.user?.role !== 'staff' && 'Create your first task to get started!'}</p>
-        </div>
-      )}
-
-      {/* Tasks display */}
-      {!loading && !error && tasks.length > 0 && (
-        viewMode === 'card' ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredTasks.map((task) => (
-              <TaskCard
-                key={task._id}
-                task={task}
-                isSelected={selectedTasks.includes(task._id)}
-                onSelect={handleSelectTask}
-                onTaskClick={(task) => {
-                  setSelectedTask(task);
-                  setShowModal(true);
-                }}
-              />
-            ))}
-          </motion.div>
-        ) : viewMode === 'kanban' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {['todo', 'in-progress', 'completed', 'delayed'].map((status) => {
-              const statusTasks = filteredTasks.filter(task => task.status === status);
-              const statusConfig = {
-                'todo': { title: 'To Do', color: 'bg-slate-100 border-slate-200' },
-                'in-progress': { title: 'In Progress', color: 'bg-amber-100 border-amber-200' },
-                'completed': { title: 'Completed', color: 'bg-emerald-100 border-emerald-200' },
-                'delayed': { title: 'Delayed', color: 'bg-red-100 border-red-200' }
-              };
-
-              return (
-                <div key={status} className={`rounded-xl p-4 ${statusConfig[status].color}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900">{statusConfig[status].title}</h3>
-                    <span className="bg-white px-2 py-1 rounded-full text-xs font-medium text-gray-600">
-                      {statusTasks.length}
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {statusTasks.map((task) => (
-                      <motion.div
-                        key={task._id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setShowModal(true);
-                        }}
-                        className={`bg-white rounded-lg p-3 shadow-sm border-2 cursor-pointer ${selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
-                          }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedTasks.includes(task._id)}
-                            onChange={() => handleSelectTask(task._id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-1 mr-2"
-                          />
-                          <h4 className="font-medium text-gray-900 flex-1">{task.title}</h4>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{task.assignedTo?.fullName || 'Unassigned'}</span>
-                          <span className={task.isOverdue ? 'text-red-600' : ''}>
-                            {new Date(task.deadline).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="mt-2">
-                          <div className="w-full h-1 bg-gray-200 rounded-full">
-                            <div
-                              className="h-1 bg-[#700606] rounded-full"
-                              style={{ width: `${task.progress || 0}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center mt-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              fetchTaskDetails(task._id);
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
-                          >
-                            View Details
-                          </button>
-
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
-                        onChange={handleSelectAll}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Task Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Project
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Assigned To
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Due Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Progress
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTasks.map((task) => (
-                    <tr
-                      key={task._id}
-                      className={`hover:bg-gray-50 cursor-pointer ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedTask(task);
-                        setShowModal(true);
-                      }}
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedTasks.includes(task._id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleSelectTask(task._id);
-                          }}
-                          className="w-4 h-4 text-blue-600"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                            <div className="text-sm text-gray-500 line-clamp-1">{task.description}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {task.project?.projectName && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                            {task.project.projectName}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {task.assignedTo?.fullName || 'Unassigned'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={task.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PriorityBadge priority={task.priority} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className={task.isOverdue ? 'text-red-600' : ''}>
-                          {new Date(task.deadline).toLocaleDateString()}
-                          {task.isOverdue && ' • Overdue'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
-                            <div
-                              className="h-2 bg-gradient-to-r from-[#700606] to-[#900808] rounded-full"
-                              style={{ width: `${task.progress || 0}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-gray-500">{task.progress || 0}%</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTask(task);
-                            setShowModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 mr-4"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditTask(task);
-                          }}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {
+        error && !loading && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 101.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           </div>
         )
-      )}
+      }
+
+      {/* Empty state */}
+      {
+        !loading && !error && tasks.length === 0 && (
+          <div className="text-center py-12">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Tasks Found</h3>
+            <p className="text-gray-500">There are no tasks available. {auth.user?.role !== 'staff' && 'Create your first task to get started!'}</p>
+          </div>
+        )
+      }
+
+      {/* Tasks display */}
+      {
+        !loading && !error && tasks.length > 0 && (
+          viewMode === 'card' ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredTasks.map((task) => (
+                <TaskCard
+                  key={task._id}
+                  task={task}
+                  isSelected={selectedTasks.includes(task._id)}
+                  onSelect={handleSelectTask}
+                  onTaskClick={(t) => {
+                    if (viewMode === 'kanban') return; // Kanban handles click differently
+                    fetchTaskDetails(t._id);
+                  }}
+                  onDelete={handleDeleteTask}
+                  currentUser={auth.user}
+                />
+              ))}
+            </motion.div>
+          ) : viewMode === 'kanban' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {['todo', 'in-progress', 'completed', 'delayed'].map((status) => {
+                const statusTasks = filteredTasks.filter(task => task.status === status);
+                const statusConfig = {
+                  'todo': { title: 'To Do', color: 'bg-slate-100 border-slate-200' },
+                  'in-progress': { title: 'In Progress', color: 'bg-amber-100 border-amber-200' },
+                  'completed': { title: 'Completed', color: 'bg-emerald-100 border-emerald-200' },
+                  'delayed': { title: 'Delayed', color: 'bg-red-100 border-red-200' }
+                };
+
+                return (
+                  <div key={status} className={`rounded-xl p-4 ${statusConfig[status].color}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-gray-900">{statusConfig[status].title}</h3>
+                      <span className="bg-white px-2 py-1 rounded-full text-xs font-medium text-gray-600">
+                        {statusTasks.length}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {statusTasks.map((task) => (
+                        <motion.div
+                          key={task._id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setShowModal(true);
+                          }}
+                          className={`bg-white rounded-lg p-3 shadow-sm border-2 cursor-pointer ${selectedTasks.includes(task._id) ? 'border-blue-500' : 'border-gray-100'
+                            }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedTasks.includes(task._id)}
+                              onChange={() => handleSelectTask(task._id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 mr-2"
+                            />
+                            <h4 className="font-medium text-gray-900 flex-1">{task.title}</h4>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>{task.assignedTo?.fullName || 'Unassigned'}</span>
+                            <span className={task.isOverdue ? 'text-red-600' : ''}>
+                              {new Date(task.deadline).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {task.label && (
+                            <div className="mt-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                {task.label}
+                              </span>
+                            </div>
+                          )}
+                          <div className="mt-2">
+                            <div className="w-full h-1 bg-gray-200 rounded-full">
+                              <div
+                                className="h-1 bg-[#700606] rounded-full"
+                                style={{ width: `${task.progress || 0}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center mt-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fetchTaskDetails(task._id);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
+                            >
+                              View Details
+                            </button>
+
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
+                          onChange={handleSelectAll}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Task Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Project
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Assigned To
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Priority
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Due Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Progress
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredTasks.map((task) => (
+                      <tr
+                        key={task._id}
+                        className={`hover:bg-gray-50 cursor-pointer ${selectedTasks.includes(task._id) ? 'bg-blue-50' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTask(task);
+                          setShowModal(true);
+                        }}
+                      >
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedTasks.includes(task._id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleSelectTask(task._id);
+                            }}
+                            className="w-4 h-4 text-blue-600"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                {task.title}
+                                {task.label && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                    {task.label}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500 line-clamp-1">{task.description}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {task.project?.projectName && (
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1">
+                              {task.project.projectName}
+                              {task.project.jobOrder && (
+                                <span className="text-blue-600 opacity-80 ml-1 border-l border-blue-300 pl-1">
+                                  #{task.project.jobOrder}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {task.assignedTo?.fullName || 'Unassigned'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge status={task.status} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <PriorityBadge priority={task.priority} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={task.isOverdue ? 'text-red-600' : ''}>
+                            {new Date(task.deadline).toLocaleDateString()}
+                            {task.isOverdue && ' • Overdue'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                              <div
+                                className="h-2 bg-gradient-to-r from-[#700606] to-[#900808] rounded-full"
+                                style={{ width: `${task.progress || 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500">{task.progress || 0}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(task);
+                              setShowModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 mr-4"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditTask(task);
+                            }}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )
+      }
 
       <React.Fragment />
 

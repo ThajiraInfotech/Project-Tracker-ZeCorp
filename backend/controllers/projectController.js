@@ -10,7 +10,7 @@ const { publishEvent } = require('../infrastructure/queue');
 // Create a new project
 exports.createProject = async (req, res) => {
   try {
-    const { projectName, projectType, category, jobOrder, description, clientName, clientEmail, clientPhone, startDate, endDate, budget, location, manager, teamMembers } = req.body;
+    const { projectName, projectType, category, jobOrder, outlet, description, clientName, clientEmail, clientPhone, startDate, endDate, budget, location, manager, teamMembers } = req.body;
 
     // Validate dates
     if (new Date(endDate) <= new Date(startDate)) {
@@ -31,7 +31,9 @@ exports.createProject = async (req, res) => {
       projectName,
       projectType,
       category,
+      category,
       jobOrder,
+      outlet,
       description,
       clientName,
       clientEmail,
@@ -111,6 +113,20 @@ exports.getAllProjects = async (req, res) => {
   }
 };
 
+// Get all unique outlets
+exports.getOutlets = async (req, res) => {
+  try {
+    const outlets = await Project.distinct('outlet');
+    res.json({
+      success: true,
+      outlets: outlets.filter(Boolean).sort() // Remove null/undefined and sort
+    });
+  } catch (error) {
+    console.error('Get outlets error:', error);
+    res.status(500).json({ message: 'Failed to get outlets' });
+  }
+};
+
 // Get project by ID
 exports.getProjectById = async (req, res) => {
   try {
@@ -145,7 +161,7 @@ exports.getProjectById = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['projectName', 'description', 'projectType', 'category', 'jobOrder', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location', 'manager'];
+    const allowedUpdates = ['projectName', 'description', 'projectType', 'category', 'jobOrder', 'outlet', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location', 'manager'];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {

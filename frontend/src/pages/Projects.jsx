@@ -68,6 +68,7 @@ const Projects = () => {
   const [endDateFilter, setEndDateFilter] = useState(searchParams.get('endDate') || '');
   const [managerFilter, setManagerFilter] = useState(searchParams.get('manager') || '');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [outletFilter, setOutletFilter] = useState('');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +87,7 @@ const Projects = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [managers, setManagers] = useState([]);
   const [managersLoading, setManagersLoading] = useState(false);
+  const [outlets, setOutlets] = useState([]);
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
   const filterStartDateRef = useRef(null);
@@ -95,6 +97,7 @@ const Projects = () => {
     projectType: '',
     category: '',
     jobOrder: '',
+    outlet: '',
     description: '',
     clientCompanyName: '',
     clientName: '',
@@ -185,7 +188,12 @@ const Projects = () => {
   // Fetch projects data
   const fetchProjects = async () => {
     try {
-      setLoading(true);
+      // Only show full loading spinner if we don't have data yet
+      if (projects.length === 0) {
+        setLoading(true);
+      } else {
+        // Optional: Add a refetching state if you want a subtle indicator
+      }
       setError(null);
 
       const response = await api.get('/projects');
@@ -231,20 +239,21 @@ const Projects = () => {
       // Normalize nextWeek to end of day
       nextWeek.setHours(23, 59, 59, 999);
 
+      const now = new Date();
+
       filtered = filtered.filter(project => {
         if (!project.endDate || project.status === 'completed') return false;
 
         const endDate = new Date(project.endDate);
-        // Normalize endDate to local midnight to match 'today' for start check
-        const endDateStart = new Date(endDate);
-        endDateStart.setHours(0, 0, 0, 0);
 
-        return endDate >= today && endDate <= nextWeek;
+        // At Risk means due closely in the future, but NOT yet delayed.
+        // Delayed means strictly < now. 
+        // So At Risk must be >= now.
+        return endDate >= now && endDate <= nextWeek;
       });
     } else if (filter === 'delayed') {
-      const now = new Date();
       filtered = filtered.filter(project =>
-        (project.endDate && new Date(project.endDate) < now && project.status !== 'completed')
+        (project.endDate && new Date(project.endDate) < today && project.status !== 'completed')
       );
     } else if (filter === 'active') {
       filtered = filtered.filter(project => project.status === 'in-progress');
@@ -259,7 +268,8 @@ const Projects = () => {
         (project.projectName && project.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (project.clientName && project.clientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (project.jobOrder && project.jobOrder.toLowerCase().includes(searchTerm.toLowerCase()))
+        (project.jobOrder && project.jobOrder.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (project.outlet && project.outlet.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -287,9 +297,14 @@ const Projects = () => {
       filtered = filtered.filter(project => project.category === categoryFilter);
     }
 
+    // Outlet filter
+    if (outletFilter) {
+      filtered = filtered.filter(project => project.outlet === outletFilter);
+    }
+
     setFilteredProjects(filtered);
     setCurrentPage(1); // Reset to first page on filter change
-  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, managerFilter, categoryFilter, searchParams]);
+  }, [projects, searchTerm, statusFilter, startDateFilter, endDateFilter, managerFilter, categoryFilter, outletFilter, searchParams]);
 
   // Apply sorting
   useEffect(() => {
@@ -388,6 +403,22 @@ const Projects = () => {
     }
   }, [auth.user?.role]);
 
+  // Fetch outlets
+  useEffect(() => {
+    const fetchOutlets = async () => {
+      try {
+        const response = await api.get('/projects/outlets');
+        if (response.data.success) {
+          setOutlets(response.data.outlets);
+        }
+      } catch (error) {
+        console.error('Failed to fetch outlets:', error);
+      }
+    };
+
+    fetchOutlets();
+  }, []);
+
   // Form validation
   const validateForm = () => {
     const errors = {};
@@ -452,6 +483,7 @@ const Projects = () => {
         projectType: formData.projectType,
         category: formData.category,
         jobOrder: formData.jobOrder,
+        outlet: formData.outlet,
         clientName: formData.clientName || undefined,
         clientEmail: formData.clientEmail || undefined,
         clientPhone: formData.clientPhone ? formData.clientPhone.replace(/\D/g, '') : undefined,
@@ -473,6 +505,7 @@ const Projects = () => {
           projectType: '',
           category: '',
           jobOrder: '',
+          outlet: '',
           description: '',
           clientCompanyName: '',
           clientName: '',
@@ -495,6 +528,26 @@ const Projects = () => {
       toast.error(error.response?.data?.message || 'Failed to create project');
     } finally {
       setSubmitting(false);
+    }
+  };
+  // Handle project deletion
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project? This will also delete all associated tasks !!')) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/projects/${projectId}`);
+      if (response.data.success) {
+        toast.success('Project deleted successfully');
+        // Update local state
+        setProjects(projects.filter(p => p._id !== projectId));
+        setFilteredProjects(filteredProjects.filter(p => p._id !== projectId));
+        if (showMenu === projectId) setShowMenu(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete project');
     }
   };
 
@@ -524,7 +577,7 @@ const Projects = () => {
   };
 
   // Project card component
-  const ProjectCard = ({ project }) => {
+  const ProjectCard = ({ project, onDelete }) => {
     const progress = project.progress || 0;
     const risk = getRiskBadge(project);
     const manager = project.manager?.fullName || 'Unassigned';
@@ -554,6 +607,18 @@ const Projects = () => {
                 <div className="py-1">
                   <button onClick={() => { navigate(`/projects/${project._id}`); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">View Details</button>
                   <button onClick={() => { navigate(`/projects/${project._id}?action=edit`); setShowMenu(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Edit Project</button>
+                  {auth.user?.role === 'admin' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(null);
+                        onDelete(project._id);
+                      }}
+                      className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                    >
+                      Delete Project
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -772,6 +837,21 @@ const Projects = () => {
                       </select>
                     </div>
                   )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Outlet</label>
+                    <input
+                      list="filter-outlets"
+                      value={outletFilter}
+                      onChange={(e) => setOutletFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
+                      placeholder="All Outlets"
+                    />
+                    <datalist id="filter-outlets">
+                      {outlets.map((outlet, index) => (
+                        <option key={index} value={outlet} />
+                      ))}
+                    </datalist>
+                  </div>
                   <div className="sm:col-span-2 lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                     <div className="flex gap-2">
@@ -876,7 +956,7 @@ const Projects = () => {
 
             {/* Category and Job Order */}
             <div className="bg-white rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category *
@@ -909,6 +989,26 @@ const Projects = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors"
                     placeholder="Enter job order number"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Outlet
+                  </label>
+                  <input
+                    type="text"
+                    name="outlet"
+                    value={formData.outlet}
+                    onChange={handleInputChange}
+                    list="outlets"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent transition-colors"
+                    placeholder="Select or enter outlet"
+                  />
+                  <datalist id="outlets">
+                    {outlets.map((outlet, index) => (
+                      <option key={index} value={outlet} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
             </div>
@@ -1147,6 +1247,7 @@ const Projects = () => {
                   placeholder="Project location/address"
                 />
               </div>
+
             </div>
 
             {/* Manager Assignment */}
@@ -1255,7 +1356,7 @@ const Projects = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-1">No Projects Found</h3>
           <p className="text-gray-500">Try adjusting your filters or create a new project.</p>
         </div>
-      ) : !loading && !error && (
+      ) : (sortedProjects.length > 0 || (!loading && !error)) && (
         <>
           <AnimatePresence mode="wait">
             <motion.div
@@ -1264,13 +1365,19 @@ const Projects = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
+              className={loading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}
             >
               {viewMode === 'card' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {sortedProjects
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((project) => (
-                      <ProjectCard key={project._id} project={project} />
+                      <ProjectCard
+                        key={project._id}
+                        project={project}
+                        currentUser={auth.user}
+                        onDelete={handleDeleteProject}
+                      />
                     ))}
                 </div>
               ) : (
@@ -1290,6 +1397,9 @@ const Projects = () => {
                           </th>
                           <th onClick={() => handleSort('jobOrder')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
                             <div className="flex items-center gap-1">Job Order {getSortIcon('jobOrder')}</div>
+                          </th>
+                          <th className="p-4 font-semibold text-sm">
+                            Outlet
                           </th>
                           <th onClick={() => handleSort('manager')} className="p-4 font-semibold text-sm cursor-pointer hover:bg-[#800707] transition-colors">
                             <div className="flex items-center gap-1">Manager {getSortIcon('manager')}</div>
@@ -1318,6 +1428,7 @@ const Projects = () => {
                               <td className="p-4 text-gray-700">{project.clientName}</td>
                               <td className="p-4 text-gray-700">{project.category}</td>
                               <td className="p-4 text-gray-700">{project.jobOrder || '-'}</td>
+                              <td className="p-4 text-gray-700">{project.outlet || '-'}</td>
                               <td className="p-4">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
@@ -1353,11 +1464,11 @@ const Projects = () => {
                           ))}
                       </tbody>
                     </table>
-                  </div>
-                </div>
+                  </div >
+                </div >
               )}
-            </motion.div>
-          </AnimatePresence>
+            </motion.div >
+          </AnimatePresence >
 
           <Pagination
             currentPage={currentPage}
@@ -1579,7 +1690,7 @@ const Projects = () => {
                             }
                           }
                         }
-                      },
+                      }
                     }}
                   />
                 </div>

@@ -29,15 +29,31 @@ const Draggable = ({ id, children, data, disabled }) => {
   );
 };
 
-const TaskCard = ({ task, onClick, onChatClick }) => {
+const TaskCard = ({ task, onClick, onChatClick, onDelete, currentUser }) => {
   const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
   return (
     <div
       onClick={() => onClick && onClick(task)}
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab"
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab relative group"
     >
+      {/* Delete button for admins */}
+      {currentUser?.role === 'admin' && onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(task._id);
+          }}
+          className="absolute top-2 right-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+          title="Delete Task"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+          </svg>
+        </button>
+      )}
+
       <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 text-sm leading-tight">{task.title}</h4>
+        <h4 className="font-medium text-gray-900 text-sm leading-tight pr-5">{task.title}</h4>
         <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
           task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
             'bg-green-100 text-green-800'
@@ -52,6 +68,31 @@ const TaskCard = ({ task, onClick, onChatClick }) => {
           </span>
         )}
       </div>
+      {/* Project name and Job Order - only show if exists */}
+      {task.project?.projectName && (
+        <div className="mb-2">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+              <path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 017 18a9.953 9.953 0 01-5.385-1.572zM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 00-1.588-3.755 4.502 4.502 0 015.874 2.636.818.818 0 01-.36.98A7.465 7.465 0 0114.5 16z" />
+            </svg>
+            {task.project.projectName}
+            {task.project.jobOrder && (
+              <span className="text-blue-600 opacity-80 ml-1 border-l border-blue-200 pl-1">
+                #{task.project.jobOrder}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+      {/* Label - only show if exists */}
+      {task.label && (
+        <div className="mb-2">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+            {task.label}
+          </span>
+        </div>
+      )}
       {task.description && (
         <p className="text-xs text-gray-600 mb-3 line-clamp-2">{task.description}</p>
       )}
@@ -112,7 +153,7 @@ const TaskCard = ({ task, onClick, onChatClick }) => {
   );
 };
 
-const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick }) => {
+const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick, onDelete, currentUser }) => {
   const statuses = [
     { id: 'todo', name: 'To Do', color: 'bg-blue-50' },
     { id: 'in-progress', name: 'In Progress', color: 'bg-yellow-50' },
@@ -162,7 +203,13 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick }) =>
                         data={{ status: task.status }}
                         disabled={(task.subtasks && task.subtasks.some(st => st.status !== 'completed')) || task.readOnly}
                       >
-                        <TaskCard task={task} onClick={onTaskClick} onChatClick={onChatClick} />
+                        <TaskCard
+                          task={task}
+                          onClick={onTaskClick}
+                          onChatClick={onChatClick}
+                          onDelete={onDelete}
+                          currentUser={currentUser}
+                        />
                       </Draggable>
                     ))}
                     {statusTasks.length === 0 && (

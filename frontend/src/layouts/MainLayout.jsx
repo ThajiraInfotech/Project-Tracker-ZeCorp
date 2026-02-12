@@ -20,6 +20,7 @@ import {
   ArrowLeftStartOnRectangleIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  ExclamationCircleIcon,
   ClockIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
@@ -175,36 +176,50 @@ const MainLayout = () => {
             {user?.role === 'admin' && adminDashboardData?.dashboard && (
               <div className="px-3 py-4 border-t border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50 mx-3 rounded-lg mb-4">
                 <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">
-                  Quick Overview
+                  Quick Summary
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <Link
+                    to="/projects?filter=delayed"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between group hover:bg-red-50 p-1 rounded transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center space-x-2">
-                      <ExclamationTriangleIcon className="w-4 h-4 text-orange-500" />
-                      <span className="text-xs text-slate-700">At Risk</span>
+                      <ExclamationCircleIcon className="w-4 h-4 text-red-600" />
+                      <span className="text-xs text-slate-700 font-medium group-hover:text-red-700">Delayed Projects</span>
                     </div>
-                    <span className="text-sm font-semibold text-orange-600">
+                    <span className="text-sm font-bold text-red-600 bg-white px-2 py-0.5 rounded shadow-sm border border-red-100">
                       {adminDashboardData.dashboard.projects.totalProjectsDelayed}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between">
+                  </Link>
+
+                  <Link
+                    to="/projects?filter=at-risk"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between group hover:bg-yellow-50 p-1 rounded transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center space-x-2">
-                      <ClockIcon className="w-4 h-4 text-red-500" />
-                      <span className="text-xs text-slate-700">Overdue</span>
+                      <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600" />
+                      <span className="text-xs text-slate-700 font-medium group-hover:text-yellow-700">At-Risk Projects</span>
                     </div>
-                    <span className="text-sm font-semibold text-red-600">
+                    <span className="text-sm font-bold text-yellow-600 bg-white px-2 py-0.5 rounded shadow-sm border border-yellow-100">
+                      {adminDashboardData.dashboard.projects.totalProjectsAtRisk || 0}
+                    </span>
+                  </Link>
+
+                  <Link
+                    to="/tasks?filter=overdue"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center justify-between group hover:bg-orange-50 p-1 rounded transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <ClockIcon className="w-4 h-4 text-orange-600" />
+                      <span className="text-xs text-slate-700 font-medium group-hover:text-orange-700">Overdue Tasks</span>
+                    </div>
+                    <span className="text-sm font-bold text-orange-600 bg-white px-2 py-0.5 rounded shadow-sm border border-orange-100">
                       {adminDashboardData.dashboard.tasks.totalTasksOverdue}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                      <span className="text-xs text-slate-700">Completed</span>
-                    </div>
-                    <span className="text-sm font-semibold text-green-600">
-                      {adminDashboardData.dashboard.tasks.totalTasksCompleted}
-                    </span>
-                  </div>
+                  </Link>
                 </div>
               </div>
             )}

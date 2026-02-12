@@ -43,6 +43,10 @@ const taskSchema = new mongoose.Schema({
     enum: ['backlog', 'todo', 'in-progress', 'review', 'completed', 'blocked', 'delayed'],
     default: 'todo'
   },
+  label: {
+    type: String,
+    enum: ['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'],
+  },
   progress: {
     type: Number,
     default: 0,
@@ -123,13 +127,16 @@ const taskSchema = new mongoose.Schema({
 
 // Virtual for isOverdue
 taskSchema.virtual('isOverdue').get(function () {
-  return this.status !== 'completed' && this.deadline < new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return this.status !== 'completed' && this.deadline < today;
 });
 
 // Indexes for better query performance
 taskSchema.index({ project: 1 });
 taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ status: 1 });
+taskSchema.index({ label: 1 });
 taskSchema.index({ deadline: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

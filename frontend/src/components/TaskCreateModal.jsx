@@ -36,7 +36,8 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         assignedTo: task.assignedTo?._id || '',
         cc: task.cc?._id || '',
         estimatedHours: task.estimatedHours || '',
-        project: task.project?._id || ''
+        project: task.project?._id || '',
+        label: task.label || ''
       });
     } else {
       setFormData({
@@ -47,7 +48,8 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         assignedTo: '',
         cc: '',
         estimatedHours: '',
-        project: project ? project._id : ''
+        project: project ? project._id : '',
+        label: ''
       });
     }
   }, [task, project]);
@@ -98,7 +100,8 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         cc: formData.cc || undefined,
         deadline: formData.deadline,
         priority: formData.priority,
-        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
+        label: formData.label || undefined
       };
 
       let response;
@@ -108,7 +111,8 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
           title: taskData.title,
           description: taskData.description,
           deadline: taskData.deadline,
-          priority: taskData.priority
+          priority: taskData.priority,
+          label: taskData.label
         };
         if (userRole === 'admin' || userRole === 'manager') {
           editData.assignedTo = taskData.assignedTo || undefined;
@@ -146,7 +150,8 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
       assignedTo: '',
       cc: '',
       estimatedHours: '',
-      project: project ? project._id : (defaultProjectId || '')
+      project: project ? project._id : (defaultProjectId || ''),
+      label: ''
     });
     onClose();
   };
@@ -199,6 +204,25 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">Optional — add context if needed</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Label</label>
+            <div className="flex flex-wrap gap-2">
+              {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, label: formData.label === label ? '' : label })}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${formData.label === label
+                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 ring-offset-1'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

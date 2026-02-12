@@ -30,6 +30,7 @@ const ProjectDetailPage = () => {
   const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [outlets, setOutlets] = useState([]);
   const [financials, setFinancials] = useState({ totalExpenses: 0, profit: 0, utilization: 0 });
   const editStartDateRef = useRef(null);
   const editEndDateRef = useRef(null);
@@ -148,6 +149,24 @@ const ProjectDetailPage = () => {
       });
     }
   }, [project, expenses]);
+
+  // Fetch outlets
+  useEffect(() => {
+    const fetchOutlets = async () => {
+      try {
+        const response = await api.get('/projects/outlets');
+        if (response.data.success) {
+          setOutlets(response.data.outlets);
+        }
+      } catch (error) {
+        console.error('Failed to fetch outlets:', error);
+      }
+    };
+
+    if (showEditModal) {
+      fetchOutlets();
+    }
+  }, [showEditModal]);
 
 
   useEffect(() => {
@@ -313,6 +332,9 @@ const ProjectDetailPage = () => {
               <p className="text-gray-700"><span className="font-semibold">Category:</span> {project.category || 'N/A'}</p>
               {project.jobOrder && (
                 <p className="text-gray-700"><span className="font-semibold">Job Order:</span> {project.jobOrder}</p>
+              )}
+              {project.outlet && (
+                <p className="text-gray-700"><span className="font-semibold">Outlet:</span> {project.outlet}</p>
               )}
               <p className="text-gray-700 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -837,7 +859,8 @@ const ProjectDetailPage = () => {
       manager: project?.manager?._id || project?.manager || '',
       projectType: project?.projectType || 'Retail',
       category: project?.category || '',
-      jobOrder: project?.jobOrder || ''
+      jobOrder: project?.jobOrder || '',
+      outlet: project?.outlet || ''
     });
     const [updating, setUpdating] = useState(false);
 
@@ -851,7 +874,8 @@ const ProjectDetailPage = () => {
           manager: editForm.manager || undefined,
           projectType: editForm.projectType || undefined,
           category: editForm.category || undefined,
-          jobOrder: editForm.jobOrder || undefined
+          jobOrder: editForm.jobOrder || undefined,
+          outlet: editForm.outlet || undefined
         };
         const response = await api.put(`/projects/${id}`, updateData);
         if (response.data.success) {
@@ -940,6 +964,22 @@ const ProjectDetailPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="JO-XXXX"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Outlet</label>
+                <input
+                  type="text"
+                  value={editForm.outlet}
+                  onChange={(e) => setEditForm({ ...editForm, outlet: e.target.value })}
+                  list="edit-outlets"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Select or enter outlet"
+                />
+                <datalist id="edit-outlets">
+                  {outlets.map((outlet, index) => (
+                    <option key={index} value={outlet} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Project Manager</label>

@@ -846,7 +846,8 @@ exports.getManagerDashboardData = async (req, res) => {
     // Calculate statistics
     const totalPresent = attendance.length;
     const totalTasksCompleted = tasks.filter(t => t.status === 'completed').length;
-    const totalTasksOverdue = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < new Date()).length;
+    // Overdue: Deadline < Today (Start of day)
+    const totalTasksOverdue = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < today).length;
     const tasksAtRisk = tasks.filter(t => {
       if (t.status === 'completed') return false;
       const deadline = new Date(t.deadline);
@@ -956,7 +957,10 @@ exports.getAdminDashboardData = async (req, res) => {
     // Calculate statistics
     const totalPresent = attendance.length;
     const totalTasksCompleted = completedTasksCount;
-    const totalTasksOverdue = incompleteTasks.filter(t => t.deadline && new Date(t.deadline) < now).length;
+    // Overdue: STRICTLY BEFORE today (deadline < startOfToday)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const totalTasksOverdue = incompleteTasks.filter(t => t.deadline && new Date(t.deadline) < startOfToday).length;
     const totalProjects = projects.length;
     const totalProjectsInProgress = projects.filter(p => p.status === 'in-progress').length;
     const totalProjectsCompleted = projects.filter(p => p.status === 'completed').length;
@@ -965,7 +969,7 @@ exports.getAdminDashboardData = async (req, res) => {
     const totalProjectsDelayed = projects.filter(p =>
       p.status === 'on-hold' ||
       p.status === 'delayed' ||
-      (p.endDate && new Date(p.endDate) < now && p.status !== 'completed')
+      (p.endDate && new Date(p.endDate) < startOfToday && p.status !== 'completed')
     ).length;
 
     // At-Risk: Deadline within next 7 days AND not completed (and not already delayed)
@@ -1081,7 +1085,9 @@ exports.getProjectPerformanceReport = async (req, res) => {
       const tasks = await Task.find({ project: project._id });
 
       const completedTasks = tasks.filter(t => t.status === 'completed').length;
-      const overdueTasks = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < new Date()).length;
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const overdueTasks = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < startOfToday).length;
       const onTimeCompletion = completedTasks > 0 ?
         Math.round((completedTasks / (completedTasks + overdueTasks)) * 100) : 0;
 
@@ -1179,7 +1185,9 @@ exports.getStaffProductivityReport = async (req, res) => {
       const attendanceRecords = await Attendance.find({ userId: staff._id });
 
       const completedTasks = tasks.filter(t => t.status === 'completed').length;
-      const overdueTasks = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < new Date()).length;
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const overdueTasks = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < startOfToday).length;
 
       const taskCompletionRate = tasks.length > 0 ?
         Math.round((completedTasks / tasks.length) * 100) : 0;

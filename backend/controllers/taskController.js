@@ -48,7 +48,7 @@ const syncProgressWithStatus = (task) => {
 // Create a new task
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, project, assignedTo, deadline, priority } = req.body;
+    const { title, description, project, assignedTo, deadline, priority, label } = req.body;
 
     // Check if project exists
     const projectExists = await Project.findById(project);
@@ -76,6 +76,7 @@ exports.createTask = async (req, res) => {
       createdBy: req.user._id,
       deadline,
       priority: priority || 'medium',
+      label: label || undefined,
       cc: req.body.cc || undefined
     });
 
@@ -138,8 +139,9 @@ exports.getAllTasks = async (req, res) => {
     let query = {};
 
     // Filter by user role
+    const baseQuery = {};
     if (req.user.role === 'staff') {
-      query.$or = [
+      baseQuery.$or = [
         { assignedTo: req.user._id.toString() },
         { 'subtasks.assignedTo': req.user._id.toString() },
         { cc: req.user._id.toString() }
@@ -149,8 +151,11 @@ exports.getAllTasks = async (req, res) => {
       const managedProjects = await Project.find({ manager: req.user._id.toString() });
       const projectIds = managedProjects.map(project => project._id);
 
-      query.project = { $in: projectIds };
+      baseQuery.project = { $in: projectIds };
     }
+
+    // Merge with request query
+    query = { ...baseQuery, ...query };
     // Admin sees all tasks (no filter)
 
     // Apply user filters
@@ -163,11 +168,14 @@ exports.getAllTasks = async (req, res) => {
     if (req.query.projectId) {
       query.project = req.query.projectId;
     }
+    if (req.query.label) {
+      query.label = req.query.label;
+    }
 
     const tasks = await Task.find(query)
       .populate({
         path: 'project',
-        select: 'projectName projectType manager',
+        select: 'projectName projectType manager jobOrder',
         populate: {
           path: 'manager',
           select: 'username fullName email'
@@ -202,17 +210,23 @@ exports.getAllTasks = async (req, res) => {
 // Get my tasks (for current user)
 exports.getMyTasks = async (req, res) => {
   try {
-    const tasks = await Task.find({
+    const query = {
       $or: [
         { assignedTo: req.user._id.toString() },
         { assignedTo: req.user._id.toString() },
         { 'subtasks.assignedTo': req.user._id.toString() },
         { cc: req.user._id.toString() }
       ]
-    })
+    };
+
+    if (req.query.label) {
+      query.label = req.query.label;
+    }
+
+    const tasks = await Task.find(query)
       .populate({
         path: 'project',
-        select: 'projectName projectType manager',
+        select: 'projectName projectType manager jobOrder',
         populate: {
           path: 'manager',
           select: 'username fullName email'
@@ -250,7 +264,7 @@ exports.getTaskById = async (req, res) => {
     const task = await Task.findById(req.params.id)
       .populate({
         path: 'project',
-        select: 'projectName projectType manager teamMembers',
+        select: 'projectName projectType manager teamMembers jobOrder',
         populate: [
           { path: 'manager', select: 'username fullName email profileImage' },
           { path: 'teamMembers', select: 'username fullName email profileImage' }
@@ -304,7 +318,7 @@ exports.getTaskById = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress', 'subtasks'];
+    let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress', 'subtasks', 'label'];
     if (req.user.role === 'admin' || req.user.role === 'manager') {
       allowedUpdates.push('assignedTo');
       allowedUpdates.push('cc');
@@ -398,7 +412,7 @@ exports.updateTask = async (req, res) => {
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
-      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('project', 'projectName projectType manager teamMembers jobOrder')
       .populate('assignedTo', 'username fullName email profileImage')
       .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
@@ -507,7 +521,7 @@ exports.updateTaskStatus = async (req, res) => {
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
-      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('project', 'projectName projectType manager teamMembers jobOrder')
       .populate('assignedTo', 'username fullName email profileImage')
       .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
@@ -572,7 +586,7 @@ exports.updateTaskProgress = async (req, res) => {
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
-      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('project', 'projectName projectType manager teamMembers jobOrder')
       .populate('assignedTo', 'username fullName email profileImage')
       .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
@@ -674,7 +688,7 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
-      .populate('project', 'projectName projectType manager teamMembers')
+      .populate('project', 'projectName projectType manager teamMembers jobOrder')
       .populate('assignedTo', 'username fullName email profileImage')
       .populate('cc', 'username fullName email profileImage')
       .populate('createdBy', 'username fullName email')
