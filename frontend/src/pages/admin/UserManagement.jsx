@@ -17,7 +17,8 @@ import {
   FaUserSlash,
   FaUserCheck,
   FaEye,
-  FaEyeSlash
+  FaEyeSlash,
+  FaDollarSign
 } from 'react-icons/fa';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -208,6 +209,8 @@ const UserManagement = () => {
     total: users.length,
     managers: users.filter(u => u.role === 'manager').length,
     staff: users.filter(u => u.role === 'staff').length,
+    technicians: users.filter(u => u.role === 'technician').length,
+    finance: users.filter(u => u.role === 'finance').length,
     active: users.filter(u => u.isActive).length
   };
 
@@ -215,6 +218,8 @@ const UserManagement = () => {
     { id: '', label: 'All Users' },
     { id: 'manager', label: 'Managers' },
     { id: 'staff', label: 'Staff' },
+    { id: 'technician', label: 'Technicians' },
+    { id: 'finance', label: 'Finance' },
     { id: 'admin', label: 'Admins' }
   ];
 
@@ -275,7 +280,9 @@ const UserManagement = () => {
     const roleColors = {
       'admin': 'bg-red-100 text-red-800',
       'manager': 'bg-blue-100 text-blue-800',
-      'staff': 'bg-green-100 text-green-800'
+      'staff': 'bg-green-100 text-green-800',
+      'technician': 'bg-orange-100 text-orange-800',
+      'finance': 'bg-purple-100 text-purple-800'
     };
 
     return (
@@ -329,7 +336,7 @@ const UserManagement = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 mx-2 md:mx-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8 mx-2 md:mx-0">
             <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm font-medium mb-1">Total Users</p>
@@ -355,6 +362,15 @@ const UserManagement = () => {
               </div>
               <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-600">
                 <FaUserShield size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Finance</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stats.finance}</h3>
+              </div>
+              <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
+                <FaDollarSign size={24} />
               </div>
             </div>
             <div className="bg-white p-5 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center justify-between">
@@ -823,6 +839,8 @@ const UserManagement = () => {
                         required
                       >
                         <option value="staff">Staff</option>
+                        <option value="technician">Technician</option>
+                        <option value="finance">Finance</option>
                         <option value="manager">Manager</option>
                       </select>
                       <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -954,6 +972,7 @@ const UserManagement = () => {
                     required
                   >
                     <option value="staff">Staff</option>
+                    <option value="technician">Technician</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                   </select>

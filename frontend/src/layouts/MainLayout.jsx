@@ -22,7 +22,8 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ClockIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
 
 const MainLayout = () => {
@@ -61,11 +62,11 @@ const MainLayout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: user?.role === 'admin' ? '/admin' : '/', icon: HomeIcon },
-    // Show Projects only for non-staff users (admin, manager)
-    ...(user?.role !== 'staff' ? [{ name: 'Projects', href: '/projects', icon: FolderIcon }] : []),
+    // Show Projects only for non-staff/non-technician users (admin, manager)
+    ...(!['staff', 'technician', 'finance'].includes(user?.role) ? [{ name: 'Projects', href: '/projects', icon: FolderIcon }] : []),
     { name: 'Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
     { name: 'Attendance', href: '/attendance', icon: CalendarDaysIcon },
-    ...(user?.role === 'staff' ? [
+    ...(['staff', 'technician', 'finance'].includes(user?.role) ? [
       { name: 'Performance', href: '/performance', icon: ChartBarIcon }
     ] : []),
     ...(user?.role === 'manager' ? [{ name: 'Team Performance', href: '/team', icon: UserGroupIcon }] : []),
@@ -74,7 +75,7 @@ const MainLayout = () => {
   // Admin-specific navigation
   const adminNavigation = [
     { name: 'User Management', href: '/admin/users', icon: UserIcon },
-
+    { name: 'Service Reports', href: '/admin/service-reports', icon: DocumentChartBarIcon },
     { name: 'System Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 

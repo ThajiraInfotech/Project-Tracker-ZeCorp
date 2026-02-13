@@ -86,7 +86,7 @@ const ProjectDetailPage = () => {
       const response = await api.get('/auth/staff-for-manager');
       if (response.data.success && response.data.users) {
         const allUsers = response.data.users;
-        setStaff(allUsers.filter(u => u.role === 'staff'));
+        setStaff(allUsers.filter(u => u.role === 'staff' || u.role === 'technician' || u.role === 'finance'));
         setManagers(allUsers.filter(u => u.role === 'manager'));
       }
     } catch (error) {

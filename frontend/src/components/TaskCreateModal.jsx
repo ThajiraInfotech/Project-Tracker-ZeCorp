@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -12,19 +12,74 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
     assignedTo: '',
     cc: '',
     estimatedHours: '',
-    project: project ? project._id : ''
+    project: (project && project._id) ? project._id : ''
   });
   const [loading, setLoading] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState(projects || []);
+  const INDEPENDENT_PROJECT_ID = 'independent';
+  const INDEPENDENT_PROJECT = { _id: INDEPENDENT_PROJECT_ID, projectName: 'Independent Task (No Project)', jobOrder: '' };
+
+  const [availableProjects, setAvailableProjects] = useState(projects ? [INDEPENDENT_PROJECT, ...projects] : [INDEPENDENT_PROJECT]);
   const [deadlineInputType, setDeadlineInputType] = useState('text');
+
+  // Searchable dropdown states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [filteredProjects, setFilteredProjects] = useState([]);
+  const wrapperRef = useRef(null);
+
   const isEdit = !!task;
 
+  // Sync availableProjects with props
   useEffect(() => {
-    if (isOpen && !project && !projects) {
-      // Fetch projects if not provided
+    if (projects && projects.length > 0) {
+      setAvailableProjects([INDEPENDENT_PROJECT, ...projects]);
+    } else {
+      setAvailableProjects([INDEPENDENT_PROJECT]);
+    }
+  }, [projects]);
+
+  // Initial fetch if needed
+  useEffect(() => {
+    if (isOpen && !project && (!projects || projects.length === 0)) {
       fetchProjects();
     }
   }, [isOpen, project, projects]);
+
+  // Update filtered projects when availableProjects or searchTerm changes
+  useEffect(() => {
+    if (searchTerm === '') {
+      setFilteredProjects(availableProjects);
+    } else {
+      setFilteredProjects(
+        availableProjects.filter(p =>
+          p.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (p.jobOrder && String(p.jobOrder).toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      );
+    }
+  }, [availableProjects, searchTerm]);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+
+        // If the typed term doesn't match the selected project, reset it to the selected project's name
+        // OR clear it if no project is selected.
+        const currentProject = availableProjects.find(p => p._id === formData.project);
+        if (currentProject) {
+          setSearchTerm(currentProject.projectName);
+        } else if (!formData.project) {
+          setSearchTerm(''); // Clear if nothing selected
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [wrapperRef, availableProjects, formData.project]);
 
   useEffect(() => {
     if (task) {
@@ -39,6 +94,10 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         project: task.project?._id || '',
         label: task.label || ''
       });
+      // Set search term for edit mode
+      if (task.project?.projectName) {
+        setSearchTerm(task.project.projectName);
+      }
     } else {
       setFormData({
         title: '',
@@ -51,6 +110,12 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         project: project ? project._id : '',
         label: ''
       });
+      // Set search term if project is pre-selected
+      if (project?.projectName) {
+        setSearchTerm(project.projectName);
+      } else {
+        setSearchTerm('');
+      }
     }
   }, [task, project]);
 
@@ -64,7 +129,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         fetchedProjects = [...fetchedProjects, task.project];
       }
 
-      setAvailableProjects(fetchedProjects);
+      setAvailableProjects([INDEPENDENT_PROJECT, ...fetchedProjects]);
     } catch (error) {
       console.error('Error fetching projects:', error);
     }
@@ -75,7 +140,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
     if (task?.project) {
       setAvailableProjects(prev => {
         if (!prev.find(p => p._id === task.project._id)) {
-          return [...prev, task.project];
+          return [INDEPENDENT_PROJECT, ...prev, task.project];
         }
         return prev;
       });
@@ -95,7 +160,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
       const taskData = {
         title: formData.title,
         description: formData.description,
-        project: selectedProject._id,
+        project: selectedProject._id === INDEPENDENT_PROJECT_ID ? undefined : selectedProject._id,
         assignedTo: formData.assignedTo || undefined,
         cc: formData.cc || undefined,
         deadline: formData.deadline,
@@ -141,6 +206,12 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
     }
   };
 
+  const handleProjectSelect = (selectedProject) => {
+    setFormData({ ...formData, project: selectedProject._id });
+    setSearchTerm(selectedProject.projectName);
+    setIsDropdownOpen(false);
+  };
+
   const handleClose = () => {
     setFormData({
       title: '',
@@ -153,6 +224,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
       project: project ? project._id : (defaultProjectId || ''),
       label: ''
     });
+    setSearchTerm('');
     onClose();
   };
 
@@ -168,21 +240,56 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {!project && !isEdit && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Project *</label>
-              <select
-                value={formData.project}
-                onChange={(e) => setFormData({ ...formData, project: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select a project</option>
-                {availableProjects.map((proj) => (
-                  <option key={proj._id} value={proj._id}>
-                    {proj.projectName}
-                  </option>
-                ))}
-              </select>
+            <div className="relative" ref={wrapperRef}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Project * (or select Independent)</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    if (!isDropdownOpen) setIsDropdownOpen(true);
+                    // Clear selection if user clears input or types something new (until they select)
+                    if (formData.project && e.target.value !== availableProjects.find(p => p._id === formData.project)?.projectName) {
+                      setFormData(prev => ({ ...prev, project: '' }));
+                    }
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="Type to search project..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required // This might need custom validation since it's just a search field
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((proj) => (
+                      <button
+                        key={proj._id}
+                        type="button"
+                        onClick={() => handleProjectSelect(proj)}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors border-b border-gray-100 last:border-0"
+                      >
+                        <div className="font-medium text-gray-900">{proj.projectName}</div>
+                        {proj.jobOrder && (
+                          <div className="text-xs text-gray-500">Job Order: {proj.jobOrder}</div>
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-2 text-sm text-gray-500">No projects found</div>
+                  )}
+                </div>
+              )}
+              {/* Hidden input to ensure form validation works for the 'required' attribute naturally if needed, 
+                  though we check in handleSubmit anyway. */}
             </div>
           )}
           <div>

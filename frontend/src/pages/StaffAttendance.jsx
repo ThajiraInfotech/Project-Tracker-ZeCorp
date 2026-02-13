@@ -5,6 +5,8 @@ import {
   ArrowDownTrayIcon,
   CheckCircleIcon,
   CalendarDaysIcon,
+  MapPinIcon,
+  BriefcaseIcon
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -12,12 +14,14 @@ import {
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
+import TechnicianSiteAttendance from '../components/TechnicianSiteAttendance';
 
 const StaffAttendance = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('office'); // 'office' or 'site'
 
   // Date state for filtering
   const getCurrentMonth = () => {
@@ -49,8 +53,9 @@ const StaffAttendance = () => {
         const today = getDubaiToday();
         const todayRec = records.find(r => r.date === today);
 
-        // Prioritize active session
-        setTodayRecord(activeSession || todayRec);
+        // We only care about "todayRecord" if it's ACTIVE.
+        // If it's completed, we want to allow a new Check In.
+        setTodayRecord(activeSession || null);
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -110,6 +115,8 @@ const StaffAttendance = () => {
     return record.date.startsWith(selectedMonth);
   });
 
+  const isTechnician = auth.user?.role === 'technician';
+
   return (
     <div className="min-h-screen bg-gray-50/50 font-sans pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -122,166 +129,193 @@ const StaffAttendance = () => {
           <p className="text-gray-500 mt-1">Here's your attendance overview for today.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8">
-          {/* Main Content Area - Full Width now */}
-          <div className="space-y-8">
+        {/* Tabs for Technician */}
+        {isTechnician && (
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => setActiveTab('office')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'office'
+                ? 'bg-[#700606] text-white shadow-lg shadow-[#700606]/30'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <BriefcaseIcon className="w-5 h-5" />
+              Office Attendance
+            </button>
+            <button
+              onClick={() => setActiveTab('site')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'site'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <MapPinIcon className="w-5 h-5" />
+              Site Attendance
+            </button>
+          </div>
+        )}
 
-            {/* CLOCK IN/OUT CARD */}
-            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-32 bg-[#700606]/5 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700 ease-out" />
+        {activeTab === 'office' ? (
+          <div className="grid grid-cols-1 gap-8">
+            {/* Main Content Area - Full Width now */}
+            <div className="space-y-8">
 
-              <div className="flex flex-col sm:flex-row items-center justify-between relative z-10">
-                {/* Timer Display */}
-                <div className="text-center sm:text-left mr-0 sm:mr-8 mb-6 sm:mb-0">
-                  <p className="text-sm text-gray-500 font-medium tracking-wide uppercase mb-1">Dubai Time</p>
-                  <p className="text-5xl font-extrabold text-[#700606] font-mono tracking-tight">
-                    {new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit' })}
-                    <span className="text-xl text-gray-400 font-normal ml-1">
-                      {new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Dubai', second: '2-digit' })}
-                    </span>
-                  </p>
-                </div>
+              {/* CLOCK IN/OUT CARD */}
+              <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-32 bg-[#700606]/5 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700 ease-out" />
 
-                {/* Buttons */}
-                <div className="flex gap-4">
-                  {!todayRecord?.checkIn ? (
-                    <button
-                      onClick={handleCheckIn}
-                      disabled={loading || actionLoading}
-                      className="group relative px-8 py-4 bg-[#700606] text-white rounded-2xl font-bold shadow-lg shadow-[#700606]/30 hover:shadow-xl hover:shadow-[#700606]/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
-                      <span className="relative flex items-center gap-2">
-                        <CheckCircleIcon className="w-6 h-6" />
-                        Check In Now
+                <div className="flex flex-col sm:flex-row items-center justify-between relative z-10">
+                  {/* Timer Display */}
+                  <div className="text-center sm:text-left mr-0 sm:mr-8 mb-6 sm:mb-0">
+                    <p className="text-sm text-gray-500 font-medium tracking-wide uppercase mb-1">Dubai Time</p>
+                    <p className="text-5xl font-extrabold text-[#700606] font-mono tracking-tight">
+                      {new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit' })}
+                      <span className="text-xl text-gray-400 font-normal ml-1">
+                        {new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Dubai', second: '2-digit' })}
                       </span>
-                    </button>
-                  ) : !todayRecord?.checkOut ? (
-                    <button
-                      onClick={handleCheckOut}
-                      disabled={loading || actionLoading}
-                      className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-900/30 hover:shadow-xl hover:shadow-gray-900/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
-                      <span className="relative flex items-center gap-2">
-                        <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
-                        Check Out
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="px-8 py-4 bg-green-50 text-green-700 rounded-2xl font-bold border border-green-200 flex items-center gap-2">
-                      <CheckCircleSolid className="w-6 h-6" />
-                      Shift Completed
-                    </div>
-                  )}
-                </div>
-              </div>
+                    </p>
+                  </div>
 
-              {/* Today's Status Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
-                  <p className={`text-lg font-bold mt-1 ${todayRecord?.status === 'Present' ? 'text-green-600' :
-                    todayRecord?.status === 'Half-day' ? 'text-yellow-600' :
-                      todayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
-                    }`}>
-                    {todayRecord?.status || 'Pending'}
-                  </p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
-                  <p className="text-lg font-bold text-gray-900 mt-1">
-                    {todayRecord?.checkIn ? 'Started' : 'Not Started'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Monthly Earnings & History Section */}
-            <div className="grid grid-cols-1 gap-8">
-
-              {/* History Table Container - Full width */}
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <h3 className="text-xl font-bold text-gray-900">History</h3>
-
-                  {/* Month Filter */}
-                  <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
-                    <input
-                      type="month"
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer"
-                    />
+                  {/* Buttons */}
+                  <div className="flex gap-4">
+                    {!todayRecord ? (
+                      <button
+                        onClick={handleCheckIn}
+                        disabled={loading || actionLoading}
+                        className="group relative px-8 py-4 bg-[#700606] text-white rounded-2xl font-bold shadow-lg shadow-[#700606]/30 hover:shadow-xl hover:shadow-[#700606]/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                        <span className="relative flex items-center gap-2">
+                          <CheckCircleIcon className="w-6 h-6" />
+                          Check In Now
+                        </span>
+                      </button>
+                    ) : !todayRecord?.checkOut ? (
+                      <button
+                        onClick={handleCheckOut}
+                        disabled={loading || actionLoading}
+                        className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-900/30 hover:shadow-xl hover:shadow-gray-900/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                        <span className="relative flex items-center gap-2">
+                          <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
+                          Check Out
+                        </span>
+                      </button>
+                    ) : (
+                      null
+                    )}
                   </div>
                 </div>
 
-                <div className="overflow-x-auto flex-1">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {filteredHistory.length > 0 ? (
-                        filteredHistory.map((record, index) => (
-                          <motion.tr
-                            key={record._id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="hover:bg-gray-50/80 transition-colors group"
-                          >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-[#700606]/10 group-hover:text-[#700606] transition-colors">
-                                  <CalendarDaysIcon className="w-5 h-5" />
-                                </div>
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {formatDate(record.date)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm">
-                                <p className="font-medium text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
-                                <p className="text-xs text-gray-500">{record.checkOut ? formatTime(record.checkOut) : 'Active'}</p>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
-                                record.status === 'Half-day' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                  record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
-                                }`}>
-                                {record.status}
-                              </span>
-                            </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="3" className="px-6 py-12 text-center text-gray-400">
-                            No attendance records found for {selectedMonth}.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                {/* Today's Status Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                    <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
+                    <p className={`text-lg font-bold mt-1 ${todayRecord?.status === 'Present' ? 'text-green-600' :
+                      todayRecord?.status === 'Half-day' ? 'text-yellow-600' :
+                        todayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
+                      }`}>
+                      {todayRecord?.status || 'Pending'}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                    <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                      {todayRecord?.checkIn ? 'Started' : 'Not Started'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-12 text-center">
-              <p className="text-sm text-gray-400">
-                &copy; {new Date().getFullYear()} Zeecorp Attendance System • Enterprise Edition
-              </p>
-            </div>
+              {/* Monthly Earnings & History Section */}
+              <div className="grid grid-cols-1 gap-8">
 
+                {/* History Table Container - Full width */}
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                  <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 className="text-xl font-bold text-gray-900">History</h3>
+
+                    {/* Month Filter */}
+                    <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                      <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto flex-1">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50/50">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Time</th>
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {filteredHistory.length > 0 ? (
+                          filteredHistory.map((record, index) => (
+                            <motion.tr
+                              key={record._id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className="hover:bg-gray-50/80 transition-colors group"
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-[#700606]/10 group-hover:text-[#700606] transition-colors">
+                                    <CalendarDaysIcon className="w-5 h-5" />
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    {formatDate(record.date)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm">
+                                  <p className="font-medium text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
+                                  <p className="text-xs text-gray-500">{record.checkOut ? formatTime(record.checkOut) : 'Active'}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                                  record.status === 'Half-day' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                    record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                                  }`}>
+                                  {record.status}
+                                </span>
+                              </td>
+                            </motion.tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="px-6 py-12 text-center text-gray-400">
+                              No attendance records found for {selectedMonth}.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-12 text-center">
+                <p className="text-sm text-gray-400">
+                  &copy; {new Date().getFullYear()} Zeecorp Attendance System • Enterprise Edition
+                </p>
+              </div>
+
+            </div>
           </div>
-        </div>
+        ) : (
+          <TechnicianSiteAttendance />
+        )}
 
       </div>
     </div>

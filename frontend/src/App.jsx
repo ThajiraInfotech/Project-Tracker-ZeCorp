@@ -41,6 +41,8 @@ import UserManagement from './pages/admin/UserManagement';
 
 import SystemSettings from './pages/admin/SystemSettings';
 import AttendanceExceptions from './pages/admin/AttendanceExceptions';
+import AdminServiceReports from './pages/admin/AdminServiceReports';
+
 
 
 // Initialize socket connection
@@ -102,7 +104,7 @@ function App() {
           <Route path="/" element={
             user?.role === 'admin' ? <Navigate to="/admin" replace /> :
               user?.role === 'manager' ? <Navigate to="/manager" replace /> :
-                user?.role === 'staff' ? <Navigate to="/staff" replace /> :
+                (user?.role === 'staff' || user?.role === 'technician' || user?.role === 'finance') ? <Navigate to="/staff" replace /> :
                   <Navigate to="/login" replace />
           } />
           <Route path="/projects" element={<Projects />} />
@@ -111,7 +113,7 @@ function App() {
           <Route path="/attendance" element={
             user?.role === 'admin' ? <AdminAttendance /> :
               user?.role === 'manager' ? <ManagerAttendance /> :
-                user?.role === 'staff' ? <StaffAttendance /> :
+                (user?.role === 'staff' || user?.role === 'technician' || user?.role === 'finance') ? <StaffAttendance /> :
                   <Navigate to="/login" replace />
           } />
 
@@ -122,7 +124,7 @@ function App() {
           } />
 
           <Route path="/performance" element={
-            <ProtectedRoute allowedRoles={['staff']}>
+            <ProtectedRoute allowedRoles={['staff', 'technician', 'finance']}>
               <Performance />
             </ProtectedRoute>
           } />
@@ -158,6 +160,14 @@ function App() {
 
 
 
+
+
+          <Route path="/admin/service-reports" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminServiceReports />
+            </ProtectedRoute>
+          } />
+
           <Route path="/manager" element={
             <ProtectedRoute allowedRoles={['manager']}>
               <ManagerDashboard />
@@ -165,7 +175,7 @@ function App() {
           } />
 
           <Route path="/staff" element={
-            <ProtectedRoute allowedRoles={['staff']}>
+            <ProtectedRoute allowedRoles={['staff', 'technician', 'finance']}>
               <StaffDashboard />
             </ProtectedRoute>
           } />

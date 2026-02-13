@@ -255,7 +255,7 @@ const StaffDashboard = () => {
           <div className="flex items-center space-x-4 md:space-x-6 self-end md:self-auto">
             <div className="text-right">
               <p className="text-sm text-white font-medium">Welcome, {user?.fullName}</p>
-              <p className="text-xs text-white/80">Staff Member</p>
+              <p className="text-xs text-white/80 capitalize">{user?.role} Member</p>
             </div>
             <UserAvatar
               user={user}
@@ -553,7 +553,7 @@ const StaffDashboard = () => {
           <TaskDetailsModal
             taskId={selectedTask._id}
             onClose={() => setShowTaskModal(false)}
-            currentUserRole="staff"
+            currentUserRole={user?.role}
             currentUserId={user?.id}
             onTaskUpdated={(updatedTask) => {
               setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));

@@ -102,8 +102,8 @@ const TaskDetailsModal = ({
         const assignedId = st.assignedTo?._id || st.assignedTo;
         return assignedId?.toString() === currentUserId;
     });
-    const isAssignedStaff = currentUserRole === 'staff' && (task?.assignedTo?._id === currentUserId || isAssignedToSubtask);
-    const canManageSubtasks = currentUserRole === 'admin' || currentUserRole === 'manager' || (currentUserRole === 'staff' && task?.assignedTo?._id === currentUserId);
+    const isAssignedStaff = (currentUserRole === 'staff' || currentUserRole === 'technician' || currentUserRole === 'finance') && (task?.assignedTo?._id === currentUserId || isAssignedToSubtask);
+    const canManageSubtasks = currentUserRole === 'admin' || currentUserRole === 'manager' || ((currentUserRole === 'staff' || currentUserRole === 'technician' || currentUserRole === 'finance') && task?.assignedTo?._id === currentUserId);
     const canUpdateParent = isAssignedStaff || canManageSubtasks;
 
     // Fetch all users for assignment (only for managers/admins)

@@ -203,7 +203,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
       if (response.data.success && response.data.users) {
         const allUsers = response.data.users;
-        setStaff(allUsers.filter(u => u.role === 'staff'));
+        setStaff(allUsers.filter(u => ['staff', 'technician', 'finance'].includes(u.role)));
         setManagers(allUsers.filter(u => u.role === 'manager' || u.role === 'admin'));
       }
     } catch (error) {
