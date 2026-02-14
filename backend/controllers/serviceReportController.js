@@ -20,9 +20,7 @@ exports.submitServiceReport = async (req, res) => {
         const activeSite = await SiteAttendance.findOne({
             userId,
             checkOut: null // Existing logic for open session
-            // type: 'SITE', // Removed as SiteAttendance model is specific to site anyway
-            // siteStatus: 'OPEN' // Removed as we use checkOut: null
-        }).session(session);
+        });
 
         if (!activeSite) {
             return res.status(400).json({ success: false, message: 'No active site session' });
@@ -39,39 +37,37 @@ exports.submitServiceReport = async (req, res) => {
             }
         });
 
-    });
+        await report.save();
 
-    await report.save();
+        // Update Site Attendance closure
+        activeSite.status = 'Completed'; // CHANGED: siteStatus -> status
+        activeSite.checkOut = getDubaiDateTime().toDate();
 
-    // Update Site Attendance closure
-    activeSite.status = 'Completed'; // CHANGED: siteStatus -> status
-    activeSite.checkOut = getDubaiDateTime().toDate();
+        // Calculate hours (simple diff for now, consistent with existing logic)
+        const hours = (activeSite.checkOut - activeSite.checkIn) / (1000 * 60 * 60);
+        activeSite.totalHours = parseFloat(hours.toFixed(2));
 
-    // Calculate hours (simple diff for now, consistent with existing logic)
-    const hours = (activeSite.checkOut - activeSite.checkIn) / (1000 * 60 * 60);
-    activeSite.totalHours = parseFloat(hours.toFixed(2));
+        // Link service report to attendance
+        activeSite.serviceReport = report._id;
 
-    // Link service report to attendance
-    activeSite.serviceReport = report._id;
+        await activeSite.save();
 
-    await activeSite.save();
+        res.status(201).json({
+            success: true,
+            message: 'Service Report submitted & site closed'
+        });
 
-    res.status(201).json({
-        success: true,
-        message: 'Service Report submitted & site closed'
-    });
+    } catch (error) {
 
-} catch (error) {
+        console.error('Service Report Submission Error:', error);
 
-    console.error('Service Report Submission Error:', error);
+        if (error.code === 11000) {
+            return res.status(400).json({ success: false, message: 'Report already exists for this session' });
+        }
 
-    if (error.code === 11000) {
-        return res.status(400).json({ success: false, message: 'Report already exists for this session' });
+        // Handle generic errors (like "Parts remarks required")
+        res.status(400).json({ success: false, message: error.message });
     }
-
-    // Handle generic errors (like "Parts remarks required")
-    res.status(400).json({ success: false, message: error.message });
-}
 };
 
 // Admin Endpoints from previous implementation (kept for compatibility)
