@@ -6,7 +6,7 @@
 const RULES = {
     // User Management
     USER_CREATED: {
-        channels: ['EMAIL', 'IN_APP'], // Security: Send credentials via email only
+        channels: ['EMAIL'], // Security: Send credentials via email only
         getRecipients: (data) => [data.user],
         template: {
             subject: 'Welcome to Thajira WorkFlow - Your Account Details',

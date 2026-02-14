@@ -123,14 +123,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check if account is locked
-    if (user.lockUntil && user.lockUntil > new Date()) {
-      return res.status(403).json({
-        success: false,
-        message: `Account is locked until ${user.lockUntil.toLocaleTimeString()}`
-      });
-    }
-
     // Check if user is active
     if (user.isActive === false) {
       return res.status(403).json({
@@ -143,36 +135,10 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      // Handle failed attempt
-      let maxAttempts = 5;
-      try {
-        const setting = await SystemSetting.findOne({ settingKey: 'max_failed_login_attempts' });
-        if (setting) maxAttempts = Number(setting.settingValue);
-      } catch (err) { console.error(err); }
-
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-
-      if (user.failedLoginAttempts >= maxAttempts) {
-        user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
-        user.failedLoginAttempts = 0; // Reset so they can try again after lock expires
-        await user.save();
-        return res.status(403).json({
-          success: false,
-          message: 'Too many failed login attempts. Account locked for 30 minutes.'
-        });
-      }
-
-      await user.save();
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
-    }
-
-    // Successful login - reset counters
-    if (user.failedLoginAttempts > 0 || user.lockUntil) {
-      user.failedLoginAttempts = 0;
-      user.lockUntil = undefined;
     }
 
     // Generate token
