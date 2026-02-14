@@ -8,16 +8,11 @@ exports.submitServiceReport = async (req, res) => {
     // If not, fall back to standard atomic ops sequence for standalone
     // However, user specifically asked for transactions. I will try to use session if possible.
 
-    const session = await mongoose.startSession();
-
     try {
-        session.startTransaction();
 
         const userId = req.user._id;
 
         if (req.user.role !== 'technician') { // CHANGED: TECHNICIAN -> technician (case sensitive check in existing system)
-            await session.abortTransaction();
-            session.endSession();
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
@@ -30,8 +25,6 @@ exports.submitServiceReport = async (req, res) => {
         }).session(session);
 
         if (!activeSite) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ success: false, message: 'No active site session' });
         }
 
@@ -46,44 +39,39 @@ exports.submitServiceReport = async (req, res) => {
             }
         });
 
-        await report.save({ session });
+    });
 
-        // Update Site Attendance closure
-        activeSite.status = 'Completed'; // CHANGED: siteStatus -> status
-        activeSite.checkOut = getDubaiDateTime().toDate();
+    await report.save();
 
-        // Calculate hours (simple diff for now, consistent with existing logic)
-        const hours = (activeSite.checkOut - activeSite.checkIn) / (1000 * 60 * 60);
-        activeSite.totalHours = parseFloat(hours.toFixed(2));
+    // Update Site Attendance closure
+    activeSite.status = 'Completed'; // CHANGED: siteStatus -> status
+    activeSite.checkOut = getDubaiDateTime().toDate();
 
-        // Link service report to attendance
-        activeSite.serviceReport = report._id;
+    // Calculate hours (simple diff for now, consistent with existing logic)
+    const hours = (activeSite.checkOut - activeSite.checkIn) / (1000 * 60 * 60);
+    activeSite.totalHours = parseFloat(hours.toFixed(2));
 
-        await activeSite.save({ session });
+    // Link service report to attendance
+    activeSite.serviceReport = report._id;
 
-        await session.commitTransaction();
-        session.endSession();
+    await activeSite.save();
 
-        res.status(201).json({
-            success: true,
-            message: 'Service Report submitted & site closed'
-        });
+    res.status(201).json({
+        success: true,
+        message: 'Service Report submitted & site closed'
+    });
 
-    } catch (error) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
-        session.endSession();
+} catch (error) {
 
-        console.error('Service Report Submission Error:', error);
+    console.error('Service Report Submission Error:', error);
 
-        if (error.code === 11000) {
-            return res.status(400).json({ success: false, message: 'Report already exists for this session' });
-        }
-
-        // Handle generic errors (like "Parts remarks required")
-        res.status(400).json({ success: false, message: error.message });
+    if (error.code === 11000) {
+        return res.status(400).json({ success: false, message: 'Report already exists for this session' });
     }
+
+    // Handle generic errors (like "Parts remarks required")
+    res.status(400).json({ success: false, message: error.message });
+}
 };
 
 // Admin Endpoints from previous implementation (kept for compatibility)
