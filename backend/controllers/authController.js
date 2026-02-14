@@ -99,7 +99,11 @@ exports.register = async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message });
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Username or email already exists' });
     }
     res.status(500).json({ message: 'Registration failed', error: error.message });
   }
@@ -307,9 +311,17 @@ exports.updateUser = async (req, res) => {
     }
 
     res.json({ success: true, user });
+    res.json({ success: true, user });
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({ message: 'Failed to update user' });
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Username or email already exists' });
+    }
+    res.status(500).json({ message: 'Failed to update user', error: error.message });
   }
 };
 
@@ -501,6 +513,8 @@ exports.getUsersByRole = async (req, res) => {
         admins: users.filter(u => u.role === 'admin').length,
         managers: users.filter(u => u.role === 'manager').length,
         staff: users.filter(u => u.role === 'staff').length,
+        technicians: users.filter(u => u.role === 'technician').length,
+        finance: users.filter(u => u.role === 'finance').length,
         active: users.filter(u => u.isActive).length,
         inactive: users.filter(u => !u.isActive).length
       }
@@ -516,7 +530,7 @@ exports.getStaffForManager = async (req, res) => {
   try {
     // Get all active staff and manager users
     const staff = await User.find({
-      role: { $in: ['staff', 'manager', 'admin'] },
+      role: { $in: ['staff', 'technician', 'finance', 'manager', 'admin'] },
       isActive: true
     }).select('-password');
 

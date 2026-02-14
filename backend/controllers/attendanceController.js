@@ -12,13 +12,14 @@ exports.checkIn = async (req, res) => {
     const today = getDubaiDate(); // YYYY-MM-DD (Dubai Time)
 
     // Check if already checked in today
-    const existingAttendance = await Attendance.findOne({
+    // Check if duplicate active session (already checked in and not checked out)
+    const activeSession = await Attendance.findOne({
       userId: req.user._id,
-      date: today
+      checkOut: null
     });
 
-    if (existingAttendance) {
-      return res.status(400).json({ message: 'Already checked in today' });
+    if (activeSession) {
+      return res.status(400).json({ message: 'You are already checked in. Please check out first.' });
     }
 
     // Create attendance record
@@ -45,7 +46,11 @@ exports.checkIn = async (req, res) => {
 // Check out
 exports.checkOut = async (req, res) => {
   try {
+    console.log('[DEBUG] CheckOut Request Received. User:', req.user ? req.user._id : 'No User', 'Body:', req.body);
+
     // Find active check-in (where checkOut is null)
+    console.log(`[DEBUG] Attempting check-out for user ${req.user._id}`);
+
     // allowing for overnight shifts
     const attendance = await Attendance.findOne({
       userId: req.user._id,
@@ -53,10 +58,14 @@ exports.checkOut = async (req, res) => {
     }).sort({ checkIn: -1 }); // Get latest open session
 
     if (!attendance) {
+      console.log(`[DEBUG] No active check-in found for user ${req.user._id}`);
       return res.status(400).json({ message: 'No active check-in found' });
     }
 
+    console.log(`[DEBUG] Found active attendance: ${attendance._id}`);
+
     if (attendance.checkOut) {
+      console.log(`[DEBUG] Attendance ${attendance._id} already checked out`);
       return res.status(400).json({ message: 'Already checked out today' });
     }
 
@@ -99,18 +108,26 @@ exports.checkOut = async (req, res) => {
 
     // Payroll Calculation
     if (process.env.ENABLE_PAYROLL === 'true') {
-      const payroll = calculatePayroll({
-        checkIn: attendance.checkIn,
-        checkOut: checkOut,
-        salaryPerHour: req.user.salaryPerHour || 0
-      });
+      try {
+        console.log(`[DEBUG] Calculating payroll. CheckIn: ${attendance.checkIn}, CheckOut: ${checkOut}, Salary: ${req.user.salaryPerHour}`);
+        const payroll = calculatePayroll({
+          checkIn: attendance.checkIn,
+          checkOut: checkOut,
+          salaryPerHour: req.user.salaryPerHour || 0
+        });
 
-      attendance.dailyRegularPay = payroll.regularPay;
-      attendance.dailyOvertimePay = payroll.overtimePay;
-      attendance.dailyTotalPay = payroll.totalPay;
+        attendance.dailyRegularPay = payroll.regularPay;
+        attendance.dailyOvertimePay = payroll.overtimePay;
+        attendance.dailyTotalPay = payroll.totalPay;
+      } catch (payrollError) {
+        console.error('[ERROR] Payroll calculation failed:', payrollError);
+        // Do not fail the checkout, just log it
+      }
     }
 
+    console.log('[DEBUG] Saving attendance record...');
     await attendance.save();
+    console.log('[DEBUG] Attendance saved successfully');
 
     res.json({
       success: true,
@@ -118,7 +135,11 @@ exports.checkOut = async (req, res) => {
       attendance
     });
   } catch (error) {
-    console.error('Check out error:', error);
+    console.error('[CRITICAL ERROR] Check out failed:', error);
+    // Explicitly log the validation error details if available
+    if (error.errors) {
+      console.error('[CRITICAL ERROR] Validation Errors:', JSON.stringify(error.errors, null, 2));
+    }
     res.status(500).json({ message: 'Failed to check out', error: error.message });
   }
 };

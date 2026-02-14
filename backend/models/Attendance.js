@@ -8,7 +8,7 @@ const attendanceSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'staff'],
+    enum: ['admin', 'manager', 'staff', 'technician', 'finance'],
     required: true
   },
   date: {
@@ -57,6 +57,6 @@ const attendanceSchema = new mongoose.Schema({
 });
 
 // Index for one record per user per date
-attendanceSchema.index({ userId: 1, date: 1 }, { unique: true });
+// attendanceSchema.index({ userId: 1, date: 1 }, { unique: true });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

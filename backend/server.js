@@ -83,6 +83,8 @@ app.use('/api/files', fileRoutes);
 app.use('/api/system-settings', systemSettingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/site-attendance', require('./routes/siteAttendanceRoutes'));
+app.use('/api/service-reports', require('./routes/serviceReportRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

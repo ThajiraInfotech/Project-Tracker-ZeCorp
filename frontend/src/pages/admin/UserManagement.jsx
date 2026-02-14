@@ -87,7 +87,15 @@ const UserManagement = () => {
     e.preventDefault();
     setCreatingUser(true);
     try {
-      const response = await api.post('/auth/register', newUser);
+      // Sanitize payload
+      const payload = {
+        ...newUser,
+        phone: newUser.phone || undefined,
+        salaryPerHour: newUser.salaryPerHour || 0,
+        role: newUser.role || 'staff' // Ensure role is set
+      };
+
+      const response = await api.post('/auth/register', payload);
 
       if (response.data.success) {
         toast.success('User created successfully!');
@@ -121,9 +129,8 @@ const UserManagement = () => {
         email: selectedUser.email,
         fullName: selectedUser.fullName,
         role: selectedUser.role,
-        phone: selectedUser.phone,
+        phone: selectedUser.phone || undefined, // Send undefined if empty string
         salaryPerHour: selectedUser.salaryPerHour || 0
-
       });
 
       if (response.data.success) {

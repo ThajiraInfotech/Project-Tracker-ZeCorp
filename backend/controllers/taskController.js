@@ -50,10 +50,13 @@ exports.createTask = async (req, res) => {
   try {
     const { title, description, project, assignedTo, deadline, priority, label } = req.body;
 
-    // Check if project exists
-    const projectExists = await Project.findById(project);
-    if (!projectExists) {
-      return res.status(404).json({ message: 'Project not found' });
+    // Check if project exists (only if project ID is provided)
+    let projectExists = null;
+    if (project) {
+      projectExists = await Project.findById(project);
+      if (!projectExists) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
     }
 
     // Check if assigned user exists
@@ -63,7 +66,7 @@ exports.createTask = async (req, res) => {
     }
 
     // Check authorization for managers
-    if (req.user.role === 'manager' && (!projectExists.manager || projectExists.manager.toString() !== req.user._id.toString())) {
+    if (projectExists && req.user.role === 'manager' && (!projectExists.manager || projectExists.manager.toString() !== req.user._id.toString())) {
       return res.status(403).json({ message: 'Access denied: You can only create tasks for your assigned projects' });
     }
 
@@ -71,7 +74,7 @@ exports.createTask = async (req, res) => {
     const task = new Task({
       title,
       description,
-      project,
+      project: project || undefined,
       assignedTo,
       createdBy: req.user._id,
       deadline,
@@ -83,11 +86,15 @@ exports.createTask = async (req, res) => {
     syncProgressWithStatus(task);
     await task.save();
 
-    // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    // Update project progress and status (only if project exists)
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
-    // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    // Update project progress and status (only if project exists)
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
     // EMIT EVENT: Task Assigned (to Assignee)
     await publishEvent('TASK_ASSIGNED', {
@@ -140,7 +147,7 @@ exports.getAllTasks = async (req, res) => {
 
     // Filter by user role
     const baseQuery = {};
-    if (req.user.role === 'staff') {
+    if (['staff', 'technician', 'finance'].includes(req.user.role)) {
       baseQuery.$or = [
         { assignedTo: req.user._id.toString() },
         { 'subtasks.assignedTo': req.user._id.toString() },
@@ -281,7 +288,7 @@ exports.getTaskById = async (req, res) => {
 
     // Check authorization
     // Check authorization
-    if (req.user.role === 'staff') {
+    if (['staff', 'technician', 'finance'].includes(req.user.role)) {
       const assignedToId = task.assignedTo?._id ? task.assignedTo._id.toString() : task.assignedTo?.toString();
       const isSubtaskAssignee = task.subtasks && task.subtasks.some(st =>
         (st.assignedTo?._id?.toString() === req.user._id.toString()) ||
@@ -340,7 +347,7 @@ exports.updateTask = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -361,14 +368,16 @@ exports.updateTask = async (req, res) => {
     await task.save();
 
     // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
     // EMIT EVENT: Task Re-Assigned
     if ((updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) ||
       (updates.includes('cc') && oldCC !== (task.cc ? task.cc.toString() : null))) {
 
       const userExists = await User.findById(task.assignedTo);
-      const projectExists = await Project.findById(task.project);
+      const projectExists = task.project ? await Project.findById(task.project) : null;
 
       let ccUser = null;
       if (task.cc) {
@@ -451,7 +460,7 @@ exports.deleteTask = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -459,7 +468,9 @@ exports.deleteTask = async (req, res) => {
     await task.deleteOne();
 
     // Update project progress and status
-    await updateProjectProgressAndStatus(projectId);
+    if (projectId) {
+      await updateProjectProgressAndStatus(projectId);
+    }
 
     res.json({
       success: true,
@@ -487,7 +498,7 @@ exports.updateTaskStatus = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -517,7 +528,9 @@ exports.updateTaskStatus = async (req, res) => {
     await task.save();
 
     // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
@@ -562,7 +575,7 @@ exports.updateTaskProgress = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -582,7 +595,9 @@ exports.updateTaskProgress = async (req, res) => {
     await task.save();
 
     // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
@@ -627,7 +642,7 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
 
     // DEBUG LOGGING
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       console.log('Access Denied Debug:', {
         userId: req.user._id,
         role: req.user.role,
@@ -684,7 +699,9 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     await task.save();
 
     // Update project progress and status
-    await updateProjectProgressAndStatus(task.project);
+    if (task.project) {
+      await updateProjectProgressAndStatus(task.project);
+    }
 
     // Populate task before returning
     const populatedTask = await Task.findById(task._id)
@@ -729,7 +746,7 @@ exports.addComment = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -795,7 +812,7 @@ exports.getComments = async (req, res) => {
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
     // DEBUG LOGS
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       console.log('DEBUG 403 Access Denied:', {
         user: req.user._id,
         role: req.user.role,
@@ -832,7 +849,7 @@ exports.uploadTaskFiles = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -868,7 +885,7 @@ exports.getTaskFiles = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -896,7 +913,7 @@ exports.deleteTaskFile = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -935,7 +952,7 @@ exports.sendTaskNotification = async (req, res) => {
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
 
-    if (req.user.role === 'staff' && !isAssigned && !isCC && !isSubtaskAssignee) {
+    if (['staff', 'technician', 'finance'].includes(req.user.role) && !isAssigned && !isCC && !isSubtaskAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -985,7 +1002,7 @@ exports.updateSubtaskStatus = async (req, res) => {
 
     // Check authorization
     // Staff can only update if assigned to the subtask
-    if (req.user.role === 'staff') {
+    if (['staff', 'technician', 'finance'].includes(req.user.role)) {
       const assignedToId = subtask.assignedTo ? subtask.assignedTo.toString() : null;
       if (assignedToId !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied: You can only update your assigned subtasks' });
@@ -1050,7 +1067,7 @@ exports.getTasksByProject = async (req, res) => {
     }
 
     // Check authorization based on user role
-    if (req.user.role === 'staff') {
+    if (['staff', 'technician', 'finance'].includes(req.user.role)) {
       // Staff can only see tasks for projects they are assigned to
       if (!project.teamMembers.some(member => member.toString() === req.user._id.toString())) {
         return res.status(403).json({ message: 'Access denied' });

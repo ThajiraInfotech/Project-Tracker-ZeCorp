@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'staff'],
+    enum: ['admin', 'manager', 'staff', 'technician', 'finance'],
     default: 'staff'
   },
   fullName: {
@@ -38,6 +38,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator: function (v) {
+        // Allow empty string or null/undefined
+        if (!v) return true;
         return /^[0-9]{10}$/.test(v);
       },
       message: props => `${props.value} is not a valid phone number!`

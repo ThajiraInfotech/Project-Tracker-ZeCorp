@@ -60,7 +60,7 @@ const adminMiddleware = (req, res, next) => {
   next();
 };
 const managerMiddleware = roleMiddleware(['admin', 'manager']);
-const staffMiddleware = roleMiddleware(['admin', 'manager', 'staff']);
+const staffMiddleware = roleMiddleware(['admin', 'manager', 'staff', 'technician', 'finance']);
 
 module.exports = {
   authMiddleware,
