@@ -762,7 +762,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             {tasks.length > 0 ? (
               <KanbanBoard
                 tasks={filteredTasks}
-                onUpdateTaskStatus={handleUpdateTaskStatus}
+                onUpdateTaskStatus={handleUpdateTask}
                 onTaskClick={(task) => fetchTaskDetails(task._id)}
                 onChatClick={(task, e) => {
                   e.stopPropagation();
