@@ -24,15 +24,8 @@ exports.getDailyReport = async (req, res) => {
     let overdueTaskQuery = { deadline: { $lte: endDate }, status: { $ne: 'completed' } };
 
     // Filter by user role for managers
-    if (req.user.role === 'manager') {
-      const managedProjects = await Project.find({ manager: req.user._id });
-      const projectIds = managedProjects.map(project => project._id);
-      const teamMemberIds = managedProjects.flatMap(project => [project.manager, ...project.teamMembers]);
-
-      attendanceQuery.userId = { $in: teamMemberIds };
-      taskQuery.project = { $in: projectIds };
-      overdueTaskQuery.project = { $in: projectIds };
-    }
+    // Manager filter REMOVED for global access
+    // if (req.user.role === 'manager') { ... }
 
     // Get attendance for the day
     const attendance = await Attendance.find(attendanceQuery)
@@ -92,15 +85,8 @@ exports.getWeeklyReport = async (req, res) => {
     let overdueTaskQuery = { deadline: { $lte: endDate }, status: { $ne: 'completed' } };
 
     // Filter by user role for managers
-    if (req.user.role === 'manager') {
-      const managedProjects = await Project.find({ manager: req.user._id });
-      const projectIds = managedProjects.map(project => project._id);
-      const teamMemberIds = managedProjects.flatMap(project => [project.manager, ...project.teamMembers]);
-
-      attendanceQuery.userId = { $in: teamMemberIds };
-      taskQuery.project = { $in: projectIds };
-      overdueTaskQuery.project = { $in: projectIds };
-    }
+    // Manager filter REMOVED for global access
+    // if (req.user.role === 'manager') { ... }
 
     // Get attendance for the week
     const attendance = await Attendance.find(attendanceQuery)
@@ -186,15 +172,8 @@ exports.getMonthlyReport = async (req, res) => {
     let overdueTaskQuery = { deadline: { $lte: endDate }, status: { $ne: 'completed' } };
 
     // Filter by user role for managers
-    if (req.user.role === 'manager') {
-      const managedProjects = await Project.find({ manager: req.user._id });
-      const projectIds = managedProjects.map(project => project._id);
-      const teamMemberIds = managedProjects.flatMap(project => [project.manager, ...project.teamMembers]);
-
-      attendanceQuery.userId = { $in: teamMemberIds };
-      taskQuery.project = { $in: projectIds };
-      overdueTaskQuery.project = { $in: projectIds };
-    }
+    // Manager filter REMOVED for global access
+    // if (req.user.role === 'manager') { ... }
 
     // Get attendance for the month
     const attendance = await Attendance.find(attendanceQuery)
@@ -405,14 +384,15 @@ exports.getProjectMonthlyReport = async (req, res) => {
     }
 
     // Managers can only access reports for their assigned projects
-    if (req.user.role === 'manager' && project.manager.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Manager filter REMOVED for global access
+    // if (req.user.role === 'manager' && project.manager.toString() !== req.user._id.toString()) {
+    //   return res.status(403).json({ message: 'Access denied' });
+    // }
 
-    // Managers can only access reports for their assigned projects
-    if (req.user.role === 'manager' && project.manager.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Duplicate manager filter REMOVED for global access
+    // if (req.user.role === 'manager' && project.manager.toString() !== req.user._id.toString()) {
+    //   return res.status(403).json({ message: 'Access denied' });
+    // }
 
     const reportYear = year ? parseInt(year) : new Date().getFullYear();
     const reportMonth = month ? parseInt(month) - 1 : new Date().getMonth(); // 0-indexed

@@ -17,13 +17,8 @@ exports.createProject = async (req, res) => {
       return res.status(400).json({ message: 'End date must be after start date' });
     }
 
-    // Authorization check for manager assignment
-    if (req.user.role === 'manager') {
-      // Managers can only assign themselves as manager or leave it unassigned
-      if (manager && manager !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Managers can only assign themselves as project manager' });
-      }
-    }
+    // Manager assignment restriction REMOVED to allow global creation
+    // if (req.user.role === 'manager') { ... }
 
     // Create project
     const project = new Project({
@@ -91,11 +86,8 @@ exports.getAllProjects = async (req, res) => {
           { teamMembers: req.user._id.toString() }
         ]
       };
-    } else if (req.user.role === 'manager') {
-      query = {
-        manager: req.user._id.toString()
-      };
     }
+    // Managers now see all projects, similar to admins
 
     const projects = await Project.find(query)
       .populate('manager', 'username fullName email')
@@ -174,8 +166,9 @@ exports.updateProject = async (req, res) => {
     }
 
     // Check authorization
-    const isManager = project.manager && project.manager.toString() === req.user._id.toString();
-    if (req.user.role !== 'admin' && !isManager) {
+    // Check authorization - Admins and Managers can update any project
+    // Staff/others are restricted
+    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -231,7 +224,8 @@ exports.addTeamMember = async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && project.manager.toString() !== req.user._id.toString()) {
+    // Check authorization - Admins and Managers can add team members
+    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -282,7 +276,8 @@ exports.removeTeamMember = async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && project.manager.toString() !== req.user._id.toString()) {
+    // Check authorization - Admins and Managers can remove team members
+    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -374,7 +369,8 @@ exports.deleteProjectFile = async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && project.manager.toString() !== req.user._id.toString()) {
+    // Check authorization - Admins and Managers can delete files
+    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
       return res.status(403).json({ message: 'Access denied' });
     }
 

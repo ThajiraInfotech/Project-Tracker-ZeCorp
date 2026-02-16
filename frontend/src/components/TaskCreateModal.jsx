@@ -361,13 +361,20 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
           <div className="grid grid-cols-2 gap-4">
             {(userRole === 'admin' || userRole === 'manager') && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to Staff</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to {userRole === 'admin' ? 'Staff/Manager' : 'Staff'}</label>
                 <select
                   value={formData.assignedTo}
                   onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Unassigned</option>
+                  {/* Admin can assign to Managers */}
+                  {userRole === 'admin' && managers?.map((manager) => (
+                    <option key={manager._id} value={manager._id}>
+                      {manager.fullName} ({manager.username}) - Manager
+                    </option>
+                  ))}
+                  {/* Both can assign to Staff */}
                   {staff?.map((member) => (
                     <option key={member._id} value={member._id}>
                       {member.fullName} ({member.username})

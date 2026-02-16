@@ -12,7 +12,7 @@ router.post('/refresh-token', authController.refreshToken);
 
 // User management routes (admin/manager for list)
 router.get('/users', authMiddleware, managerMiddleware, authController.getAllUsers);
-router.get('/users/by-role', authMiddleware, adminMiddleware, authController.getUsersByRole);
+router.get('/users/by-role', authMiddleware, managerMiddleware, authController.getUsersByRole);
 router.get('/users/:id', authMiddleware, adminMiddleware, authController.getUserById);
 router.put('/users/:id', authMiddleware, adminMiddleware, authController.updateUser);
 router.delete('/users/:id', authMiddleware, adminMiddleware, authController.deleteUser);

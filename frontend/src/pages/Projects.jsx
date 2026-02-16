@@ -402,7 +402,7 @@ const Projects = () => {
       }
     };
 
-    if (auth.user?.role === 'admin') {
+    if (auth.user?.role === 'admin' || auth.user?.role === 'manager') {
       fetchManagers();
     }
   }, [auth.user?.role]);
@@ -739,7 +739,8 @@ const Projects = () => {
               </button>
             </div>
 
-            {auth.user?.role === 'admin' && (
+            {/* Add Project Button - Visible to Admin and Manager */}
+            {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-gray-50 transition-colors font-medium ml-auto lg:ml-0 shadow-sm"
@@ -824,7 +825,7 @@ const Projects = () => {
                       <option value="completed">Completed</option>
                     </select>
                   </div>
-                  {auth.user?.role === 'admin' && (
+                  {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Manager</label>
                       <select
@@ -905,7 +906,7 @@ const Projects = () => {
       </div>
 
       {/* Add Project Form */}
-      {showAddForm && auth.user?.role === 'admin' && (
+      {showAddForm && (auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
         <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-lg border border-gray-200 overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-[#700606] to-[#900808] px-6 py-3">
             <h2 className="text-xl font-semibold text-white">Create New Project</h2>

@@ -848,7 +848,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                 </button>
               </div>
 
-              {auth.user?.role === 'admin' && (
+              {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium ml-auto lg:ml-0"

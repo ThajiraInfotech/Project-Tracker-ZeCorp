@@ -24,9 +24,8 @@ exports.createExpense = async (req, res) => {
         if (req.user.role === 'admin') {
             isAuthorized = true;
         } else if (req.user.role === 'manager') {
-            if (project.manager.toString() === req.user._id.toString()) {
-                isAuthorized = true;
-            }
+            // Managers can add to any project now
+            isAuthorized = true;
         } else if (req.user.role === 'staff') {
             if (taskId) {
                 const task = await Task.findById(taskId);
@@ -106,7 +105,7 @@ exports.getProjectExpenses = async (req, res) => {
             isTeamMember
         });
 
-        if (req.user.role !== 'admin' && !isManager && !isTeamMember) {
+        if (req.user.role !== 'admin' && req.user.role !== 'manager' && !isTeamMember) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -176,9 +175,8 @@ exports.deleteExpense = async (req, res) => {
         if (req.user.role === 'admin') {
             canDelete = true;
         } else if (req.user.role === 'manager') {
-            if (project && project.manager.toString() === req.user._id.toString()) {
-                canDelete = true;
-            }
+            // Managers can delete any expense
+            canDelete = true;
         } else if (req.user.role === 'staff') {
             // Staff can remove if it's in their allocated task OR subtask context
             if (expense.task) {

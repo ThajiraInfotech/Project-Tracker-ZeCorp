@@ -11,7 +11,7 @@ router.get('/admin/all-with-analytics', authMiddleware, adminMiddleware, project
 router.get('/admin/delayed-at-risk', authMiddleware, adminMiddleware, projectController.adminGetDelayedAndAtRiskProjects);
 
 // Project routes
-router.post('/', authMiddleware, projectController.createProject);
+router.post('/', authMiddleware, managerMiddleware, projectController.createProject);
 router.get('/', authMiddleware, projectController.getAllProjects);
 router.get('/:id', authMiddleware, projectController.getProjectById);
 router.put('/:id', authMiddleware, managerMiddleware, projectController.updateProject);

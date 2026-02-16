@@ -65,10 +65,22 @@ exports.createTask = async (req, res) => {
       return res.status(404).json({ message: 'Assigned user not found' });
     }
 
-    // Check authorization for managers
-    if (projectExists && req.user.role === 'manager' && (!projectExists.manager || projectExists.manager.toString() !== req.user._id.toString())) {
-      return res.status(403).json({ message: 'Access denied: You can only create tasks for your assigned projects' });
+    // Role-based Assignment Validation
+    if (req.user.role === 'manager') {
+      // Valid roles for manager to assign to: staff, technician, finance
+      // Invalid roles: admin, manager
+      if (['admin', 'manager'].includes(userExists.role)) {
+        return res.status(403).json({
+          message: 'Access Denied: Managers cannot assign tasks to other Managers or Admins. Please assign to Staff.'
+        });
+      }
     }
+
+    // Check authorization for managers - REMOVED restriction
+    // Managers can now create tasks for any project
+    // if (projectExists && req.user.role === 'manager' && (!projectExists.manager || projectExists.manager.toString() !== req.user._id.toString())) {
+    //   return res.status(403).json({ message: 'Access denied: You can only create tasks for your assigned projects' });
+    // }
 
     // Create task
     const task = new Task({
@@ -153,13 +165,13 @@ exports.getAllTasks = async (req, res) => {
         { 'subtasks.assignedTo': req.user._id.toString() },
         { cc: req.user._id.toString() }
       ];
-    } else if (req.user.role === 'manager') {
-      // Get projects managed by this user
-      const managedProjects = await Project.find({ manager: req.user._id.toString() });
-      const projectIds = managedProjects.map(project => project._id);
-
-      baseQuery.project = { $in: projectIds };
     }
+    // else if (req.user.role === 'manager') {
+    //   // Managers now see all tasks/projects
+    //   // const managedProjects = await Project.find({ manager: req.user._id.toString() });
+    //   // const projectIds = managedProjects.map(project => project._id);
+    //   // baseQuery.project = { $in: projectIds };
+    // }
 
     // Merge with request query
     query = { ...baseQuery, ...query };
@@ -351,11 +363,20 @@ exports.updateTask = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Check if assigned user exists (for admin)
-    if (req.body.assignedTo && req.user.role === 'admin') {
+    // If updating assignedTo, validate the new user
+    if (req.body.assignedTo && (req.user.role === 'admin' || req.user.role === 'manager')) {
       const userExists = await User.findById(req.body.assignedTo);
       if (!userExists) {
         return res.status(404).json({ message: 'Assigned user not found' });
+      }
+
+      // Role-based Assignment Validation for Update
+      if (req.user.role === 'manager') {
+        if (['admin', 'manager'].includes(userExists.role)) {
+          return res.status(403).json({
+            message: 'Access Denied: Managers cannot assign tasks to other Managers or Admins. Please assign to Staff.'
+          });
+        }
       }
     }
 
