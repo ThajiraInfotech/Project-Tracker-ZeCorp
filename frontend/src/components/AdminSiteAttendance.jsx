@@ -60,7 +60,7 @@ const AdminSiteAttendance = () => {
     // Filtering
     const filteredRecords = allAttendance.filter(record => {
         if (!searchQuery.trim()) return true;
-        const staffName = record.userId?.fullName || record.userId?.username || '';
+        const staffName = record.userId?.username || record.userId?.fullName || '';
         return staffName.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
@@ -76,7 +76,7 @@ const AdminSiteAttendance = () => {
         const csvContent = [
             ['Technician Name', 'Date', 'Check In', 'Check Out', 'Total Hours', 'Status', 'Has Report'],
             ...filteredRecords.map(record => [
-                record.userId?.fullName || record.userId?.username || 'Unknown',
+                record.userId?.username || record.userId?.fullName || 'Unknown',
                 formatDate(record.date),
                 formatTime(record.checkIn),
                 formatTime(record.checkOut),
@@ -191,9 +191,9 @@ const AdminSiteAttendance = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                                                {record.userId?.fullName?.charAt(0) || 'T'}
+                                                {record.userId?.username?.charAt(0) || 'T'}
                                             </div>
-                                            <span className="text-sm font-medium text-gray-900">{record.userId?.fullName || record.userId?.username || 'Unknown'}</span>
+                                            <span className="text-sm font-medium text-gray-900">{record.userId?.username || 'Unknown'}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

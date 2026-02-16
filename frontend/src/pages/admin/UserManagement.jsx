@@ -492,8 +492,8 @@ const UserManagement = () => {
                         <div className="flex items-center">
                           <UserAvatar user={user} size="md" className="mr-4 ring-2 ring-white shadow-sm" />
                           <div>
-                            <div className="text-sm font-semibold text-gray-900">{user.fullName}</div>
-                            <div className="text-xs text-gray-500">{user.username}</div>
+                            <div className="text-sm font-semibold text-gray-900">{user.username}</div>
+                            <div className="text-xs text-gray-500">{user.fullName}</div>
                           </div>
                         </div>
                       </td>
@@ -594,8 +594,8 @@ const UserManagement = () => {
                     <div className="flex items-center gap-3">
                       <UserAvatar user={user} size="md" />
                       <div>
-                        <h4 className="font-semibold text-gray-900">{user.fullName}</h4>
-                        <p className="text-xs text-gray-500">{user.username}</p>
+                        <h4 className="font-semibold text-gray-900">{user.username}</h4>
+                        <p className="text-xs text-gray-500">{user.fullName}</p>
                       </div>
                     </div>
                     <Menu as="div" className="relative ml-3">

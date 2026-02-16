@@ -48,7 +48,7 @@ const syncProgressWithStatus = (task) => {
 // Create a new task
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, project, assignedTo, deadline, priority, label } = req.body;
+    const { title, description, project, assignedTo, deadline, startDate, priority, label } = req.body;
 
     // Check if project exists (only if project ID is provided)
     let projectExists = null;
@@ -90,6 +90,7 @@ exports.createTask = async (req, res) => {
       assignedTo,
       createdBy: req.user._id,
       deadline,
+      startDate: startDate || new Date(), // Default to now if not provided
       priority: priority || 'medium',
       label: label || undefined,
       cc: req.body.cc || undefined
@@ -97,11 +98,6 @@ exports.createTask = async (req, res) => {
 
     syncProgressWithStatus(task);
     await task.save();
-
-    // Update project progress and status (only if project exists)
-    if (task.project) {
-      await updateProjectProgressAndStatus(task.project);
-    }
 
     // Update project progress and status (only if project exists)
     if (task.project) {
@@ -337,7 +333,7 @@ exports.getTaskById = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    let allowedUpdates = ['title', 'description', 'deadline', 'priority', 'status', 'progress', 'subtasks', 'label'];
+    let allowedUpdates = ['title', 'description', 'deadline', 'startDate', 'priority', 'status', 'progress', 'subtasks', 'label'];
     if (req.user.role === 'admin' || req.user.role === 'manager') {
       allowedUpdates.push('assignedTo');
       allowedUpdates.push('cc');

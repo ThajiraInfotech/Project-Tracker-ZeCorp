@@ -165,7 +165,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
           allTasks = allTasks.filter(task =>
             task.title.toLowerCase().includes(query) ||
             task.description.toLowerCase().includes(query) ||
-            task.assignedTo?.fullName.toLowerCase().includes(query) ||
+            task.assignedTo?.username.toLowerCase().includes(query) ||
             task.project?.projectName.toLowerCase().includes(query) ||
             (task.project?.jobOrder && String(task.project.jobOrder).toLowerCase().includes(query))
           );
@@ -204,7 +204,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
       if (response.data.success && response.data.users) {
         const allUsers = response.data.users;
         setStaff(allUsers.filter(u => ['staff', 'technician', 'finance'].includes(u.role)));
-        setManagers(allUsers.filter(u => u.role === 'manager' || u.role === 'admin'));
+        setManagers(allUsers.filter(u => u.role === 'manager'));
       }
     } catch (error) {
       console.error('Error fetching staff and managers:', error);
@@ -369,7 +369,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         task.title,
         task.description,
         task.project?.projectName || '',
-        task.assignedTo?.fullName || '',
+        task.assignedTo?.username || '',
         task.status,
         task.priority,
         formatDateDDMMYYYY(task.deadline),
@@ -455,7 +455,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
           const match =
             task.title.toLowerCase().includes(query) ||
             task.description.toLowerCase().includes(query) ||
-            task.assignedTo?.fullName.toLowerCase().includes(query) ||
+            task.assignedTo?.username.toLowerCase().includes(query) ||
             task.project?.projectName.toLowerCase().includes(query) ||
             (task.label && task.label.toLowerCase().includes(query)) ||
             jobOrder.includes(query);
@@ -696,7 +696,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
             <UserGroupIcon className="w-4 h-4 text-gray-400" />
             <div>
               <p className="text-gray-500 text-xs">Assigned To</p>
-              <p className="font-medium text-gray-900">{task.assignedTo?.fullName || 'Unassigned'}</p>
+              <p className="font-medium text-gray-900">{task.assignedTo?.username || 'Unassigned'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

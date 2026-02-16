@@ -43,7 +43,7 @@ const TeamTab = ({
                     className="bg-gradient-to-br from-primary-100 to-primary-200 shadow-sm"
                   />
                   <div>
-                    <h4 className="font-bold text-gray-900 text-lg">{member.fullName || `Member ${index + 1}`}</h4>
+                    <h4 className="font-bold text-gray-900 text-lg">{member.username || `Member ${index + 1}`}</h4>
                     <p className="text-sm text-gray-500 font-medium">{member.role}</p>
                   </div>
                 </div>

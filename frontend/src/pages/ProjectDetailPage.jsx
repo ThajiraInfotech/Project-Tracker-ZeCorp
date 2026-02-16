@@ -290,7 +290,7 @@ const ProjectDetailPage = () => {
     if (project.status === 'completed') progress = 100;
 
     const risk = getRiskBadge(project);
-    const manager = project.manager?.fullName || 'Unassigned';
+    const manager = project.manager?.username || 'Unassigned';
 
     return (
       <div className="space-y-6 md:space-y-8">
@@ -406,7 +406,7 @@ const ProjectDetailPage = () => {
                 <div key={index} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 min-w-0">
                   <UserAvatar user={member} size="md" className="shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900 truncate" title={member.fullName}>{member.fullName || `Member ${index + 1}`}</p>
+                    <p className="font-semibold text-gray-900 truncate" title={member.username}>{member.username || `Member ${index + 1}`}</p>
                     <p className="text-sm text-gray-500 truncate">Team Member</p>
                   </div>
                 </div>
@@ -474,7 +474,7 @@ const ProjectDetailPage = () => {
               />
               <div className="flex-1 text-center md:text-left">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-                  <h4 className="text-2xl font-bold text-gray-900">{project.manager.fullName}</h4>
+                  <h4 className="text-2xl font-bold text-gray-900">{project.manager.username}</h4>
                   <span className="px-3 py-1 bg-theme-100 text-theme-700 rounded-full text-xs font-bold uppercase tracking-wider w-fit mx-auto md:mx-0">
                     Lead
                   </span>
@@ -547,7 +547,7 @@ const ProjectDetailPage = () => {
                       className="w-14 h-14 text-xl shadow-md"
                     />
                     <div>
-                      <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{member.fullName || `Member ${index + 1}`}</h4>
+                      <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{member.username || `Member ${index + 1}`}</h4>
                       <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
                         {member.isExplicitMember ? 'Staff Member' : 'Task Assignee'}
                       </p>
@@ -701,7 +701,7 @@ const ProjectDetailPage = () => {
                     <td className="p-4 text-gray-600 text-sm">
                       <div className="flex items-center gap-2">
                         <UserAvatar user={expense.recordedBy} size="xs" />
-                        {expense.recordedBy?.fullName || 'Unknown'}
+                        {expense.recordedBy?.username || 'Unknown'}
                       </div>
                     </td>
                     <td className="p-4 text-right font-bold text-gray-900">AED {expense.amount.toLocaleString()}</td>
@@ -764,7 +764,7 @@ const ProjectDetailPage = () => {
                   <span>Progress: {selectedTaskForActions.progress || 0}%</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>Assigned to: {selectedTaskForActions.assignedTo?.fullName || 'Unassigned'}</span>
+                  <span>Assigned to: {selectedTaskForActions.assignedTo?.username || 'Unassigned'}</span>
                   <span>Due: {new Date(selectedTaskForActions.deadline).toLocaleDateString('en-GB')}</span>
                 </div>
               </div>

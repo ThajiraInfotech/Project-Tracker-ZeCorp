@@ -117,9 +117,9 @@ const AdminServiceReports = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">
-                                                {report.technicianId?.fullName?.[0] || 'T'}
+                                                {report.technicianId?.username?.[0] || 'T'}
                                             </div>
-                                            <span className="text-sm font-medium text-gray-900">{report.technicianId?.fullName}</span>
+                                            <span className="text-sm font-medium text-gray-900">{report.technicianId?.username}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -168,7 +168,7 @@ const AdminServiceReports = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl">
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Technician</p>
-                                    <p className="font-medium text-gray-900">{selectedReport.technicianId?.fullName}</p>
+                                    <p className="font-medium text-gray-900">{selectedReport.technicianId?.username}</p>
                                     <p className="text-sm text-gray-500">{selectedReport.technicianId?.email}</p>
                                 </div>
                                 <div>

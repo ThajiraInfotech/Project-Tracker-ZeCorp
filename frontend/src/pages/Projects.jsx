@@ -161,7 +161,7 @@ const Projects = () => {
       ...sortedProjects.map(project => [
         project.projectName,
         project.clientName,
-        project.manager?.fullName || 'Unassigned',
+        project.manager?.username || 'Unassigned',
         project.status,
         new Date(project.startDate).toLocaleDateString('en-GB'),
         new Date(project.endDate).toLocaleDateString('en-GB'),
@@ -320,7 +320,7 @@ const Projects = () => {
         switch (sortColumn) {
           case 'projectName': aVal = (a.projectName || '').toLowerCase(); bVal = (b.projectName || '').toLowerCase(); break;
           case 'clientName': aVal = (a.clientName || '').toLowerCase(); bVal = (b.clientName || '').toLowerCase(); break;
-          case 'manager': aVal = (a.manager?.fullName || 'John Doe').toLowerCase(); bVal = (b.manager?.fullName || 'John Doe').toLowerCase(); break;
+          case 'manager': aVal = (a.manager?.username || 'John Doe').toLowerCase(); bVal = (b.manager?.username || 'John Doe').toLowerCase(); break;
           case 'status': aVal = a.status; bVal = b.status; break;
           case 'progress': aVal = a.progress || 0; bVal = b.progress || 0; break;
           case 'startDate': aVal = new Date(a.startDate); bVal = new Date(b.startDate); break;
@@ -584,7 +584,7 @@ const Projects = () => {
   const ProjectCard = ({ project, onDelete }) => {
     const progress = project.progress || 0;
     const risk = getRiskBadge(project);
-    const manager = project.manager?.fullName || 'Unassigned';
+    const manager = project.manager?.username || 'Unassigned';
 
     return (
       <div
@@ -836,7 +836,7 @@ const Projects = () => {
                         <option value="">All Managers</option>
                         {managers.map(manager => (
                           <option key={manager._id} value={manager._id}>
-                            {manager.fullName} ({manager.username})
+                            {manager.username}
                           </option>
                         ))}
                       </select>
@@ -1280,7 +1280,7 @@ const Projects = () => {
                   </option>
                   {managers.map(manager => (
                     <option key={manager._id} value={manager._id}>
-                      {manager.fullName} ({manager.username})
+                      {manager.username}
                     </option>
                   ))}
                 </select>
@@ -1437,9 +1437,9 @@ const Projects = () => {
                               <td className="p-4">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                                    {project.manager?.fullName?.charAt(0) || 'U'}
+                                    {project.manager?.username?.charAt(0) || 'U'}
                                   </div>
-                                  <span className="text-gray-700 text-sm">{project.manager?.fullName || 'Unassigned'}</span>
+                                  <span className="text-gray-700 text-sm">{project.manager?.username || 'Unassigned'}</span>
                                 </div>
                               </td>
                               <td className="p-4">

@@ -277,7 +277,7 @@ exports.updateUser = async (req, res) => {
     }
 
     res.json({ success: true, user });
-    res.json({ success: true, user });
+
   } catch (error) {
     console.error('Update user error:', error);
     if (error.name === 'ValidationError') {

@@ -265,17 +265,17 @@ const TaskDetailsModal = ({
     const getAssigneeName = (userId) => {
         if (!userId) return 'Unassigned';
         // Check task assignedTo
-        if (task.assignedTo?._id === userId) return task.assignedTo.fullName;
+        if (task.assignedTo?._id === userId) return task.assignedTo.username;
 
         // Check if in allUsers (preferred for reliability)
         const user = allUsers.find(u => u._id === userId);
-        if (user) return user.fullName;
+        if (user) return user.username;
 
         // Check project team
         const member = task.project?.teamMembers?.find(m => m._id === userId);
-        if (member) return member.fullName;
+        if (member) return member.username;
         // Check manager
-        if (task.project?.manager?._id === userId) return task.project.manager.fullName;
+        if (task.project?.manager?._id === userId) return task.project.manager.username;
         return 'Unknown User';
     };
 
@@ -389,11 +389,11 @@ const TaskDetailsModal = ({
                                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
                                                                 <div className="flex items-center gap-1.5">
                                                                     <UserAvatar
-                                                                        user={subtask.assignedTo || { fullName: getAssigneeName(subtask.assignedTo) }}
+                                                                        user={subtask.assignedTo || { username: getAssigneeName(subtask.assignedTo) }}
                                                                         size="xs"
                                                                         className="w-4 h-4 text-[10px]"
                                                                     />
-                                                                    {subtask.assignedTo?.fullName || getAssigneeName(subtask.assignedTo)}
+                                                                    {subtask.assignedTo?.username || getAssigneeName(subtask.assignedTo)}
                                                                 </div>
                                                                 {(subtask.startDate || subtask.endDate) && (
                                                                     <div className="flex items-center gap-1">
@@ -450,19 +450,19 @@ const TaskDetailsModal = ({
                                                         {allUsers.length > 0 ? (
                                                             allUsers.map(user => (
                                                                 <option key={user._id} value={user._id}>
-                                                                    {user.fullName} ({user.role})
+                                                                    {user.username} ({user.role})
                                                                 </option>
                                                             ))
                                                         ) : (
                                                             <>
                                                                 {task.project?.teamMembers?.map(member => (
                                                                     <option key={member._id} value={member._id}>
-                                                                        {member.fullName} ({member.email})
+                                                                        {member.username} ({member.email})
                                                                     </option>
                                                                 ))}
                                                                 {task.project?.manager && (
                                                                     <option value={task.project.manager._id}>
-                                                                        {task.project.manager.fullName} (Manager)
+                                                                        {task.project.manager.username} (Manager)
                                                                     </option>
                                                                 )}
                                                             </>
@@ -542,15 +542,16 @@ const TaskDetailsModal = ({
                                                 user={task.assignedTo}
                                                 size="sm"
                                             />
-                                            <p className="text-gray-600">{task.assignedTo?.fullName || 'Unassigned'}</p>
+                                            <p className="text-gray-600">{task.assignedTo?.username || 'Unassigned'}</p>
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="font-medium text-gray-700 mb-1">
-                                            {task.status === 'completed' ? 'Completed on' : 'Due'}
-                                        </h3>
-                                        <p className="text-gray-600">
-                                            {task.status === 'completed'
+                                        <h3 className="font-medium text-gray-700 mb-1">Timeline</h3>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium">Start:</span> {task.startDate ? formatDateDDMMYYYY(task.startDate) : 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium">{task.status === 'completed' ? 'Done:' : 'Due:'}</span> {task.status === 'completed'
                                                 ? (task.completionDate ? formatDateDDMMYYYY(task.completionDate) : 'N/A')
                                                 : formatDateDDMMYYYY(task.deadline)
                                             }
@@ -618,7 +619,7 @@ const TaskDetailsModal = ({
                                                         user={task.cc}
                                                         size="sm"
                                                     />
-                                                    <p className="text-gray-600">{task.cc.fullName}</p>
+                                                    <p className="text-gray-600">{task.cc.username}</p>
                                                 </>
                                             ) : (
                                                 <span className="text-gray-400 text-sm">None</span>
@@ -636,7 +637,7 @@ const TaskDetailsModal = ({
                                                 user={task.createdBy}
                                                 size="sm"
                                             />
-                                            <p className="text-gray-600">{task.createdBy?.fullName || 'Unknown'}</p>
+                                            <p className="text-gray-600">{task.createdBy?.username || 'Unknown'}</p>
                                         </div>
                                     </div>
                                 </div>

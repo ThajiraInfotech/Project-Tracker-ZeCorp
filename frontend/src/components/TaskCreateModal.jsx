@@ -8,6 +8,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
     title: '',
     description: '',
     priority: 'medium',
+    startDate: '', // Added startDate
     deadline: '',
     assignedTo: '',
     cc: '',
@@ -20,6 +21,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
 
   const [availableProjects, setAvailableProjects] = useState(projects ? [INDEPENDENT_PROJECT, ...projects] : [INDEPENDENT_PROJECT]);
   const [deadlineInputType, setDeadlineInputType] = useState('text');
+  const [startDateInputType, setStartDateInputType] = useState('text'); // Added state for input type toggle
 
   // Searchable dropdown states
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,6 +89,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         title: task.title || '',
         description: task.description || '',
         priority: task.priority || 'medium',
+        startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '', // Populate startDate
         deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
         assignedTo: task.assignedTo?._id || '',
         cc: task.cc?._id || '',
@@ -103,6 +106,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         title: '',
         description: '',
         priority: 'medium',
+        startDate: '', // Reset startDate
         deadline: '',
         assignedTo: '',
         cc: '',
@@ -163,6 +167,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         project: selectedProject._id === INDEPENDENT_PROJECT_ID ? undefined : selectedProject._id,
         assignedTo: formData.assignedTo || undefined,
         cc: formData.cc || undefined,
+        startDate: formData.startDate || undefined, // Include startDate
         deadline: formData.deadline,
         priority: formData.priority,
         estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
@@ -175,6 +180,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         const editData = {
           title: taskData.title,
           description: taskData.description,
+          startDate: taskData.startDate, // Include startDate
           deadline: taskData.deadline,
           priority: taskData.priority,
           label: taskData.label
@@ -217,6 +223,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
       title: '',
       description: '',
       priority: 'medium',
+      startDate: '',
       deadline: '',
       assignedTo: '',
       cc: '',
@@ -333,16 +340,16 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <input
+                type={startDateInputType}
+                value={startDateInputType === 'date' ? formData.startDate : formatDateDDMMYYYY(formData.startDate)}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                onFocus={() => setStartDateInputType('date')}
+                onBlur={() => setStartDateInputType('text')}
+                placeholder="dd/mm/yyyy"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Deadline *</label>
@@ -358,31 +365,20 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
               />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
-            {(userRole === 'admin' || userRole === 'manager') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to {userRole === 'admin' ? 'Staff/Manager' : 'Staff'}</label>
-                <select
-                  value={formData.assignedTo}
-                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Unassigned</option>
-                  {/* Admin can assign to Managers */}
-                  {userRole === 'admin' && managers?.map((manager) => (
-                    <option key={manager._id} value={manager._id}>
-                      {manager.fullName} ({manager.username}) - Manager
-                    </option>
-                  ))}
-                  {/* Both can assign to Staff */}
-                  {staff?.map((member) => (
-                    <option key={member._id} value={member._id}>
-                      {member.fullName} ({member.username})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
             {!isEdit && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Estimated Hours</label>
@@ -397,6 +393,33 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
                 <p className="text-xs text-gray-500 mt-1">Optional — total estimated effort in hours</p>
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {(userRole === 'admin' || userRole === 'manager') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to {userRole === 'admin' ? 'Staff/Manager' : 'Staff'}</label>
+                <select
+                  value={formData.assignedTo}
+                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Unassigned</option>
+                  {/* Admin can assign to Managers */}
+                  {userRole === 'admin' && managers?.map((manager) => (
+                    <option key={manager._id} value={manager._id}>
+                      {manager.username} - Manager
+                    </option>
+                  ))}
+                  {/* Both can assign to Staff */}
+                  {staff?.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {(userRole === 'admin' || userRole === 'manager') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assign Supervisor (CC)</label>
@@ -408,11 +431,11 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
                   <option value="">No Supervisor</option>
                   {managers && staff ? [...managers, ...staff].map((member) => (
                     <option key={member._id} value={member._id}>
-                      {member.fullName} ({member.username}) - {member.role}
+                      {member.username} - {member.role}
                     </option>
                   )) : staff?.map((member) => (
                     <option key={member._id} value={member._id}>
-                      {member.fullName} ({member.username})
+                      {member.username}
                     </option>
                   ))}
                 </select>

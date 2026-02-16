@@ -3,8 +3,8 @@ import React from 'react';
 const UserAvatar = ({ user, size = 'md', className = '' }) => {
     const getInitials = () => {
         if (!user) return 'U';
-        // Prioritize fullName, fallback to username
-        const name = user.fullName || user.username || 'U';
+        // Prioritize username, fallback to fullName
+        const name = user.username || user.fullName || 'U';
         return name.charAt(0).toUpperCase();
     };
 
