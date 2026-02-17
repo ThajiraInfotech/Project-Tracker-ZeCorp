@@ -181,7 +181,11 @@ exports.getAllTasks = async (req, res) => {
       query.priority = req.query.priority;
     }
     if (req.query.projectId) {
-      query.project = req.query.projectId;
+      if (req.query.projectId === 'independent') {
+        query.project = null;
+      } else {
+        query.project = req.query.projectId;
+      }
     }
     if (req.query.label) {
       query.label = req.query.label;

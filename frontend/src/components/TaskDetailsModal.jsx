@@ -23,6 +23,7 @@ import ExpenseModal from './ExpenseModal';
 import expenseService from '../services/expenseService';
 import { BanknotesIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import LabelBadge from './LabelBadge';
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -301,10 +302,7 @@ const TaskDetailsModal = ({
                                     </span>
                                 )}
                                 {task.label && (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-bold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
-                                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                                        {task.label}
-                                    </span>
+                                    <LabelBadge label={task.label} />
                                 )}
                                 <span className={`inline-flex items-center gap-1 text-xs font-medium ${task.status !== 'completed' && new Date(task.deadline) < new Date() ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100' : 'text-gray-500'}`}>
                                     <CalendarDaysIcon className="w-3 h-3" />

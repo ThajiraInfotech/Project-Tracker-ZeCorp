@@ -44,6 +44,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import TaskCreateModal from '../components/TaskCreateModal';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
+import LabelBadge from '../components/LabelBadge';
 
 import Pagination from '../components/Pagination';
 
@@ -430,7 +431,11 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
       // Filter by project
       if (filterProject && filterProject !== 'all') {
-        result = result.filter(task => task.project?._id === filterProject);
+        if (filterProject === 'independent') {
+          result = result.filter(task => !task.project || task.project._id === 'independent');
+        } else {
+          result = result.filter(task => task.project?._id === filterProject);
+        }
       }
 
       // Filter by label
@@ -680,10 +685,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
         {/* Label - only show if exists */}
         {task.label && (
           <div className="px-3 mb-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-              {task.label}
-            </span>
+            <LabelBadge label={task.label} />
           </div>
         )}
 
@@ -967,6 +969,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
                       >
                         <option value="all">All Projects</option>
+                        <option value="independent">Independent Task (No Project)</option>
                         {projects.map((project) => (
                           <option key={project._id} value={project._id}>
                             {project.projectName}

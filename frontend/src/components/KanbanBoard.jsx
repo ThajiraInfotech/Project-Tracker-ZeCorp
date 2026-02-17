@@ -3,6 +3,7 @@ import { DndContext, useDroppable, useDraggable, PointerSensor, useSensor, useSe
 import { CSS } from '@dnd-kit/utilities';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import LabelBadge from './LabelBadge';
 
 const Droppable = ({ id, children }) => {
   const { setNodeRef } = useDroppable({ id });
@@ -87,10 +88,7 @@ const TaskCard = ({ task, onClick, onChatClick, onDelete, currentUser }) => {
       {/* Label - only show if exists */}
       {task.label && (
         <div className="mb-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-            {task.label}
-          </span>
+          <LabelBadge label={task.label} />
         </div>
       )}
       {task.description && (

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { getLabelStyle } from '../utils/labelUtils';
 
 const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCreated, projects, task, userRole, defaultProjectId }) => {
   const [formData, setFormData] = useState({
@@ -94,12 +95,14 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
         assignedTo: task.assignedTo?._id || '',
         cc: task.cc?._id || '',
         estimatedHours: task.estimatedHours || '',
-        project: task.project?._id || '',
+        project: task.project?._id || INDEPENDENT_PROJECT_ID,
         label: task.label || ''
       });
       // Set search term for edit mode
       if (task.project?.projectName) {
         setSearchTerm(task.project.projectName);
+      } else {
+        setSearchTerm(INDEPENDENT_PROJECT.projectName);
       }
     } else {
       setFormData({
@@ -323,19 +326,24 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Label</label>
             <div className="flex flex-wrap gap-2">
-              {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, label: formData.label === label ? '' : label })}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${formData.label === label
-                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 ring-offset-1'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                >
-                  {label}
-                </button>
-              ))}
+              {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => {
+                const style = getLabelStyle(label);
+                const isSelected = formData.label === label;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, label: formData.label === label ? '' : label })}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-all border flex items-center gap-1.5 ${style.bg} ${style.text} ${style.border} ${isSelected
+                      ? 'ring-2 ring-offset-1 ring-blue-500 shadow-md scale-105'
+                      : 'opacity-80 hover:opacity-100 hover:shadow-sm'
+                      }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
