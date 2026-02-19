@@ -801,8 +801,25 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
             currentUserRole="staff"
             currentUserId={auth.user?._id || auth.user?.id}
             onTaskUpdated={(updatedTask) => {
-              setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
-              setSelectedTask(updatedTask);
+              if (isArchivedView) {
+                // In archive view, if task is restored (not completed), remove it
+                if (updatedTask.status !== 'completed' && !updatedTask.isArchived) {
+                  setTasks(tasks.filter(t => t._id !== updatedTask._id));
+                  setShowModal(false);
+                } else {
+                  setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+                  setSelectedTask(updatedTask);
+                }
+              } else {
+                // In main view, if task is completed (archived), remove it
+                if (updatedTask.status === 'completed' || updatedTask.isArchived) {
+                  setTasks(tasks.filter(t => t._id !== updatedTask._id));
+                  setShowModal(false);
+                } else {
+                  setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+                  setSelectedTask(updatedTask);
+                }
+              }
             }}
           />
         )}

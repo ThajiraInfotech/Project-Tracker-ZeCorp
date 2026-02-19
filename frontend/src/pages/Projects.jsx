@@ -387,7 +387,7 @@ const Projects = ({ isArchivedView = false, isEmbedded = false }) => {
     if (auth.isAuthenticated) {
       fetchProjects();
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, isArchivedView]);
 
   useEffect(() => {
     const fetchManagers = async () => {
