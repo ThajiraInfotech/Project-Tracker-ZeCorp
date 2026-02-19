@@ -191,6 +191,13 @@ exports.getAllTasks = async (req, res) => {
       query.label = req.query.label;
     }
 
+    // Default: Exclude archived tasks unless specifically requested
+    if (req.query.archived === 'true') {
+      query.isArchived = true;
+    } else {
+      query.isArchived = { $ne: true };
+    }
+
     const tasks = await Task.find(query)
       .populate({
         path: 'project',
@@ -240,6 +247,13 @@ exports.getMyTasks = async (req, res) => {
 
     if (req.query.label) {
       query.label = req.query.label;
+    }
+
+    // Default: Exclude archived tasks unless specifically requested
+    if (req.query.archived === 'true') {
+      query.isArchived = true;
+    } else {
+      query.isArchived = { $ne: true };
     }
 
     const tasks = await Task.find(query)
@@ -385,6 +399,17 @@ exports.updateTask = async (req, res) => {
     const oldAssignedTo = task.assignedTo.toString();
     const oldCC = task.cc ? task.cc.toString() : null;
     updates.forEach(update => task[update] = req.body[update]);
+
+    // Auto-archive check
+    if (task.status === 'completed') {
+      task.isArchived = true;
+      task.archivedAt = new Date();
+    } else if (task.isArchived && task.status !== 'completed') {
+      // Un-archive if status changed from completed
+      task.isArchived = false;
+      task.archivedAt = undefined;
+    }
+
     syncProgressWithStatus(task);
     await task.save();
 
@@ -543,6 +568,16 @@ exports.updateTaskStatus = async (req, res) => {
       if (status === 'completed') {
         task.completionDate = new Date();
       }
+    }
+
+    // Auto-archive check
+    if (task.status === 'completed') {
+      task.isArchived = true;
+      task.archivedAt = new Date();
+    } else {
+      // Un-archive if status changed from completed (implicit in status change)
+      task.isArchived = false;
+      task.archivedAt = undefined;
     }
 
     syncProgressWithStatus(task);
@@ -716,6 +751,15 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
         task.progress = progress;
       }
       syncProgressWithStatus(task);
+    }
+
+    // Auto-archive check
+    if (task.status === 'completed') {
+      task.isArchived = true;
+      task.archivedAt = new Date();
+    } else if (task.isArchived && task.status !== 'completed') {
+      task.isArchived = false;
+      task.archivedAt = undefined;
     }
     await task.save();
 

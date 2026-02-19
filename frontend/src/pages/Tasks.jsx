@@ -58,7 +58,7 @@ ChartJS.register(
   Title
 );
 
-const Tasks = ({ projectId = null, isEmbedded = false }) => {
+const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false }) => {
   const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
@@ -127,6 +127,10 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
 
       if (filterProject !== 'all') {
         params.projectId = filterProject;
+      }
+
+      if (isArchivedView) {
+        params.archived = true;
       }
 
       const response = await api.get('/tasks', { params });
@@ -850,7 +854,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
                 </button>
               </div>
 
-              {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
+              {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && !isArchivedView && (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-[#700606]/10 transition-colors font-medium ml-auto lg:ml-0"
@@ -897,7 +901,7 @@ const Tasks = ({ projectId = null, isEmbedded = false }) => {
               </button>
             </div>
 
-            {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
+            {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && !isArchivedView && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-[#700606] text-white rounded-lg hover:bg-[#800808] transition-colors font-medium"

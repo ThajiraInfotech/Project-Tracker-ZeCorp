@@ -118,6 +118,13 @@ const taskSchema = new mongoose.Schema({
   completionDate: {
     type: Date
   },
+  isArchived: {
+    type: Boolean,
+    default: false
+  },
+  archivedAt: {
+    type: Date
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

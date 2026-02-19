@@ -17,6 +17,7 @@ import Register from './pages/auth/Register';
 import Projects from './pages/Projects';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import Tasks from './pages/Tasks';
+import Archives from './pages/Archives';
 
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
@@ -110,6 +111,7 @@ function App() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/archives" element={<Archives />} />
           <Route path="/attendance" element={
             user?.role === 'admin' ? <AdminAttendance /> :
               user?.role === 'manager' ? <ManagerAttendance /> :

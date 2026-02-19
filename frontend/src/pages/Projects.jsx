@@ -52,7 +52,7 @@ ChartJS.register(
   Title
 );
 
-const Projects = () => {
+const Projects = ({ isArchivedView = false, isEmbedded = false }) => {
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
 
@@ -196,7 +196,12 @@ const Projects = () => {
       }
       setError(null);
 
-      const response = await api.get('/projects');
+      const params = {};
+      if (isArchivedView) {
+        params.archived = true;
+      }
+
+      const response = await api.get('/projects', { params });
 
       if (response.data.success && response.data.projects) {
         setProjects(response.data.projects);
@@ -711,48 +716,50 @@ const Projects = () => {
   return (
     <div className="w-full px-0 py-4 md:container md:mx-auto md:px-4 md:py-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl mx-2 md:mx-0 p-4 md:p-6 mb-6 text-white shadow-lg">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Projects Management</h1>
-            <p className="text-white/80 text-sm">Manage and track all project initiatives</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            {/* View Mode Toggle */}
-            <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('card')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                  }`}
-              >
-                <Squares2X2Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">Cards</span>
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
-                  }`}
-              >
-                <TableCellsIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Table</span>
-              </button>
+      {!isEmbedded && (
+        <div className="bg-gradient-to-r from-[#700606] to-[#a04040] rounded-xl mx-2 md:mx-0 p-4 md:p-6 mb-6 text-white shadow-lg">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Projects Management</h1>
+              <p className="text-white/80 text-sm">Manage and track all project initiatives</p>
             </div>
 
-            {/* Add Project Button - Visible to Admin and Manager */}
-            {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && (
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-gray-50 transition-colors font-medium ml-auto lg:ml-0 shadow-sm"
-              >
-                <PlusIcon className="w-5 h-5" />
-                <span className="hidden sm:inline">Add Project</span>
-                <span className="sm:hidden">Add</span>
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              {/* View Mode Toggle */}
+              <div className="flex bg-white/10 backdrop-blur-sm rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'card' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                    }`}
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Cards</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-[#700606] text-white shadow-sm' : 'text-white hover:bg-[#700606]/20'
+                    }`}
+                >
+                  <TableCellsIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Table</span>
+                </button>
+              </div>
+
+              {/* Add Project Button - Visible to Admin and Manager - Hide in Archive View */}
+              {(auth.user?.role === 'admin' || auth.user?.role === 'manager') && !isArchivedView && (
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-lg hover:bg-gray-50 transition-colors font-medium ml-auto lg:ml-0 shadow-sm"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  <span className="hidden sm:inline">Add Project</span>
+                  <span className="sm:hidden">Add</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Search and Quick Actions */}
       <div className="bg-white rounded-xl mx-2 md:mx-0 shadow-sm p-4 mb-6 border border-gray-100">

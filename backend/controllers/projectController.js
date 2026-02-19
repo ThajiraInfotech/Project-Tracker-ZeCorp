@@ -89,6 +89,13 @@ exports.getAllProjects = async (req, res) => {
     }
     // Managers now see all projects, similar to admins
 
+    // Default: Exclude archived projects unless specifically requested
+    if (req.query.archived === 'true') {
+      query.isArchived = true;
+    } else {
+      query.isArchived = { $ne: true };
+    }
+
     const projects = await Project.find(query)
       .populate('manager', 'username fullName email')
       .populate('teamMembers', 'username fullName email')
@@ -153,7 +160,7 @@ exports.getProjectById = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['projectName', 'description', 'projectType', 'category', 'jobOrder', 'outlet', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location', 'manager'];
+    const allowedUpdates = ['projectName', 'description', 'projectType', 'category', 'jobOrder', 'outlet', 'clientName', 'clientEmail', 'clientPhone', 'startDate', 'endDate', 'budget', 'location', 'manager', 'status'];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
@@ -174,6 +181,15 @@ exports.updateProject = async (req, res) => {
 
     // Update project
     updates.forEach(update => project[update] = req.body[update]);
+
+    // Auto-archive check
+    if (project.status === 'completed') {
+      project.isArchived = true;
+      project.archivedAt = new Date();
+    } else if (project.isArchived && project.status !== 'completed') {
+      project.isArchived = false;
+      project.archivedAt = undefined;
+    }
     await project.save();
 
     res.json({
@@ -488,6 +504,13 @@ exports.adminGetAllProjectsWithAnalytics = async (req, res) => {
 
     if (status) query.status = status;
     if (managerId) query.manager = managerId;
+
+    // Default: Exclude archived projects unless specifically requested
+    if (req.query.archived === 'true') {
+      query.isArchived = true;
+    } else {
+      query.isArchived = { $ne: true };
+    }
 
     const projects = await Project.find(query)
       .populate('manager', 'username fullName email')

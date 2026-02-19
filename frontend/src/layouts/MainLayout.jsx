@@ -11,6 +11,7 @@ import UserAvatar from '../components/UserAvatar';
 import {
   HomeIcon,
   FolderIcon,
+  InboxArrowDownIcon,
   ClipboardDocumentListIcon,
   CalendarDaysIcon,
   DocumentChartBarIcon,
@@ -65,6 +66,7 @@ const MainLayout = () => {
     // Show Projects only for non-staff/non-technician users (admin, manager)
     ...(!['staff', 'technician', 'finance'].includes(user?.role) ? [{ name: 'Projects', href: '/projects', icon: FolderIcon }] : []),
     { name: 'Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
+    { name: 'Archives', href: '/archives', icon: InboxArrowDownIcon },
     { name: 'Attendance', href: '/attendance', icon: CalendarDaysIcon },
     ...(['staff', 'technician', 'finance'].includes(user?.role) ? [
       { name: 'Performance', href: '/performance', icon: ChartBarIcon }
