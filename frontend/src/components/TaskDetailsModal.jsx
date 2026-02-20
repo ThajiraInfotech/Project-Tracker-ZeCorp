@@ -294,11 +294,12 @@ const TaskDetailsModal = ({
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
                                         <UserGroupIcon className="w-4 h-4" />
                                         {task.project.projectName}
-                                        {task.project.jobOrder && (
-                                            <span className="text-blue-600 font-medium ml-1 opacity-90">
-                                                #{task.project.jobOrder}
-                                            </span>
-                                        )}
+                                    </span>
+                                )}
+                                {task.project?.jobOrder && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm">
+                                        <span className="text-xs uppercase tracking-wider text-indigo-600 font-semibold">Job Order:</span>
+                                        #{task.project.jobOrder}
                                     </span>
                                 )}
                                 {task.label && (
