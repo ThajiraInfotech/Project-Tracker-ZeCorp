@@ -10,6 +10,7 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
 
     const sigRef = useRef();
     const [submitting, setSubmitting] = useState(false);
+    const [photos, setPhotos] = useState([]);
 
     // Equipment Data Structure
     const EQUIPMENT_STRUCTURE = {
@@ -55,6 +56,35 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
         });
     };
 
+    const handlePhotoChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (photos.length + files.length > 5) {
+            toast.error('Maximum 5 photos allowed');
+            return;
+        }
+
+        const validFiles = files.filter(file => {
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error(`${file.name} exceeds 5MB limit`);
+                return false;
+            }
+            if (!file.type.startsWith('image/')) {
+                toast.error(`${file.name} is not an image`);
+                return false;
+            }
+            return true;
+        });
+
+        setPhotos(prev => [...prev, ...validFiles].slice(0, 5));
+
+        // Reset file input so same file can be selected again if removed
+        e.target.value = '';
+    };
+
+    const removePhoto = (index) => {
+        setPhotos(prev => prev.filter((_, i) => i !== index));
+    };
+
     const onSubmit = async (data) => {
 
         if (!sigRef.current || sigRef.current.isEmpty()) {
@@ -73,9 +103,25 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
             }))
         };
 
+        const formData = new FormData();
+
+        // Append base fields as JSON strings
+        formData.append('clientDetails', JSON.stringify(formattedData.clientDetails));
+        formData.append('equipments', JSON.stringify(formattedData.equipments));
+
+        if (formattedData.clientRemarks) formData.append('clientRemarks', formattedData.clientRemarks);
+        if (formattedData.clientFeedback) formData.append('clientFeedback', formattedData.clientFeedback);
+
+        formData.append('clientSignature', data.clientSignature);
+
+        // Append photos
+        photos.forEach(photo => {
+            formData.append('photos', photo);
+        });
+
         try {
             setSubmitting(true);
-            await siteAttendanceService.submitServiceReport(formattedData);
+            await siteAttendanceService.submitServiceReport(formData);
             toast.success('Report Submitted');
             if (onSuccess) onSuccess();
         } catch (err) {
@@ -406,6 +452,56 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
                             className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                             rows={3}
                         />
+                    </div>
+
+                    {/* PHOTOS SECTION */}
+                    <div className="mt-8">
+                        <div className="flex justify-between items-center border-b pb-2 mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Photos (Max 5, 5MB each)</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {photos.length < 5 && (
+                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition relative cursor-pointer min-h-[120px]">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={handlePhotoChange}
+                                        title="Upload photos"
+                                    />
+                                    <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-gray-600">Click to add photos</span>
+                                    <span className="text-xs text-gray-500 mt-1">{photos.length}/5 uploaded</span>
+                                </div>
+                            )}
+
+                            {photos.map((photo, index) => (
+                                <div key={index} className="relative group border border-gray-200 rounded-xl overflow-hidden aspect-video bg-gray-100">
+                                    <img
+                                        src={URL.createObjectURL(photo)}
+                                        alt={`Upload ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => removePhoto(index)}
+                                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                                            title="Remove photo"
+                                        >
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-xs text-white truncate">
+                                        {photo.name}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* SIGNATURE */}

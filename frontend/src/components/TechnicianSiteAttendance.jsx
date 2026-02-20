@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import siteAttendanceService from '../services/siteAttendanceService';
 import ServiceReportForm from './ServiceReportForm';
+import { formatTimeDubai, formatDateDubai, getDubaiNow } from '../utils/dateUtils';
 
 const TechnicianSiteAttendance = () => {
     const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ const TechnicianSiteAttendance = () => {
         if (todayRecord && !todayRecord.checkOut && todayRecord.checkIn) {
             const interval = setInterval(() => {
                 const start = new Date(todayRecord.checkIn);
-                const now = new Date();
+                const now = getDubaiNow();
                 const diff = now - start;
 
                 const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -98,13 +99,11 @@ const TechnicianSiteAttendance = () => {
     };
 
     const formatTime = (dateStr) => {
-        if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return formatTimeDubai(dateStr);
     };
 
     const formatDate = (dateStr) => {
-        if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+        return formatDateDubai(dateStr);
     };
 
     return (
@@ -119,9 +118,17 @@ const TechnicianSiteAttendance = () => {
                         <p className="text-gray-500">Track your field work and service reports</p>
 
                         {todayRecord && !todayRecord.checkOut && (
-                            <div className="mt-4 flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-lg w-fit">
-                                <ClockIcon className="w-5 h-5 animate-pulse" />
-                                <span className="font-mono font-bold text-xl">{elapsedTime}</span>
+                            <div className="mt-4 flex flex-col gap-2">
+                                <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-lg w-fit">
+                                    <ClockIcon className="w-5 h-5 animate-pulse" />
+                                    <span className="font-mono font-bold text-xl">{elapsedTime}</span>
+                                </div>
+                                {todayRecord.taskId && (
+                                    <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg w-fit text-sm font-medium border border-indigo-100 shadow-sm">
+                                        <DocumentTextIcon className="w-4 h-4" />
+                                        Task: {todayRecord.taskId.title}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -175,6 +182,7 @@ const TechnicianSiteAttendance = () => {
                         <thead className="bg-gray-50/50">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reference</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Check In</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Check Out</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hours</th>
@@ -194,6 +202,18 @@ const TechnicianSiteAttendance = () => {
                                                     {formatDate(record.date)}
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {record.taskId ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-indigo-700">{record.taskId.title}</span>
+                                                    {record.taskId.project?.projectName && (
+                                                        <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-400 italic">Independent</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {formatTime(record.checkIn)}

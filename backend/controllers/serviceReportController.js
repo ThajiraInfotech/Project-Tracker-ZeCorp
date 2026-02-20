@@ -26,15 +26,37 @@ exports.submitServiceReport = async (req, res) => {
             return res.status(400).json({ success: false, message: 'No active site session' });
         }
 
+        // Parse JSON fields from form-data if present
+        let parsedBody = { ...req.body };
+        if (typeof parsedBody.clientDetails === 'string') {
+            try { parsedBody.clientDetails = JSON.parse(parsedBody.clientDetails); } catch (e) { }
+        }
+        if (typeof parsedBody.equipments === 'string') {
+            try { parsedBody.equipments = JSON.parse(parsedBody.equipments); } catch (e) { }
+        }
+
+        // Handle uploaded photos from Cloudinary middleware
+        const photos = [];
+        if (req.files && req.files.length > 0) {
+            req.files.forEach(file => {
+                photos.push({
+                    url: file.path,
+                    publicId: file.filename
+                });
+            });
+        }
+
         const report = new ServiceReport({
             technicianId: userId,
             siteAttendanceId: activeSite._id,
-            ...req.body,
+            ...parsedBody,
+            photos,
             audit: {
                 ipAddress: req.ip,
                 deviceInfo: req.headers['user-agent'],
                 submittedAt: getDubaiDateTime().toDate() // CHANGED: Use existing util
-            }
+            },
+            taskId: activeSite.taskId || undefined
         });
 
         await report.save();
@@ -95,6 +117,11 @@ exports.getAllReports = async (req, res) => {
         const reports = await ServiceReport.find(query)
             .populate('technicianId', 'fullName username email profileImage')
             .populate('siteAttendanceId', 'checkIn checkOut totalHours')
+            .populate({
+                path: 'taskId',
+                select: 'title project jobOrder',
+                populate: { path: 'project', select: 'projectName jobOrder' }
+            })
             .sort({ createdAt: -1 });
 
         res.json({
@@ -112,7 +139,12 @@ exports.getReportById = async (req, res) => {
     try {
         const report = await ServiceReport.findById(req.params.id)
             .populate('technicianId', 'fullName username email')
-            .populate('siteAttendanceId');
+            .populate('siteAttendanceId')
+            .populate({
+                path: 'taskId',
+                select: 'title project jobOrder',
+                populate: { path: 'project', select: 'projectName jobOrder' }
+            });
 
         if (!report) {
             return res.status(404).json({ success: false, message: 'Report not found' });

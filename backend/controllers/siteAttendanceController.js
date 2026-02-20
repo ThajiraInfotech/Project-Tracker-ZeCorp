@@ -23,7 +23,8 @@ exports.checkIn = async (req, res) => {
             role: 'technician', // Force role
             date: today,
             checkIn: new Date(),
-            status: 'In Progress'
+            status: 'In Progress',
+            taskId: req.body.taskId || undefined
         });
 
         await siteAttendance.save();
@@ -87,6 +88,11 @@ exports.checkOut = async (req, res) => {
 exports.getMyAttendance = async (req, res) => {
     try {
         const history = await SiteAttendance.find({ userId: req.user._id })
+            .populate({
+                path: 'taskId',
+                select: 'title project jobOrder',
+                populate: { path: 'project', select: 'projectName jobOrder' }
+            })
             .sort({ date: -1 });
 
         res.json({
@@ -96,6 +102,25 @@ exports.getMyAttendance = async (req, res) => {
     } catch (error) {
         console.error('Get my site attendance error:', error);
         res.status(500).json({ message: 'Failed to get site attendance' });
+    }
+};
+
+// Get Site Attendance for a specific Task
+exports.getTaskAttendance = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const history = await SiteAttendance.find({ taskId })
+            .populate('userId', 'username fullName email profileImage')
+            .populate('serviceReport')
+            .sort({ checkIn: -1 });
+
+        res.json({
+            success: true,
+            attendance: history
+        });
+    } catch (error) {
+        console.error('Get task site attendance error:', error);
+        res.status(500).json({ message: 'Failed to get task site attendance' });
     }
 };
 
@@ -115,7 +140,18 @@ exports.getAllAttendance = async (req, res) => {
 
         const attendanceRecords = await SiteAttendance.find(query)
             .populate('userId', 'username fullName email role profileImage')
-            .populate('serviceReport')
+            .populate({
+                path: 'taskId',
+                select: 'title project jobOrder',
+                populate: { path: 'project', select: 'projectName jobOrder' }
+            })
+            .populate({
+                path: 'serviceReport',
+                populate: {
+                    path: 'technicianId',
+                    select: 'username fullName email profileImage'
+                }
+            })
             .sort({ date: -1 });
 
         res.json({

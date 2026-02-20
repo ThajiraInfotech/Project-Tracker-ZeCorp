@@ -9,10 +9,12 @@ import {
     ClockIcon,
     EyeIcon,
     XMarkIcon,
-    DocumentTextIcon
+    DocumentTextIcon,
+    PhotoIcon
 } from '@heroicons/react/24/outline';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
 import { toast } from 'react-toastify';
+import ServiceReportDetailModal from './ServiceReportDetailModal';
 
 const AdminSiteAttendance = () => {
     const [allAttendance, setAllAttendance] = useState([]);
@@ -74,9 +76,10 @@ const AdminSiteAttendance = () => {
     // Export
     const handleExport = () => {
         const csvContent = [
-            ['Technician Name', 'Date', 'Check In', 'Check Out', 'Total Hours', 'Status', 'Has Report'],
+            ['Technician Name', 'Reference', 'Date', 'Check In', 'Check Out', 'Total Hours', 'Status', 'Has Report'],
             ...filteredRecords.map(record => [
                 record.userId?.username || record.userId?.fullName || 'Unknown',
+                record.taskId ? `${record.taskId.title} (${record.taskId.project?.projectName || 'No Proj'})` : 'Independent',
                 formatDate(record.date),
                 formatTime(record.checkIn),
                 formatTime(record.checkOut),
@@ -95,8 +98,8 @@ const AdminSiteAttendance = () => {
         window.URL.revokeObjectURL(url);
     };
 
-    const handleViewReport = (report) => {
-        setSelectedReport(report);
+    const handleViewReport = (report, record) => {
+        setSelectedReport({ ...report, associatedTask: record.taskId });
     };
 
     const closeReport = () => {
@@ -173,6 +176,7 @@ const AdminSiteAttendance = () => {
                         <thead className="bg-gray-50/50">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Technician</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reference</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Site Time</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
@@ -197,6 +201,18 @@ const AdminSiteAttendance = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
+                                        {record.taskId ? (
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-indigo-700">{record.taskId.title}</span>
+                                                {record.taskId.project?.projectName && (
+                                                    <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-gray-400 italic">Independent</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm">
                                             <span className="font-mono text-gray-900">{formatTime(record.checkIn)}</span>
                                             <span className="text-gray-400 mx-1">-</span>
@@ -217,7 +233,7 @@ const AdminSiteAttendance = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         {record.serviceReport ? (
                                             <button
-                                                onClick={() => handleViewReport(record.serviceReport)}
+                                                onClick={() => handleViewReport(record.serviceReport, record)}
                                                 className="text-blue-600 hover:text-blue-900 font-medium text-xs flex items-center justify-end gap-1"
                                             >
                                                 <DocumentTextIcon className="w-4 h-4" /> View Report
@@ -241,185 +257,7 @@ const AdminSiteAttendance = () => {
             </div>
 
             {/* Report Detail Modal */}
-            <AnimatePresence>
-                {selectedReport && (
-                    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                        >
-                            <div className="p-6 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
-                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    <DocumentTextIcon className="w-6 h-6 text-blue-600" />
-                                    Service Report Details
-                                </h2>
-                                <button onClick={closeReport} className="text-gray-400 hover:text-gray-600">
-                                    <XMarkIcon className="w-6 h-6" />
-                                </button>
-                            </div>
-
-                            <div className="p-6 overflow-y-auto space-y-8">
-                                {/* Meta Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-semibold">Technician</p>
-                                        <p className="font-medium text-gray-900">{selectedReport.technicianId?.fullName || 'Unknown'}</p>
-                                        <p className="text-sm text-gray-500">{selectedReport.technicianId?.email}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-semibold">Submission Time</p>
-                                        <p className="font-medium text-gray-900">{new Date(selectedReport.createdAt).toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                {/* Client Details */}
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Client Information</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <p className="text-xs text-gray-500">Client Name</p>
-                                            <p className="font-medium">{selectedReport.clientDetails?.clientName}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Outlet / Branch</p>
-                                            <p className="font-medium">{selectedReport.clientDetails?.outlet} - {selectedReport.clientDetails?.branch}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Attention Person</p>
-                                            <p className="font-medium">{selectedReport.clientDetails?.attentionPerson || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Emirates</p>
-                                            <p className="font-medium">{selectedReport.clientDetails?.emirates}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Equipments */}
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Equipment Service Details</h3>
-                                    <div className="space-y-4">
-                                        {selectedReport.equipments?.map((eq, idx) => (
-                                            <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <h4 className="font-bold text-blue-900">{eq.equipmentName}</h4>
-                                                        <p className="text-xs text-gray-500">
-                                                            {eq.category}
-                                                            {eq.subCategory && ` > ${eq.subCategory}`}
-                                                            {eq.fuelType && ` • ${eq.fuelType}`}
-                                                        </p>
-                                                    </div>
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${eq.serviceRequired ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                                        {eq.serviceRequired ? 'Service Required' : 'Operational'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-3">
-                                                    <div className="bg-white p-2 rounded border">
-                                                        <span className="text-xs text-gray-500 block">Model</span>
-                                                        {eq.modelNumber || '-'}
-                                                    </div>
-                                                    <div className="bg-white p-2 rounded border">
-                                                        <span className="text-xs text-gray-500 block">Serial</span>
-                                                        {eq.serialNumber || '-'}
-                                                    </div>
-                                                    <div className="bg-white p-2 rounded border">
-                                                        <span className="text-xs text-gray-500 block">PNC</span>
-                                                        {eq.pncNumber || '-'}
-                                                    </div>
-                                                    <div className={`p-2 rounded border ${eq.jobCompleted ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-                                                        <span className="text-xs text-gray-500 block">Job Status</span>
-                                                        <span className={eq.jobCompleted ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
-                                                            {eq.jobCompleted ? 'Completed' : 'Pending'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
-                                                    <div className={`p-1 rounded text-center border ${eq.fault ? 'bg-red-50 text-red-700 border-red-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                                                        Fault: {eq.fault ? 'Yes' : 'No'}
-                                                    </div>
-                                                    <div className={`p-1 rounded text-center border ${eq.faultRectified ? 'bg-green-50 text-green-700 border-green-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                                                        Rectified: {eq.faultRectified ? 'Yes' : 'No'}
-                                                    </div>
-                                                    <div className={`p-1 rounded text-center border ${eq.partsReplacement ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                                                        Parts Replaced: {eq.partsReplacement ? 'Yes' : 'No'}
-                                                    </div>
-                                                    <div className={`p-1 rounded text-center border ${!eq.repairable ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'}`}>
-                                                        Repairable: {eq.repairable ? 'Yes' : 'No'}
-                                                    </div>
-                                                </div>
-
-                                                {eq.partsUsedInstalled && (
-                                                    <div className="mt-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                        <p className="text-xs font-bold text-blue-800 mb-1">Parts Used / Installed:</p>
-                                                        <p className="text-sm text-gray-800 whitespace-pre-wrap">{eq.partsUsedRemarks}</p>
-                                                    </div>
-                                                )}
-
-                                                {!eq.jobCompleted && (
-                                                    <div className="mt-2 bg-red-50 p-3 rounded-lg border border-red-100">
-                                                        <p className="text-xs font-bold text-red-800 mb-1">Reason for Incomplete Job:</p>
-                                                        <p className="text-sm text-gray-800 whitespace-pre-wrap">{eq.jobCompletedRemarks}</p>
-                                                    </div>
-                                                )}
-
-                                                {eq.technicianRemarks && (
-                                                    <div className="mt-3 text-sm text-gray-600 border-t border-gray-200 pt-2">
-                                                        <span className="font-semibold text-gray-700">Technician Remarks:</span> {eq.technicianRemarks}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-
-
-
-                                {/* Client Feedback */}
-                                {selectedReport.clientFeedback && (
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Client Feedback</h3>
-                                        <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100">
-                                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{selectedReport.clientFeedback}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Signature */}
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Sign-off</h3>
-                                    <div className="bg-gray-50 p-4 rounded-xl flex flex-col items-center">
-                                        <div className="w-full max-w-md border bg-white h-40 flex items-center justify-center mb-2">
-                                            {selectedReport.clientSignature ? (
-                                                <img src={selectedReport.clientSignature} alt="Client Signature" className="h-full object-contain" />
-                                            ) : (
-                                                <span className="text-gray-400">No Signature</span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-gray-500">Authorized by Client</p>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div className="p-6 border-t bg-gray-50 rounded-b-2xl flex justify-end">
-                                <button
-                                    onClick={closeReport}
-                                    className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )
-                }
-            </AnimatePresence >
+            <ServiceReportDetailModal selectedReport={selectedReport} closeReport={closeReport} />
         </div >
     );
 };

@@ -39,6 +39,10 @@ const siteAttendanceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Project'
     },
+    taskId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Task'
+    },
     serviceReport: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ServiceReport'

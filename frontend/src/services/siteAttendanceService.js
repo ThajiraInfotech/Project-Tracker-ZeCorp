@@ -3,8 +3,8 @@ import api from '../store/api';
 const API_URL = '/site-attendance'; // Base URL is handled by api instance
 
 // Check in
-const checkIn = async () => {
-    const response = await api.post(`${API_URL}/check-in`);
+const checkIn = async (data = {}) => {
+    const response = await api.post(`${API_URL}/check-in`, data);
     return response.data;
 };
 
@@ -30,7 +30,10 @@ const getAllAttendance = async (params) => {
 
 // Submit Service Report
 const submitServiceReport = async (data) => {
-    const response = await api.post('/service-reports/submit', data);
+    const config = data instanceof FormData
+        ? { headers: { 'Content-Type': 'multipart/form-data' } }
+        : {};
+    const response = await api.post('/service-reports/submit', data, config);
     return response.data;
 };
 
@@ -46,6 +49,12 @@ const getReportById = async (id) => {
     return response.data;
 };
 
+// Get Task Attendance
+const getTaskAttendance = async (taskId) => {
+    const response = await api.get(`${API_URL}/task/${taskId}`);
+    return response.data;
+};
+
 const siteAttendanceService = {
     checkIn,
     checkOut,
@@ -53,7 +62,8 @@ const siteAttendanceService = {
     getAllAttendance,
     submitServiceReport,
     getAllReports,
-    getReportById
+    getReportById,
+    getTaskAttendance
 };
 
 export default siteAttendanceService;

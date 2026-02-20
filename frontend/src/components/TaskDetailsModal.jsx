@@ -21,9 +21,12 @@ import ChatInterface from './ChatInterface';
 import UserAvatar from './UserAvatar';
 import ExpenseModal from './ExpenseModal';
 import expenseService from '../services/expenseService';
-import { BanknotesIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import siteAttendanceService from '../services/siteAttendanceService';
+import ServiceReportForm from './ServiceReportForm';
+import { BanknotesIcon, ReceiptPercentIcon, PlayCircleIcon, DocumentTextIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { formatDateDDMMYYYY, formatTimeDubai, getDubaiNow } from '../utils/dateUtils';
 import LabelBadge from './LabelBadge';
+import ServiceReportDetailModal from './ServiceReportDetailModal';
 
 const StatusBadge = ({ status }) => {
     const statusConfig = {
@@ -87,6 +90,14 @@ const TaskDetailsModal = ({
     // Expenses State
     const [taskExpenses, setTaskExpenses] = useState([]);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
+
+    // Site Attendance State
+    const [siteAttendance, setSiteAttendance] = useState(null); // active session
+    const [taskAttendances, setTaskAttendances] = useState([]); // all history for this task
+    const [showReportForm, setShowReportForm] = useState(false);
+    const [timer, setTimer] = useState(null);
+    const [elapsedTime, setElapsedTime] = useState('00:00:00');
+    const [selectedReport, setSelectedReport] = useState(null);
 
     const [updating, setUpdating] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
@@ -155,12 +166,76 @@ const TaskDetailsModal = ({
         }
     };
 
+    const fetchSiteAttendanceData = async () => {
+        try {
+            // If technician, check if they have an active site visit
+            if (currentUserRole === 'technician') {
+                const historyData = await siteAttendanceService.getMyHistory();
+                if (historyData.success) {
+                    const active = historyData.attendance.find(r => !r.checkOut);
+                    setSiteAttendance(active || null);
+                }
+            }
+            // All roles can see completed site visits for THIS task
+            const taskAttData = await siteAttendanceService.getTaskAttendance(taskId);
+            if (taskAttData.success) {
+                setTaskAttendances(taskAttData.attendance);
+            }
+        } catch (error) {
+            console.error('Error fetching site attendance:', error);
+        }
+    };
+
     useEffect(() => {
         if (taskId) {
             fetchTaskDetails();
             fetchTaskExpenses();
+            fetchSiteAttendanceData();
         }
     }, [taskId]);
+
+    // Timer Logic for Active Site Work
+    useEffect(() => {
+        if (siteAttendance && !siteAttendance.checkOut && siteAttendance.checkIn) {
+            const interval = setInterval(() => {
+                const start = new Date(siteAttendance.checkIn);
+                const now = getDubaiNow();
+                const diff = now - start;
+
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                setElapsedTime(
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                );
+            }, 1000);
+            setTimer(interval);
+            return () => clearInterval(interval);
+        } else {
+            setElapsedTime('00:00:00');
+        }
+    }, [siteAttendance]);
+
+    const handleCheckInForTask = async () => {
+        try {
+            setLoading(true);
+            const res = await siteAttendanceService.checkIn({ taskId });
+            if (res.success) {
+                toast.success('Started site work for this task');
+                fetchSiteAttendanceData();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Check in failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleReportSuccess = () => {
+        setShowReportForm(false);
+        fetchSiteAttendanceData(); // Refresh to show completed status
+    };
 
     const handleUpdateTask = async () => {
         setUpdating(true);
@@ -562,6 +637,55 @@ const TaskDetailsModal = ({
 
                             <div className="border-t border-gray-100"></div>
 
+                            {/* Site Work Section (Technicians) */}
+                            {currentUserRole === 'technician' && (
+                                <>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-theme-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <span className="text-theme-500"><MapPinIcon className="w-4 h-4" /></span>
+                                            Site Work
+                                        </h4>
+                                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                            <div>
+                                                <p className="font-medium text-blue-900">Task Site Attendance</p>
+                                                {siteAttendance && (siteAttendance.taskId?._id === taskId || siteAttendance.taskId === taskId) ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-sm font-medium text-green-700">Currently checked-in to this task</span>
+                                                        <div className="flex items-center gap-2 text-blue-600 mt-1">
+                                                            <ClockIcon className="w-4 h-4 animate-pulse" />
+                                                            <span className="font-mono font-bold text-lg">{elapsedTime}</span>
+                                                        </div>
+                                                    </div>
+                                                ) : siteAttendance ? (
+                                                    <p className="text-sm text-red-600 mt-1">You are checked into another site or independent visit. Check out there first.</p>
+                                                ) : (
+                                                    <p className="text-sm text-blue-700 mt-1">Ready to check in for this task?</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                {!siteAttendance ? (
+                                                    <button
+                                                        onClick={handleCheckInForTask}
+                                                        disabled={loading || task.status === 'completed'}
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition disabled:opacity-50"
+                                                    >
+                                                        Check In
+                                                    </button>
+                                                ) : (siteAttendance.taskId?._id === taskId || siteAttendance.taskId === taskId) ? (
+                                                    <button
+                                                        onClick={() => setShowReportForm(true)}
+                                                        className="px-4 py-2 bg-gray-900 text-white rounded-lg shadow-sm hover:bg-gray-800 transition flex items-center gap-2"
+                                                    >
+                                                        <DocumentTextIcon className="w-4 h-4" /> Check Out
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="border-t border-gray-100 my-6"></div>
+                                </>
+                            )}
+
                             {/* Progress Section */}
                             <div>
                                 <div className="flex items-center gap-2 mb-3 border-b border-theme-100 pb-2">
@@ -746,7 +870,47 @@ const TaskDetailsModal = ({
                             </div>
                         )}
 
-                        <div className="border-t border-gray-100"></div>
+                        {/* Task Site Attendance History */}
+                        {taskAttendances.length > 0 && (
+                            <div className="border-t border-gray-100 mt-4 pt-4">
+                                <h4 className="text-xs font-bold text-theme-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span className="text-theme-500"><MapPinIcon className="w-4 h-4" /></span>
+                                    Site Visits History
+                                </h4>
+                                <div className="space-y-3">
+                                    {taskAttendances.map(visit => (
+                                        <div key={visit._id} className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <UserAvatar user={visit.userId} size="xs" className="w-5 h-5 text-[10px]" />
+                                                    <span className="text-sm font-medium text-gray-900">{visit.userId?.username}</span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${visit.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        {visit.status}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-500 pl-7">
+                                                    <strong>Date:</strong> {formatDateDDMMYYYY(visit.date)} <br />
+                                                    <strong>Time:</strong> {formatTimeDubai(visit.checkIn)} - {visit.checkOut ? formatTimeDubai(visit.checkOut) : 'Active'} <br />
+                                                    <strong>Duration:</strong> {visit.totalHours ? `${visit.totalHours} hrs` : '-'}
+                                                </div>
+                                            </div>
+                                            {visit.serviceReport && (
+                                                <div className="text-right">
+                                                    <button
+                                                        onClick={() => setSelectedReport({ ...visit.serviceReport, associatedTask: task, technicianId: visit.userId || visit.serviceReport?.technicianId })}
+                                                        className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors shadow-sm"
+                                                    >
+                                                        View Report
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="border-t border-gray-100 mt-4"></div>
 
                         {/* Discussion Section */}
                         <div className="flex flex-col h-[500px]">
@@ -805,6 +969,25 @@ const TaskDetailsModal = ({
                     fetchTaskExpenses();
                     if (onTaskUpdated) onTaskUpdated(task);
                 }}
+            />
+
+            {/* Service Report Form Modal */}
+            {showReportForm && siteAttendance && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowReportForm(false)}></div>
+                    <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-50 rounded-3xl shadow-2xl">
+                        <ServiceReportForm
+                            onSuccess={handleReportSuccess}
+                            onCancel={() => setShowReportForm(false)}
+                            activeSession={siteAttendance}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <ServiceReportDetailModal
+                selectedReport={selectedReport}
+                closeReport={() => setSelectedReport(null)}
             />
         </>
     );

@@ -12,11 +12,6 @@ export const formatTimeDubai = (date) => {
     });
 };
 
-/**
- * Formats a given date string or object to Dubai Time (Date only).
- * @param {string|Date} date - The date to format.
- * @returns {string} - Formatted date (e.g., "Feb 4, 2026")
- */
 export const formatDateDubai = (date) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString('en-US', {
@@ -24,6 +19,23 @@ export const formatDateDubai = (date) => {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
+    });
+};
+
+/**
+ * Formats a given date string or object to Dubai Time (Date and Time).
+ * @param {string|Date} date - The date to format.
+ * @returns {string} - Formatted date and time (e.g., "Feb 4, 2026, 09:30 AM")
+ */
+export const formatDateTimeDubai = (date) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleString('en-US', {
+        timeZone: 'Asia/Dubai',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
 };
 

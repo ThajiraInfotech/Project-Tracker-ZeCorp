@@ -6,6 +6,7 @@ const {
     getReportById
 } = require('../controllers/serviceReportController');
 const { authMiddleware, roleMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
+const cloudinaryService = require('../utils/cloudinaryService');
 
 // Base path: /api/service-reports
 
@@ -13,6 +14,7 @@ const { authMiddleware, roleMiddleware, adminMiddleware } = require('../middlewa
 router.post('/submit',
     authMiddleware,
     roleMiddleware(['technician']),
+    cloudinaryService.getUploadMiddleware().array('photos', 5),
     submitServiceReport
 );
 

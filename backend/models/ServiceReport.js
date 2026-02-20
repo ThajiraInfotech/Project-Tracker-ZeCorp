@@ -47,6 +47,10 @@ const serviceReportSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    taskId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Task'
+    },
 
     clientDetails: {
         clientName: { type: String, required: true },
@@ -64,6 +68,11 @@ const serviceReportSchema = new mongoose.Schema({
         type: [equipmentSchema],
         validate: v => v.length > 0
     },
+
+    photos: [{
+        url: String,
+        publicId: String
+    }],
 
     clientRemarks: String,
     clientFeedback: String,
