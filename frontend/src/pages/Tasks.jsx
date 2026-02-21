@@ -744,8 +744,8 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
 
 
 
-  // Staff-specific view - same as dashboard My Tasks
-  if (auth.user?.role?.toLowerCase() === 'staff') {
+  // Staff and Technician specific view - same as dashboard My Tasks
+  if (['staff', 'technician'].includes(auth.user?.role?.toLowerCase())) {
     return (
       <div className="space-y-6 bg-gradient-to-br from-slate-50 to-[#700606]/5 min-h-screen p-6">
         <div className="flex justify-between items-center">
@@ -768,7 +768,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
             {tasks.length > 0 ? (
               <KanbanBoard
                 tasks={filteredTasks}
-                onUpdateTaskStatus={handleUpdateTask}
+                onUpdateTaskStatus={(taskId, status, progress) => handleUpdateTask({ status, progress }, taskId)}
                 onTaskClick={(task) => fetchTaskDetails(task._id)}
                 onChatClick={(task, e) => {
                   e.stopPropagation();
@@ -798,7 +798,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
           <TaskDetailsModal
             taskId={selectedTask._id}
             onClose={() => setShowModal(false)}
-            currentUserRole="staff"
+            currentUserRole={auth.user?.role || 'staff'}
             currentUserId={auth.user?._id || auth.user?.id}
             onTaskUpdated={(updatedTask) => {
               if (isArchivedView) {

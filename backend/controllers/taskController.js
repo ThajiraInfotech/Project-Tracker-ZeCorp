@@ -368,7 +368,7 @@ exports.updateTask = async (req, res) => {
     }
 
     // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
-    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isCC = task.cc && task.cc.toString() === req.user._id.toString();
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
@@ -396,7 +396,7 @@ exports.updateTask = async (req, res) => {
 
     // Update task
     // Update task
-    const oldAssignedTo = task.assignedTo.toString();
+    const oldAssignedTo = task.assignedTo ? task.assignedTo.toString() : null;
     const oldCC = task.cc ? task.cc.toString() : null;
     updates.forEach(update => task[update] = req.body[update]);
 
@@ -419,7 +419,7 @@ exports.updateTask = async (req, res) => {
     }
 
     // EMIT EVENT: Task Re-Assigned
-    if ((updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) ||
+    if ((updates.includes('assignedTo') && oldAssignedTo !== (task.assignedTo ? task.assignedTo.toString() : null)) ||
       (updates.includes('cc') && oldCC !== (task.cc ? task.cc.toString() : null))) {
 
       const userExists = await User.findById(task.assignedTo);
@@ -435,7 +435,7 @@ exports.updateTask = async (req, res) => {
       }
 
       // 1. Notify Assignee if Changed
-      if (updates.includes('assignedTo') && oldAssignedTo !== task.assignedTo.toString()) {
+      if (updates.includes('assignedTo') && oldAssignedTo !== (task.assignedTo ? task.assignedTo.toString() : null)) {
         console.log(`[Task] Assignee changed to: ${userExists?._id}`);
         await publishEvent('TASK_ASSIGNED', {
           entityType: 'task',
@@ -501,7 +501,7 @@ exports.deleteTask = async (req, res) => {
     }
 
     // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
-    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isCC = task.cc && task.cc.toString() === req.user._id.toString();
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
@@ -539,7 +539,7 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
-    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isCC = task.cc && task.cc.toString() === req.user._id.toString();
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
@@ -626,7 +626,7 @@ exports.updateTaskProgress = async (req, res) => {
     }
 
     // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
-    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isCC = task.cc && task.cc.toString() === req.user._id.toString();
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
     const isManager = ['admin', 'manager'].includes(req.user.role);
@@ -693,7 +693,7 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     }
 
     // Check authorization: Assigned, CC, Subtask Assignee, or Manager/Admin
-    const isAssigned = task.assignedTo.toString() === req.user._id.toString();
+    const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
     const isCC = task.cc && task.cc.toString() === req.user._id.toString();
     const isSubtaskAssignee = task.subtasks && task.subtasks.some(st => st.assignedTo && st.assignedTo.toString() === req.user._id.toString());
 
