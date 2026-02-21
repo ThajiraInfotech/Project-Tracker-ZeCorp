@@ -169,6 +169,7 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick, onDe
 
     const taskId = active.id;
     const newStatus = over.id;
+
     const task = tasks.find(t => t._id === taskId);
 
     if (newStatus !== task.status) {

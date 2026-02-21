@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const User = require('../models/User');
@@ -294,6 +295,10 @@ exports.getMyTasks = async (req, res) => {
 // Get task by ID
 exports.getTaskById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id)
       .populate({
         path: 'project',
@@ -360,6 +365,10 @@ exports.updateTask = async (req, res) => {
 
     if (!isValidOperation) {
       return res.status(400).json({ message: 'Invalid updates!' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
     }
 
     const task = await Task.findById(req.params.id);
@@ -495,6 +504,10 @@ exports.updateTask = async (req, res) => {
 // Delete task
 exports.deleteTask = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -532,6 +545,10 @@ exports.deleteTask = async (req, res) => {
 exports.updateTaskStatus = async (req, res) => {
   try {
     const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
 
     const task = await Task.findById(req.params.id);
     if (!task) {
@@ -620,6 +637,10 @@ exports.updateTaskProgress = async (req, res) => {
   try {
     const { progress } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -686,6 +707,10 @@ exports.updateTaskProgress = async (req, res) => {
 exports.updateTaskStatusAndProgress = async (req, res) => {
   try {
     const { status, progress } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
 
     const task = await Task.findById(req.params.id);
     if (!task) {
@@ -800,6 +825,10 @@ exports.addComment = async (req, res) => {
   try {
     const { text, attachments } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -863,6 +892,10 @@ exports.addComment = async (req, res) => {
 // Get task comments
 exports.getComments = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id)
       .populate('comments.user', 'username fullName profileImage');
 
@@ -903,6 +936,10 @@ exports.getComments = async (req, res) => {
 // Upload task files
 exports.uploadTaskFiles = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -939,6 +976,10 @@ exports.uploadTaskFiles = async (req, res) => {
 // Get task files
 exports.getTaskFiles = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -967,6 +1008,10 @@ exports.getTaskFiles = async (req, res) => {
 // Delete task file
 exports.deleteTaskFile = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -1003,6 +1048,10 @@ exports.deleteTaskFile = async (req, res) => {
 // Send task notification
 exports.sendTaskNotification = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
     const task = await Task.findById(req.params.id)
       .populate('assignedTo', 'email fullName')
       .populate('project', 'projectName');
@@ -1054,6 +1103,14 @@ exports.updateSubtaskStatus = async (req, res) => {
   try {
     const { id, subtaskId } = req.params;
     const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(subtaskId)) {
+      return res.status(400).json({ message: 'Invalid subtask ID format' });
+    }
 
     const task = await Task.findById(id);
     if (!task) {
