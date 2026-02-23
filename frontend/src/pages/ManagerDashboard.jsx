@@ -166,11 +166,12 @@ const ManagerDashboard = () => {
   const teamMembers = staff.length;
   const atRiskTasks = tasks.filter(t => {
     if (t.status === 'completed') return false;
-    const deadline = new Date(t.deadline);
+    const endDate = t.deadline ? new Date(t.deadline) : null;
+    if (!endDate) return false;
     const now = new Date();
     const nextWeek = new Date(now);
-    nextWeek.setDate(now.getDate() + 7);
-    return deadline >= now && deadline <= nextWeek;
+    nextWeek.setDate(now.getDate() + 2);
+    return endDate >= now && endDate <= nextWeek;
   }).length;
 
   const delayedProjectsCount = projects.filter(p =>

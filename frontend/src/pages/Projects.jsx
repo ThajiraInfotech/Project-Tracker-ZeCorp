@@ -140,7 +140,7 @@ const Projects = ({ isArchivedView = false, isEmbedded = false }) => {
       return { text: 'Delayed', color: 'bg-red-100 text-red-800' };
     }
     const nextWeek = new Date(now);
-    nextWeek.setDate(now.getDate() + 7);
+    nextWeek.setDate(now.getDate() + 2);
     if (endDate >= now && endDate <= nextWeek && project.status !== 'completed') {
       return { text: 'At Risk', color: 'bg-yellow-100 text-yellow-800' };
     }
@@ -238,7 +238,7 @@ const Projects = ({ isArchivedView = false, isEmbedded = false }) => {
 
     if (filter === 'at-risk') {
       const nextWeek = new Date(today);
-      nextWeek.setDate(today.getDate() + 7);
+      nextWeek.setDate(today.getDate() + 2);
 
       // Normalize today to start of day (already done)
       // Normalize nextWeek to end of day

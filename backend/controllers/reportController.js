@@ -830,10 +830,10 @@ exports.getManagerDashboardData = async (req, res) => {
     const totalTasksOverdue = tasks.filter(t => t.status !== 'completed' && new Date(t.deadline) < today).length;
     const tasksAtRisk = tasks.filter(t => {
       if (t.status === 'completed') return false;
-      const deadline = new Date(t.deadline);
+      // At-Risk: Deadline within next 2 days
       const now = new Date();
       const nextWeek = new Date();
-      nextWeek.setDate(now.getDate() + 7);
+      nextWeek.setDate(now.getDate() + 2);
       // Reset hours for day comparison if desired, but standard logic was direct comparison or day window.
       // Matching standard: deadline >= now && deadline <= nextWeek
       return deadline >= now && deadline <= nextWeek;
@@ -952,9 +952,9 @@ exports.getAdminDashboardData = async (req, res) => {
       (p.endDate && new Date(p.endDate) < startOfToday && p.status !== 'completed')
     ).length;
 
-    // At-Risk: Deadline within next 7 days AND not completed (and not already delayed)
+    // At-Risk: Deadline within next 2 days AND not completed (and not already delayed)
     const nextWeek = new Date(now);
-    nextWeek.setDate(now.getDate() + 7);
+    nextWeek.setDate(now.getDate() + 2);
 
     const projectsAtRiskList = projects.filter(p =>
       p.status !== 'completed' &&
@@ -1291,14 +1291,14 @@ exports.getDelayRiskAnalysisReport = async (req, res) => {
       (p.endDate && new Date(p.endDate) < today && p.status !== 'completed')
     );
 
-    // At Risk: Deadline within 7 days (and not already delayed/completed)
+    // At Risk: Deadline within 2 days (and not already delayed/completed)
     const atRiskProjects = projects.filter(p =>
       p.status !== 'completed' &&
       p.status !== 'on-hold' &&
       p.status !== 'delayed' &&
       p.endDate &&
       new Date(p.endDate) >= today &&
-      new Date(p.endDate) < new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+      new Date(p.endDate) < new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000)
     );
 
     const overdueTasks = tasks.filter(t =>

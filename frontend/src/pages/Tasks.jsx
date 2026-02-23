@@ -150,17 +150,19 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
           );
         } else if (filter === 'upcoming' || filter === 'at-risk') {
           const today = new Date();
-          // today.setHours(0, 0, 0, 0); // Keep time for strict comparison or reset? "Within 7 days" usually implies date range.
-          // Matching Projects.jsx standardized logic which uses current time vs 7 days from now. 
-          // Projects.jsx used: endDate >= now && endDate <= nextWeek
+          // Upcoming: Due today or tomorrow (same logic for simple tasks)
+          // For at-risk: We can define it as due within 2 days
+          const startOfToday = new Date(today);
+          startOfToday.setHours(0, 0, 0, 0);
 
-          const nextWeek = new Date(today);
-          nextWeek.setDate(today.getDate() + 7);
+          const riskThreshold = new Date(today);
+          riskThreshold.setDate(today.getDate() + 2);
+          riskThreshold.setHours(23, 59, 59, 999);
 
           allTasks = allTasks.filter(task => {
             if (task.status === 'completed') return false;
-            const deadline = new Date(task.deadline);
-            return deadline >= today && deadline <= nextWeek;
+            const deadlineDate = new Date(task.deadline);
+            return deadlineDate >= startOfToday && deadlineDate <= riskThreshold;
           });
         }
 

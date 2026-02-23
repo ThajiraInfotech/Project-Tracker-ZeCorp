@@ -49,10 +49,12 @@ const debugDashboard = async () => {
     // Logic from controller (UPDATED):
     // p.status !== 'completed' ... && new Date(p.endDate) >= startOfToday && new Date(p.endDate) <= nextWeek
 
+    // At risk projects
     const nextWeek = new Date(startOfToday);
-    nextWeek.setDate(startOfToday.getDate() + 7);
+    nextWeek.setDate(startOfToday.getDate() + 2);
+    nextWeek.setHours(23, 59, 59, 999);
 
-    const atRiskProjects = projects.filter(p =>
+    const projectsAtRisk = projects.filter(p =>
         p.status !== 'completed' &&
         p.status !== 'on-hold' &&
         p.status !== 'delayed' &&
@@ -61,8 +63,7 @@ const debugDashboard = async () => {
         new Date(p.endDate) <= nextWeek
     );
 
-    console.log(`\n2. AT-RISK PROJECTS (Count: ${atRiskProjects.length})`);
-    atRiskProjects.forEach(p => {
+    projectsAtRisk.forEach(p => {
         console.log(` - [${p.status.toUpperCase()}] "${p.projectName}" (Due: ${p.endDate ? p.endDate.toISOString().split('T')[0] : 'N/A'})`);
     });
 
