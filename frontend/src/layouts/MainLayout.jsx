@@ -71,7 +71,10 @@ const MainLayout = () => {
     ...(['staff', 'technician', 'finance'].includes(user?.role) ? [
       { name: 'Performance', href: '/performance', icon: ChartBarIcon }
     ] : []),
-    ...(user?.role === 'manager' ? [{ name: 'Team Performance', href: '/team', icon: UserGroupIcon }] : []),
+    ...(user?.role === 'manager' ? [
+      { name: 'Team Performance', href: '/team', icon: UserGroupIcon },
+      { name: 'Service Reports', href: '/admin/service-reports', icon: DocumentChartBarIcon }
+    ] : []),
   ];
 
   // Admin-specific navigation

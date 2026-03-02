@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowDownTrayIcon,
   CheckCircleIcon,
-  UserIcon
+  UserIcon,
+  BriefcaseIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon as CheckCircleSolid,
@@ -12,6 +14,7 @@ import {
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
+import AdminSiteAttendance from '../components/AdminSiteAttendance';
 
 const getCurrentMonth = () => {
   const today = new Date();
@@ -27,6 +30,7 @@ const ManagerAttendance = () => {
   const [myLoading, setMyLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [activeTab, setActiveTab] = useState('office'); // 'office' or 'site'
 
   // Personal History Filter
   const [mySelectedMonth, setMySelectedMonth] = useState(getCurrentMonth());
@@ -159,135 +163,164 @@ const ManagerAttendance = () => {
           </div>
         </div>
 
-        {/* =========================================================================
-            1. MY ATTENDANCE SECTION
-           ========================================================================= */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100 relative overflow-hidden group mb-12">
-          <div className="absolute top-0 right-0 p-32 bg-[#700606]/5 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700 ease-out" />
+        {/* Tabs */}
+        <div className="flex gap-4 mb-8">
+          <button
+            onClick={() => setActiveTab('office')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'office'
+              ? 'bg-[#700606] text-white shadow-lg shadow-[#700606]/30'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            <BriefcaseIcon className="w-5 h-5" />
+            Office Attendance
+          </button>
+          <button
+            onClick={() => setActiveTab('site')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'site'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            <MapPinIcon className="w-5 h-5" />
+            Site Attendance
+          </button>
+        </div>
 
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="w-10 h-10 rounded-xl bg-[#700606]/10 flex items-center justify-center text-[#700606]">
-              <UserIcon className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">My Attendance</h2>
-          </div>
+        {activeTab === 'office' ? (
+          <>
+            {/* =========================================================================
+                1. MY ATTENDANCE SECTION
+               ========================================================================= */}
+            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100 relative overflow-hidden group mb-12">
+              <div className="absolute top-0 right-0 p-32 bg-[#700606]/5 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700 ease-out" />
 
-          <div className="flex flex-col sm:flex-row items-center justify-between relative z-10">
-            {/* Timer Display */}
-            <div className="text-center sm:text-left mr-0 sm:mr-8 mb-6 sm:mb-0">
-              <p className="text-sm text-gray-500 font-medium tracking-wide uppercase mb-1">Dubai Time</p>
-              <p className="text-5xl font-extrabold text-[#700606] font-mono tracking-tight">
-                {currentTime || '--:--'}
-              </p>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-4">
-              {!myTodayRecord?.checkIn ? (
-                <button
-                  onClick={handleCheckIn}
-                  disabled={myLoading || actionLoading}
-                  className="group relative px-8 py-4 bg-[#700606] text-white rounded-2xl font-bold shadow-lg shadow-[#700606]/30 hover:shadow-xl hover:shadow-[#700606]/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
-                  <span className="relative flex items-center gap-2">
-                    <CheckCircleIcon className="w-6 h-6" />
-                    Check In Now
-                  </span>
-                </button>
-              ) : !myTodayRecord?.checkOut ? (
-                <button
-                  onClick={handleCheckOut}
-                  disabled={myLoading || actionLoading}
-                  className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-900/30 hover:shadow-xl hover:shadow-gray-900/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
-                  <span className="relative flex items-center gap-2">
-                    <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
-                    Check Out
-                  </span>
-                </button>
-              ) : (
-                <div className="px-8 py-4 bg-green-50 text-green-700 rounded-2xl font-bold border border-green-200 flex items-center gap-2">
-                  <CheckCircleSolid className="w-6 h-6" />
-                  Shift Completed
+              <div className="flex items-center gap-3 mb-6 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-[#700606]/10 flex items-center justify-center text-[#700606]">
+                  <UserIcon className="w-6 h-6" />
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Today's Status Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-              <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
-              <p className={`text-lg font-bold mt-1 ${myTodayRecord?.status === 'Present' ? 'text-green-600' :
-                myTodayRecord?.status === 'Half-day' ? 'text-yellow-600' :
-                  myTodayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
-                }`}>
-                {myTodayRecord?.status || 'Pending'}
-              </p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-              <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">
-                {myTodayRecord?.checkIn ? 'Started' : 'Not Started'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. MY ATTENDANCE HISTORY (Collapsible/Separate Table) */}
-        <div className="mb-12">
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg font-bold text-gray-900">My Attendance History</h3>
+                <h2 className="text-xl font-bold text-gray-900">My Attendance</h2>
               </div>
 
-              {/* Month Filter */}
-              <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200 min-w-[180px]">
-                <input
-                  type="month"
-                  value={mySelectedMonth}
-                  onChange={(e) => setMySelectedMonth(e.target.value)}
-                  className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer w-full"
-                />
-              </div>
-            </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between relative z-10">
+                {/* Timer Display */}
+                <div className="text-center sm:text-left mr-0 sm:mr-8 mb-6 sm:mb-0">
+                  <p className="text-sm text-gray-500 font-medium tracking-wide uppercase mb-1">Dubai Time</p>
+                  <p className="text-5xl font-extrabold text-[#700606] font-mono tracking-tight">
+                    {currentTime || '--:--'}
+                  </p>
+                </div>
 
-            {/* Desktop Table View */}
-            <div className="max-h-64 overflow-y-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {myFilteredHistory.map((record) => (
-                    <tr key={record._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{formatDate(record.date)}</td>
-                      <td className="px-6 py-3 text-sm text-gray-600 font-mono">
-                        {record.checkIn ? formatTime(record.checkIn) : '-'} - {record.checkOut ? formatTime(record.checkOut) : '-'}
-                      </td>
-                      <td className="px-6 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {myFilteredHistory.length === 0 && (
-                    <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">No records found for {mySelectedMonth}.</td></tr>
+                {/* Buttons */}
+                <div className="flex gap-4">
+                  {!myTodayRecord?.checkIn ? (
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={myLoading || actionLoading}
+                      className="group relative px-8 py-4 bg-[#700606] text-white rounded-2xl font-bold shadow-lg shadow-[#700606]/30 hover:shadow-xl hover:shadow-[#700606]/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                      <span className="relative flex items-center gap-2">
+                        <CheckCircleIcon className="w-6 h-6" />
+                        Check In Now
+                      </span>
+                    </button>
+                  ) : !myTodayRecord?.checkOut ? (
+                    <button
+                      onClick={handleCheckOut}
+                      disabled={myLoading || actionLoading}
+                      className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-900/30 hover:shadow-xl hover:shadow-gray-900/40 hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left" />
+                      <span className="relative flex items-center gap-2">
+                        <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
+                        Check Out
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="px-8 py-4 bg-green-50 text-green-700 rounded-2xl font-bold border border-green-200 flex items-center gap-2">
+                      <CheckCircleSolid className="w-6 h-6" />
+                      Shift Completed
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+                </div>
+              </div>
 
+              {/* Today's Status Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
+                  <p className={`text-lg font-bold mt-1 ${myTodayRecord?.status === 'Present' ? 'text-green-600' :
+                    myTodayRecord?.status === 'Half-day' ? 'text-yellow-600' :
+                      myTodayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
+                    }`}>
+                    {myTodayRecord?.status || 'Pending'}
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">
+                    {myTodayRecord?.checkIn ? 'Started' : 'Not Started'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. MY ATTENDANCE HISTORY (Collapsible/Separate Table) */}
+            <div className="mb-12">
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-bold text-gray-900">My Attendance History</h3>
+                  </div>
+
+                  {/* Month Filter */}
+                  <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200 min-w-[180px]">
+                    <input
+                      type="month"
+                      value={mySelectedMonth}
+                      onChange={(e) => setMySelectedMonth(e.target.value)}
+                      className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {myFilteredHistory.map((record) => (
+                        <tr key={record._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-3 text-sm font-medium text-gray-900">{formatDate(record.date)}</td>
+                          <td className="px-6 py-3 text-sm text-gray-600 font-mono">
+                            {record.checkIn ? formatTime(record.checkIn) : '-'} - {record.checkOut ? formatTime(record.checkOut) : '-'}
+                          </td>
+                          <td className="px-6 py-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              {record.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {myFilteredHistory.length === 0 && (
+                        <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">No records found for {mySelectedMonth}.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <AdminSiteAttendance />
+        )}
 
       </div>
     </div>
