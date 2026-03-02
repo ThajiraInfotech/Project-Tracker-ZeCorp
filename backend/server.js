@@ -17,6 +17,7 @@ const systemSettingRoutes = require('./routes/systemSettingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
