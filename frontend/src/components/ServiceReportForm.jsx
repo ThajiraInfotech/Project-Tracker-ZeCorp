@@ -9,6 +9,7 @@ import { TrashIcon, PlusCircleIcon, WrenchScrewdriverIcon } from '@heroicons/rea
 const ServiceReportForm = ({ onClose, onSuccess }) => {
 
     const sigRef = useRef();
+    const techSigRef = useRef();
     const [submitting, setSubmitting] = useState(false);
     const [photos, setPhotos] = useState([]);
 
@@ -88,11 +89,17 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
     const onSubmit = async (data) => {
 
         if (!sigRef.current || sigRef.current.isEmpty()) {
-            toast.error('Signature required');
+            toast.error('Client Signature required');
+            return;
+        }
+
+        if (!techSigRef.current || techSigRef.current.isEmpty()) {
+            toast.error('Technician Signature required');
             return;
         }
 
         data.clientSignature = sigRef.current.getCanvas().toDataURL('image/png');
+        data.technicianSignature = techSigRef.current.getCanvas().toDataURL('image/png');
 
         // Sanitize data: Convert empty subCategory to null
         const formattedData = {
@@ -113,6 +120,7 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
         if (formattedData.clientFeedback) formData.append('clientFeedback', formattedData.clientFeedback);
 
         formData.append('clientSignature', data.clientSignature);
+        formData.append('technicianSignature', data.technicianSignature);
 
         // Append photos
         photos.forEach(photo => {
@@ -504,20 +512,39 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
                         </div>
                     </div>
 
-                    {/* SIGNATURE */}
-                    <div className="mt-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
-                        <h3 className="font-bold text-gray-900 mb-2">Client Authorization</h3>
-                        <p className="text-sm text-gray-500 mb-4">By signing below, the client acknowledges the work performed.</p>
+                    {/* SIGNATURES */}
+                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Client Signature */}
+                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                            <h3 className="font-bold text-gray-900 mb-2">Client Authorization *</h3>
+                            <p className="text-sm text-gray-500 mb-4">By signing below, the client acknowledges the work performed.</p>
 
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden">
-                            <SignatureCanvas
-                                penColor="black"
-                                canvasProps={{ className: 'w-full h-40 cursor-crosshair' }}
-                                ref={sigRef}
-                                backgroundColor="white"
-                            />
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden">
+                                <SignatureCanvas
+                                    penColor="black"
+                                    canvasProps={{ className: 'w-full h-32 cursor-crosshair' }}
+                                    ref={sigRef}
+                                    backgroundColor="white"
+                                />
+                            </div>
+                            <button type="button" onClick={() => sigRef.current.clear()} className="text-xs text-red-500 hover:text-red-700 mt-2 underline">Clear Signature</button>
                         </div>
-                        <button type="button" onClick={() => sigRef.current.clear()} className="text-xs text-red-500 hover:text-red-700 mt-2 underline">Clear Signature</button>
+
+                        {/* Technician Signature */}
+                        <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                            <h3 className="font-bold text-blue-900 mb-2">Technician Sign-off *</h3>
+                            <p className="text-sm text-blue-700/80 mb-4">Acknowledge that all reported information is accurate.</p>
+
+                            <div className="border-2 border-dashed border-blue-300 rounded-xl bg-white overflow-hidden">
+                                <SignatureCanvas
+                                    penColor="blue"
+                                    canvasProps={{ className: 'w-full h-32 cursor-crosshair' }}
+                                    ref={techSigRef}
+                                    backgroundColor="white"
+                                />
+                            </div>
+                            <button type="button" onClick={() => techSigRef.current.clear()} className="text-xs text-red-500 hover:text-red-700 mt-2 underline">Clear Signature</button>
+                        </div>
                     </div>
 
                     <button

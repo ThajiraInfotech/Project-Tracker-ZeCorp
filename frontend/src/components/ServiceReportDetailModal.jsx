@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentTextIcon, XMarkIcon, PhotoIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import { formatDateTimeDubai } from '../utils/dateUtils';
+import PrintableServiceReport from './PrintableServiceReport';
 
 const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
     if (!selectedReport) return null;
@@ -11,7 +12,7 @@ const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
     };
 
     const handlePrint = () => {
-        const printContent = document.getElementById('printable-report-content');
+        const printContent = document.getElementById('printable-paper-content');
         if (!printContent) return;
 
         const printWindow = window.open('', '_blank');
@@ -29,21 +30,9 @@ const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
                 <head>
                     <title>Service Report - ${selectedReport.clientDetails?.clientName || 'Details'}</title>
                     ${styles}
-                    <style>
-                        body { background: white; padding: 20px; font-family: sans-serif; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                        @page { size: auto; margin: 10mm; }
-                        #print-wrapper { max-width: 100%; width: 100%; }
-                    </style>
                 </head>
                 <body>
                     <div id="print-wrapper">
-                        <div class="mb-6 pb-4 border-b">
-                            <h2 class="text-2xl font-bold text-gray-900 flex justify-between items-center">
-                                Service Report
-                                <span class="text-sm font-normal text-gray-500">Generated: ${new Date().toLocaleString()}</span>
-                            </h2>
-                        </div>
                         ${printContent.innerHTML}
                     </div>
                     <script>
@@ -70,7 +59,7 @@ const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
                     <div className="p-6 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                             <DocumentTextIcon className="w-6 h-6 text-blue-600" />
-                            Service Report Details
+                            Service Report {selectedReport.reportId ? `#${selectedReport.reportId}` : ''}
                         </h2>
                         <div className="flex gap-4 items-center">
                             <button onClick={handlePrint} className="text-gray-500 hover:text-blue-600 transition-colors" title="Print Report">
@@ -254,25 +243,41 @@ const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
                             </div>
                         )}
 
-                        {/* Signature */}
+                        {/* Signatures */}
                         <div>
                             <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Sign-off</h3>
-                            <div className="bg-gray-50 p-4 rounded-xl flex flex-col items-center">
-                                <div className="w-full max-w-md border bg-white h-40 flex items-center justify-center mb-2 relative shadow-inner rounded-lg p-2">
-                                    {selectedReport.clientSignature ? (
-                                        <img src={selectedReport.clientSignature} alt="Client Signature" className="max-w-full max-h-full object-contain mix-blend-multiply" />
-                                    ) : (
-                                        <span className="text-gray-400 text-sm">No Signature</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Client Signature */}
+                                <div className="bg-gray-50 p-4 rounded-xl flex flex-col items-center border border-gray-200">
+                                    <div className="w-full border bg-white h-40 flex items-center justify-center mb-2 relative shadow-inner rounded-lg p-2">
+                                        {selectedReport.clientSignature ? (
+                                            <img src={selectedReport.clientSignature} alt="Client Signature" className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                                        ) : (
+                                            <span className="text-gray-400 text-sm">No Signature</span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-700">Authorized by Client</p>
+                                    <p className="text-xs text-gray-500">({selectedReport.clientDetails?.attentionPerson || 'Representative'})</p>
+
+                                    {selectedReport.clientRemarks && (
+                                        <div className="mt-4 w-full text-center">
+                                            <p className="text-sm text-gray-600 italic">"{selectedReport.clientRemarks}"</p>
+                                        </div>
                                     )}
                                 </div>
-                                <p className="text-sm font-semibold text-gray-700">Authorized by Client</p>
-                                <p className="text-xs text-gray-500">({selectedReport.clientDetails?.attentionPerson || 'Representative'})</p>
 
-                                {selectedReport.clientRemarks && (
-                                    <div className="mt-4 w-full text-center">
-                                        <p className="text-sm text-gray-600 italic">"{selectedReport.clientRemarks}"</p>
+                                {/* Technician Signature */}
+                                <div className="bg-blue-50 p-4 rounded-xl flex flex-col items-center border border-blue-200">
+                                    <div className="w-full border bg-white h-40 flex items-center justify-center mb-2 relative shadow-inner rounded-lg p-2">
+                                        {selectedReport.technicianSignature ? (
+                                            <img src={selectedReport.technicianSignature} alt="Technician Signature" className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                                        ) : (
+                                            <span className="text-gray-400 text-sm">No Signature</span>
+                                        )}
                                     </div>
-                                )}
+                                    <p className="text-sm font-semibold text-blue-900">Technician Sign-off</p>
+                                    <p className="text-xs text-blue-700">({selectedReport.technicianId?.fullName || selectedReport.technicianId?.username || 'Technician'})</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -284,6 +289,13 @@ const ServiceReportDetailModal = ({ selectedReport, closeReport }) => {
                         >
                             Close
                         </button>
+                    </div>
+
+                    {/* Hidden Printable Report */}
+                    <div style={{ display: 'none' }}>
+                        <div id="printable-paper-content">
+                            <PrintableServiceReport report={selectedReport} />
+                        </div>
                     </div>
                 </motion.div>
             </div>

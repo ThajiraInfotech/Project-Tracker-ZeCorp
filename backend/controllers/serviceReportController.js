@@ -46,10 +46,23 @@ exports.submitServiceReport = async (req, res) => {
             });
         }
 
+        // Auto-generate Sequential Report ID
+        let newReportId = '001';
+        const lastReport = await ServiceReport.findOne({ reportId: { $exists: true } }).sort({ createdAt: -1 });
+
+        if (lastReport && lastReport.reportId) {
+            const lastNumber = parseInt(lastReport.reportId, 10);
+            if (!isNaN(lastNumber)) {
+                newReportId = (lastNumber + 1).toString().padStart(3, '0');
+            }
+        }
+
         const report = new ServiceReport({
+            reportId: newReportId,
             technicianId: userId,
             siteAttendanceId: activeSite._id,
             ...parsedBody,
+            technicianSignature: req.body.technicianSignature, // Capture new field
             photos,
             audit: {
                 ipAddress: req.ip,

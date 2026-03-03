@@ -44,7 +44,7 @@ const AdminSiteAttendance = () => {
     };
 
     useEffect(() => {
-        if (auth.isAuthenticated && auth.user?.role === 'admin') {
+        if (auth.isAuthenticated && (auth.user?.role === 'admin' || auth.user?.role === 'manager')) {
             fetchAllAttendance();
         }
     }, [auth.isAuthenticated, auth.user, selectedDate]);

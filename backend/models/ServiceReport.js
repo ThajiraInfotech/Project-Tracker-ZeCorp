@@ -35,6 +35,10 @@ const equipmentSchema = new mongoose.Schema({
 });
 
 const serviceReportSchema = new mongoose.Schema({
+    reportId: {
+        type: String,
+        unique: true
+    },
     technicianId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -77,6 +81,7 @@ const serviceReportSchema = new mongoose.Schema({
     clientRemarks: String,
     clientFeedback: String,
     clientSignature: { type: String, required: true },
+    technicianSignature: { type: String, required: true },
 
     status: {
         type: String,
