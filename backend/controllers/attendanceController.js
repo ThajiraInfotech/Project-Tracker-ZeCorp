@@ -265,9 +265,9 @@ exports.getAllAttendance = async (req, res) => {
     // Ideally Admin Dashboard sends ?date=...
     const dateParam = req.query.date || getDubaiDate();
 
-    // 1. Get all users (staff/managers)
+    // 1. Get all non-admin users (staff/managers/technicians/finance)
     const allUsers = await User.find({
-      role: { $in: ['staff', 'manager'] },
+      role: { $in: ['staff', 'manager', 'technician', 'finance'] },
       isActive: true
     }).select('username fullName email role profileImage');
 

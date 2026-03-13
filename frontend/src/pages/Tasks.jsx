@@ -698,6 +698,33 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
         {/* Description */}
         <p className="text-gray-600 mb-4 line-clamp-2 text-sm flex-1 px-3">{task.description}</p>
 
+        {/* Subtasks Indicator */}
+        {task.subtasks && task.subtasks.length > 0 && (
+          <div className="px-3 mb-4 space-y-2">
+            <span 
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-700 rounded-md text-xs font-medium border border-slate-200"
+            >
+              <ClipboardDocumentListIcon className="w-4 h-4 text-slate-500" />
+              <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span> Subtasks
+            </span>
+            <div className="pl-1 space-y-1">
+              {task.subtasks.slice(0, 3).map((st, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-[11px] text-gray-500">
+                  <div className={`w-1.5 h-1.5 rounded-full ${st.status === 'completed' ? 'bg-emerald-500' : st.status === 'in-progress' ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                  <span className={`truncate ${st.status === 'completed' ? 'line-through text-gray-400' : ''}`}>
+                    {st.title}
+                  </span>
+                </div>
+              ))}
+              {task.subtasks.length > 3 && (
+                <div className="text-[10px] text-slate-400 font-medium pl-3.5">
+                  +{task.subtasks.length - 3} more...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Task details */}
         <div className="grid grid-cols-2 gap-3 text-sm mb-4 px-3">
           <div className="flex items-center gap-2">
@@ -1286,6 +1313,17 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
                             <h4 className="font-medium text-gray-900 flex-1">{task.title}</h4>
                           </div>
                           <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          {task.subtasks && task.subtasks.length > 0 && (
+                            <div className="mb-2">
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-700 border border-slate-200 cursor-help hover:bg-slate-100 transition-colors"
+                                title={`Subtasks:\n${task.subtasks.map(st => `• ${st.title} (${st.status.replace('-', ' ')})`).join('\n')}`}
+                              >
+                                <ClipboardDocumentListIcon className="w-3 h-3 text-slate-500" />
+                                <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span> Subtasks
+                              </span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>{task.assignedTo?.fullName || 'Unassigned'}</span>
                             <span className={task.isOverdue ? 'text-red-600' : ''}>
@@ -1360,6 +1398,9 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Progress
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Subtasks
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -1441,6 +1482,35 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
                             </div>
                             <span className="text-xs text-gray-500">{task.progress || 0}%</span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {task.subtasks && task.subtasks.length > 0 ? (
+                            <div className="space-y-1.5">
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-700 text-xs font-medium rounded-md border border-slate-200"
+                              >
+                                <ClipboardDocumentListIcon className="w-3.5 h-3.5 text-slate-500" />
+                                <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span>
+                              </span>
+                              <div className="flex flex-col gap-1 max-w-[150px]">
+                                {task.subtasks.slice(0, 2).map((st, idx) => (
+                                  <div key={idx} className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                    <div className={`w-1 h-1 rounded-full flex-shrink-0 ${st.status === 'completed' ? 'bg-emerald-500' : st.status === 'in-progress' ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                                    <span className={`truncate ${st.status === 'completed' ? 'line-through text-gray-400' : ''}`} title={st.title}>
+                                      {st.title}
+                                    </span>
+                                  </div>
+                                ))}
+                                {task.subtasks.length > 2 && (
+                                  <div className="text-[10px] text-slate-400 font-medium pl-2.5">
+                                    +{task.subtasks.length - 2} more
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button

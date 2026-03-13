@@ -2,7 +2,7 @@ import React from 'react';
 import { DndContext, useDroppable, useDraggable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import LabelBadge from './LabelBadge';
 
 const Droppable = ({ id, children }) => {
@@ -62,11 +62,29 @@ const TaskCard = ({ task, onClick, onChatClick, onDelete, currentUser }) => {
           {task.priority}
         </span>
         {task.subtasks && task.subtasks.length > 0 && (
-          <span className="text-gray-400 ml-2" title="This task is controlled by subtasks">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-            </svg>
-          </span>
+          <div className="flex flex-col ml-2 flex-shrink-0 gap-1.5 min-w-0">
+            <span 
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-700 border border-slate-200 self-start w-fit" 
+            >
+              <ClipboardDocumentListIcon className="w-3 h-3 text-slate-500" />
+              <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span>
+            </span>
+            <div className="flex flex-col gap-0.5">
+              {task.subtasks.slice(0, 2).map((st, idx) => (
+                <div key={idx} className="flex items-center gap-1 text-[9px] text-gray-500 max-w-[100px]">
+                  <div className={`w-1 h-1 rounded-full flex-shrink-0 ${st.status === 'completed' ? 'bg-emerald-500' : st.status === 'in-progress' ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                  <span className={`truncate ${st.status === 'completed' ? 'line-through text-gray-400' : ''}`} title={st.title}>
+                    {st.title}
+                  </span>
+                </div>
+              ))}
+              {task.subtasks.length > 2 && (
+                <div className="text-[9px] text-slate-400 font-medium pl-2">
+                  +{task.subtasks.length - 2} more
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
       {/* Project name and Job Order - only show if exists */}
