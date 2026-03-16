@@ -56,38 +56,40 @@ const AdminServiceReports = () => {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="p-4 md:p-6 w-full space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Service Reports</h1>
-                    <p className="text-gray-500">View and manage field service reports</p>
+                    <p className="text-gray-500 text-sm">View and manage field service reports</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 md:flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
                     <input
                         type="date"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
-                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2 w-full bg-white"
                     />
                     <input
                         type="text"
                         placeholder="Filter by Client..."
                         value={filterClient}
                         onChange={(e) => setFilterClient(e.target.value)}
-                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2 w-full bg-white"
                     />
-                    <button
-                        onClick={fetchReports}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                        <MagnifyingGlassIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={() => { setFilterDate(''); setFilterClient(''); fetchReports(); }}
-                        className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
-                    >
-                        <ArrowPathIcon className="w-5 h-5" />
-                    </button>
+                    <div className="col-span-2 md:col-span-1 flex gap-2 w-full md:w-auto">
+                        <button
+                            onClick={fetchReports}
+                            className="flex-1 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-1 shadow-sm text-sm"
+                        >
+                            <MagnifyingGlassIcon className="w-5 h-5" /> Search
+                        </button>
+                        <button
+                            onClick={() => { setFilterDate(''); setFilterClient(''); fetchReports(); }}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition flex items-center justify-center shadow-sm"
+                        >
+                            <ArrowPathIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
