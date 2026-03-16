@@ -93,6 +93,13 @@ exports.getMyAttendance = async (req, res) => {
                 select: 'title project jobOrder',
                 populate: { path: 'project', select: 'projectName jobOrder' }
             })
+            .populate({
+                path: 'serviceReport',
+                populate: {
+                    path: 'technicianId',
+                    select: 'username fullName email profileImage'
+                }
+            })
             .sort({ date: -1 });
 
         res.json({
@@ -111,7 +118,13 @@ exports.getTaskAttendance = async (req, res) => {
         const { taskId } = req.params;
         const history = await SiteAttendance.find({ taskId })
             .populate('userId', 'username fullName email profileImage')
-            .populate('serviceReport')
+            .populate({
+                path: 'serviceReport',
+                populate: {
+                    path: 'technicianId',
+                    select: 'username fullName email profileImage'
+                }
+            })
             .sort({ checkIn: -1 });
 
         res.json({

@@ -1,17 +1,23 @@
 import React, { useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
+import { useSelector } from 'react-redux';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import SignatureCanvas from 'react-signature-canvas';
 import { toast } from 'react-toastify';
 import siteAttendanceService from '../services/siteAttendanceService';
 import { TrashIcon, PlusCircleIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import PrintableServiceReport from './PrintableServiceReport';
 
 const ServiceReportForm = ({ onClose, onSuccess }) => {
+    
+    const { user } = useSelector(state => state.auth);
 
     const sigRef = useRef();
     const techSigRef = useRef();
     const [submitting, setSubmitting] = useState(false);
     const [photos, setPhotos] = useState([]);
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [previewData, setPreviewData] = useState(null);
 
     // Equipment Data Structure
     const EQUIPMENT_STRUCTURE = {
@@ -86,8 +92,7 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
         setPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
-    const onSubmit = async (data) => {
-
+    const onPreview = (data) => {
         if (!sigRef.current || sigRef.current.isEmpty()) {
             toast.error('Client Signature required');
             return;
@@ -110,17 +115,27 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
             }))
         };
 
+        setPreviewData({
+            ...formattedData,
+            technicianId: user
+        });
+        setIsPreviewMode(true);
+    };
+
+    const handleFinalSubmit = async () => {
+        if (!previewData) return;
+
         const formData = new FormData();
 
         // Append base fields as JSON strings
-        formData.append('clientDetails', JSON.stringify(formattedData.clientDetails));
-        formData.append('equipments', JSON.stringify(formattedData.equipments));
+        formData.append('clientDetails', JSON.stringify(previewData.clientDetails));
+        formData.append('equipments', JSON.stringify(previewData.equipments));
 
-        if (formattedData.clientRemarks) formData.append('clientRemarks', formattedData.clientRemarks);
-        if (formattedData.clientFeedback) formData.append('clientFeedback', formattedData.clientFeedback);
+        if (previewData.clientRemarks) formData.append('clientRemarks', previewData.clientRemarks);
+        if (previewData.clientFeedback) formData.append('clientFeedback', previewData.clientFeedback);
 
-        formData.append('clientSignature', data.clientSignature);
-        formData.append('technicianSignature', data.technicianSignature);
+        formData.append('clientSignature', previewData.clientSignature);
+        formData.append('technicianSignature', previewData.technicianSignature);
 
         // Append photos
         photos.forEach(photo => {
@@ -144,14 +159,15 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
             <div className="bg-white w-full max-w-5xl rounded-2xl p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
 
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Service Report</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{isPreviewMode ? 'Preview Service Report' : 'Service Report'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <span className="sr-only">Close</span>
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)}>
+                {!isPreviewMode ? (
+                    <form onSubmit={handleSubmit(onPreview)}>
 
                     {/* CLIENT SECTION */}
                     <h3 className="text-lg font-semibold mb-4 border-b pb-2">Client Details</h3>
@@ -550,11 +566,59 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="mt-6 w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-lg">
-                        {submitting ? 'Submitting Report...' : 'Submit Service Report & Close Site'}
+                        className="mt-6 w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-lg">
+                        Preview Service Report
                     </button>
 
                 </form>
+                ) : (
+                    <div className="space-y-8 animate-fade-in">
+                        {/* Preview Content using the Printable Layout */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm overflow-x-auto w-full">
+                            <PrintableServiceReport report={{
+                                ...previewData,
+                                createdAt: new Date().toISOString()
+                            }} />
+                        </div>
+
+                        {photos.length > 0 && (
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4">Photos ({photos.length})</h3>
+                                <div className="flex gap-4 overflow-x-auto pb-4">
+                                    {photos.map((photo, i) => (
+                                        <img key={i} src={URL.createObjectURL(photo)} alt="preview" className="h-32 w-auto object-cover rounded-lg border shadow-sm shrink-0" />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-4 pt-6 mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setIsPreviewMode(false)}
+                                className="w-1/3 py-4 rounded-xl font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors shadow-sm text-lg"
+                                disabled={submitting}
+                            >
+                                Back to Edit
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleFinalSubmit}
+                                disabled={submitting}
+                                className="w-2/3 bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-2"
+                            >
+                                {submitting ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Submitting Report...
+                                    </>
+                                ) : (
+                                    'Confirm & Submit Service Report'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div >
         </div >
     );

@@ -97,13 +97,12 @@ const AdminServiceReports = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Technician</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reference</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Client</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Equipments</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-36">Date</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-40">Technician</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-44">Reference</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-44">Client</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-28">Equipments</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -113,7 +112,11 @@ const AdminServiceReports = () => {
                                 <tr><td colSpan="6" className="text-center py-8 text-gray-500">No reports found</td></tr>
                             ) : (
                                 reports.map(report => (
-                                    <tr key={report._id} className="hover:bg-gray-50/50">
+                                    <tr 
+                                        key={report._id} 
+                                        onClick={() => handleViewReport(report)}
+                                        className="hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                    >
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {formatDate(report.createdAt)}
                                         </td>
@@ -122,7 +125,7 @@ const AdminServiceReports = () => {
                                                 <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">
                                                     {report.technicianId?.username?.[0] || 'T'}
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-900">{report.technicianId?.username}</span>
+                                                <span className="text-sm font-medium text-gray-900">{report.technicianId?.username || 'Unknown'}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -137,25 +140,23 @@ const AdminServiceReports = () => {
                                                 <span className="text-sm text-gray-400 italic">Independent</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {report.clientDetails?.clientName}
-                                            <div className="text-xs text-gray-500">{report.clientDetails?.outlet}</div>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                            {report.clientDetails?.clientName ? (
+                                                <>
+                                                    {report.clientDetails.clientName}
+                                                    <div className="text-xs text-gray-400 font-normal">{report.clientDetails?.outlet}</div>
+                                                </>
+                                            ) : (
+                                                <span className="text-gray-400 italic">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {report.equipments?.length || 0} items
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium border border-green-200">
                                                 {report.status}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button
-                                                onClick={() => handleViewReport(report)}
-                                                className="text-blue-600 hover:text-blue-900"
-                                            >
-                                                View Details
-                                            </button>
                                         </td>
                                     </tr>
                                 ))

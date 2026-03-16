@@ -19,6 +19,7 @@ const PrintableServiceReport = ({ report }) => {
             fontSize: '12px',
             width: '100%',
             maxWidth: '800px',
+            minWidth: '700px',
             margin: '0 auto',
             color: '#000',
             backgroundColor: '#fff',
@@ -55,7 +56,7 @@ const PrintableServiceReport = ({ report }) => {
                         </td>
                         <td style={{ border: '1px solid #000', padding: '5px', width: '15%' }}>Report ID :</td>
                         <td style={{ border: '1px solid #000', padding: '5px', width: '25%', color: 'red', fontWeight: 'bold', textAlign: 'center' }}>
-                            {report.reportId ? `#${report.reportId}` : (report._id ? report._id.substring(report._id.length - 4).toUpperCase() : '')}
+                            {report.reportId ? `#${report.reportId}` : (report._id ? report._id.substring(report._id.length - 4).toUpperCase() : 'DRAFT')}
                         </td>
                     </tr>
 

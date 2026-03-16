@@ -8,10 +8,13 @@ import {
     CalendarDaysIcon,
     ArrowPathIcon,
     DocumentTextIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    EyeIcon
 } from '@heroicons/react/24/outline';
 import siteAttendanceService from '../services/siteAttendanceService';
+import { useSelector } from 'react-redux';
 import ServiceReportForm from './ServiceReportForm';
+import ServiceReportDetailModal from './ServiceReportDetailModal';
 import { formatTimeDubai, formatDateDubai, getDubaiNow } from '../utils/dateUtils';
 
 const TechnicianSiteAttendance = () => {
@@ -20,9 +23,15 @@ const TechnicianSiteAttendance = () => {
     const [todayRecord, setTodayRecord] = useState(null);
     const [timer, setTimer] = useState(null);
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
+    
+    // Get logged in user details
+    const user = useSelector((state) => state.auth.user);
 
     // Report Form Modal State
     const [showReportForm, setShowReportForm] = useState(false);
+    
+    // View Report Modal State
+    const [selectedReport, setSelectedReport] = useState(null);
 
     const fetchHistory = async () => {
         try {
@@ -181,18 +190,36 @@ const TechnicianSiteAttendance = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50/50">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reference</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Check In</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Check Out</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hours</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Date</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-44">Reference</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-44">Client</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Check In</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Check Out</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {history.length > 0 ? (
                                 history.map((record) => (
-                                    <tr key={record._id} className="hover:bg-gray-50/80 transition-colors">
+                                    <tr 
+                                        key={record._id} 
+                                        onClick={() => {
+                                            if (record.serviceReport) {
+                                                const reportForView = {
+                                                    ...record.serviceReport,
+                                                    siteAttendanceId: {
+                                                        totalHours: record.totalHours
+                                                    },
+                                                    taskId: record.taskId,
+                                                    technicianId: record.serviceReport.technicianId?.fullName || record.serviceReport.technicianId?.username 
+                                                        ? record.serviceReport.technicianId 
+                                                        : user
+                                                };
+                                                setSelectedReport(reportForView);
+                                            }
+                                        }}
+                                        className={`${record.serviceReport ? 'cursor-pointer hover:bg-blue-50/50' : 'hover:bg-gray-50/80'} transition-colors`}
+                                    >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -215,14 +242,18 @@ const TechnicianSiteAttendance = () => {
                                                 <span className="text-sm text-gray-400 italic">Independent</span>
                                             )}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                            {record.serviceReport?.clientDetails?.clientName ? (
+                                                <span>{record.serviceReport.clientDetails.clientName}</span>
+                                            ) : (
+                                                <span className="text-gray-400 italic">-</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {formatTime(record.checkIn)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {formatTime(record.checkOut)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {record.totalHours ? `${record.totalHours}h` : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-200' :
@@ -236,7 +267,7 @@ const TechnicianSiteAttendance = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
                                         No site attendance records found.
                                     </td>
                                 </tr>
@@ -253,6 +284,12 @@ const TechnicianSiteAttendance = () => {
                     onSuccess={handleReportSuccess}
                 />
             )}
+
+            {/* View Service Report Detail Modal */}
+            <ServiceReportDetailModal
+                selectedReport={selectedReport}
+                closeReport={() => setSelectedReport(null)}
+            />
         </div>
     );
 };
