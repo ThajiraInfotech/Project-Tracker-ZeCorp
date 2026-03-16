@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
@@ -18,6 +18,22 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
     const [photos, setPhotos] = useState([]);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [previewData, setPreviewData] = useState(null);
+
+    // Restore signatures when clicking Back to Edit from Preview mode
+    useEffect(() => {
+        if (!isPreviewMode && previewData) {
+            // setTimeout ensures the canvas ref is fully loaded in the DOM before rendering data URL
+            const timer = setTimeout(() => {
+                if (previewData.clientSignature && sigRef.current) {
+                    sigRef.current.fromDataURL(previewData.clientSignature);
+                }
+                if (previewData.technicianSignature && techSigRef.current) {
+                    techSigRef.current.fromDataURL(previewData.technicianSignature);
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isPreviewMode, previewData]);
 
     // Equipment Data Structure
     const EQUIPMENT_STRUCTURE = {
@@ -573,6 +589,15 @@ const ServiceReportForm = ({ onClose, onSuccess }) => {
                 </form>
                 ) : (
                     <div className="space-y-8 animate-fade-in">
+                        {/* Mobile Tip Banner */}
+                        <div className="md:hidden bg-blue-50 border border-blue-100 text-blue-800 p-4 rounded-xl text-sm flex items-start gap-3 shadow-sm border-l-4 border-l-blue-500">
+                            <div className="text-xl">📱</div>
+                            <div>
+                                <p className="font-bold mb-0.5">Preview Tip</p>
+                                <p className="text-blue-700/90 text-xs Leading-relaxed">This template is accurately scaled for A4 printing. For better reading, please **rotate your phone** to landscape mode or view on a **laptop/desktop**.</p>
+                            </div>
+                        </div>
+
                         {/* Preview Content using the Printable Layout */}
                         <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm overflow-x-auto w-full">
                             <PrintableServiceReport report={{
