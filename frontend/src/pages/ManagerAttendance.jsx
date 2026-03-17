@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import {
   ArrowDownTrayIcon,
   CheckCircleIcon,
@@ -30,7 +31,20 @@ const ManagerAttendance = () => {
   const [myLoading, setMyLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [activeTab, setActiveTab] = useState('office'); // 'office' or 'site'
+  
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialTab = searchParams.get('tab') === 'site' ? 'site' : 'office';
+  const [activeTab, setActiveTab] = useState(initialTab); // 'office' or 'site'
+
+  // Update tab if URL changes while component is mounted
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'site' || tabParam === 'office') {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
 
   // Personal History Filter
   const [mySelectedMonth, setMySelectedMonth] = useState(getCurrentMonth());

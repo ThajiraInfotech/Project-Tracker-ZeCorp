@@ -35,7 +35,6 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 
 // Manager pages
-import TeamPerformance from './pages/TeamPerformance';
 
 // Admin pages
 import UserManagement from './pages/admin/UserManagement';
@@ -119,11 +118,7 @@ function App() {
                   <Navigate to="/login" replace />
           } />
 
-          <Route path="/team" element={
-            <ProtectedRoute allowedRoles={['manager']}>
-              <TeamPerformance />
-            </ProtectedRoute>
-          } />
+
 
           <Route path="/performance" element={
             <ProtectedRoute allowedRoles={['staff', 'technician', 'finance']}>

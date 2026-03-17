@@ -67,12 +67,13 @@ const MainLayout = () => {
     ...(!['staff', 'technician', 'finance'].includes(user?.role) ? [{ name: 'Projects', href: '/projects', icon: FolderIcon }] : []),
     { name: 'Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
     { name: 'Archives', href: '/archives', icon: InboxArrowDownIcon },
-    { name: 'Attendance', href: '/attendance', icon: CalendarDaysIcon },
+    ...(user?.role !== 'manager' ? [{ name: 'Attendance', href: '/attendance', icon: CalendarDaysIcon }] : []),
     ...(['staff', 'technician', 'finance'].includes(user?.role) ? [
       { name: 'Performance', href: '/performance', icon: ChartBarIcon }
     ] : []),
     ...(user?.role === 'manager' ? [
-      { name: 'Team Performance', href: '/team', icon: UserGroupIcon },
+      { name: 'My Attendance', href: '/attendance?tab=office', icon: CalendarDaysIcon },
+      { name: 'Site Attendance', href: '/attendance?tab=site', icon: MapPinIcon },
       { name: 'Service Reports', href: '/admin/service-reports', icon: DocumentChartBarIcon }
     ] : []),
   ];
@@ -304,7 +305,7 @@ const MainLayout = () => {
         </div>
 
         {/* Page content */}
-        <main className={`flex-1 overflow-y-auto ${['/manager', '/attendance', '/team', '/staff', '/performance'].includes(location.pathname) ? 'p-0' : 'p-4'}`}>
+        <main className={`flex-1 overflow-y-auto ${['/manager', '/attendance', '/staff', '/performance'].includes(location.pathname) ? 'p-0' : 'p-4'}`}>
           <Outlet />
         </main>
       </div>
