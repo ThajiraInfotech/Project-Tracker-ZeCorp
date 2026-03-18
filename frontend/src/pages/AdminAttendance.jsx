@@ -78,6 +78,10 @@ const AdminAttendance = () => {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
+  // Month export state
+  const [exportMonth, setExportMonth] = useState(getCurrentMonth());
+  const [exportingMonth, setExportingMonth] = useState(false);
+
   const auth = useSelector((state) => state.auth);
 
   // --- Data Fetching ---
@@ -193,6 +197,121 @@ const AdminAttendance = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleMonthExport = async () => {
+    try {
+      setExportingMonth(true);
+      const response = await api.get(`/attendance/monthly-export?month=${exportMonth}`);
+      if (response.data.success) {
+        const records = response.data.attendance;
+        if (records.length === 0) {
+          toast.info(`No records found for ${exportMonth}`);
+          return;
+        }
+
+        const year = parseInt(exportMonth.split('-')[0], 10);
+        const monthNum = parseInt(exportMonth.split('-')[1], 10);
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
+        const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+        // Group records by user
+        const usersMap = {};
+        records.forEach(r => {
+            const userName = r.userId?.fullName || r.userId?.username || 'Unknown';
+            if (!usersMap[userName]) {
+                usersMap[userName] = { days: {} };
+            }
+            if (!r.date) return;
+            const dayStr = r.date.split('-')[2];
+            const dayNum = parseInt(dayStr, 10);
+            
+            if (!usersMap[userName].days[dayNum]) {
+                usersMap[userName].days[dayNum] = [];
+            }
+            usersMap[userName].days[dayNum].push(r);
+        });
+
+        const headerRow = [
+          'Staff Name', 
+          ...daysArray.map(d => `${d}`), 
+          'Total Present', 'Total Half-day', 'Total Absent', 
+          'Total Hours', 'Regular Pay', 'Overtime Pay', 'Total Pay'
+        ];
+
+        const csvContent = [
+          headerRow,
+          ...Object.keys(usersMap).map(userName => {
+             const user = usersMap[userName];
+             let pCount = 0;
+             let hCount = 0;
+             let aCount = 0;
+
+             const dayColumns = daysArray.map(day => {
+                const dayRecords = user.days[day];
+                if (!dayRecords || dayRecords.length === 0) {
+                   aCount++;
+                   return 'A'; // Absent
+                } else {
+                   const isPresent = dayRecords.some(dr => dr.status === 'Present');
+                   const isHalfDay = dayRecords.some(dr => dr.status === 'Half-day');
+                   if (isPresent) {
+                      pCount++;
+                      return 'P';
+                   } else if (isHalfDay) {
+                      hCount++;
+                      return 'H';
+                   } else {
+                      pCount++;
+                      return 'P';
+                   }
+                }
+             });
+
+             let totalHrs = 0;
+             let regPay = 0;
+             let otPay = 0;
+             let totPay = 0;
+
+             Object.values(user.days).forEach(dayArr => {
+                 dayArr.forEach(record => {
+                    totalHrs += record.totalHours || 0;
+                    regPay += record.dailyRegularPay || 0;
+                    otPay += record.dailyOvertimePay || 0;
+                    totPay += record.dailyTotalPay || 0;
+                 });
+             });
+
+             const formatNumber = (num) => typeof num === 'number' ? parseFloat(num.toFixed(2)) : 0;
+
+             return [
+               userName,
+               ...dayColumns,
+               pCount,
+               hCount,
+               aCount,
+               `${formatNumber(totalHrs)}h`,
+               `AED ${formatNumber(regPay)}`,
+               `AED ${formatNumber(otPay)}`,
+               `AED ${formatNumber(totPay)}`
+             ];
+          })
+        ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `office-attendance-${exportMonth}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error exporting monthly data:', error);
+      toast.error('Failed to export. Please try again.');
+    } finally {
+      setExportingMonth(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -216,13 +335,6 @@ const AdminAttendance = () => {
                   className="border-none bg-transparent focus:ring-0 text-sm font-medium text-white placeholder-white/50 [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
-              <button
-                onClick={fetchAllAttendance}
-                disabled={loading || dateChanging}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#700606] rounded-xl hover:bg-white/90 font-medium shadow-sm transition-all"
-              >
-                <ArrowDownTrayIcon className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
@@ -279,8 +391,8 @@ const AdminAttendance = () => {
 
             {/* Search & Export */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between">
-                <div className="relative flex-1 max-w-md">
+              <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                <div className="relative flex-1 w-full max-w-md">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
@@ -290,11 +402,36 @@ const AdminAttendance = () => {
                     className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent outline-none transition-all"
                   />
                 </div>
-                <div className="flex gap-2">
+                
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                  {/* Daily Export */}
+                  <div className="flex bg-gray-50 rounded-lg border border-gray-200 p-1">
+                      <button onClick={handleExport} className="flex flex-1 justify-center items-center gap-2 px-4 py-1.5 bg-white text-gray-900 shadow-sm rounded-md font-medium text-sm transition-all hover:bg-gray-50">
+                        <ArrowDownTrayIcon className="w-4 h-4" /> Daily Export
+                      </button>
+                  </div>
 
-                  <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
-                    <ArrowDownTrayIcon className="w-5 h-5" /> Export
-                  </button>
+                  {/* Monthly Export */}
+                  <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 p-1 gap-2 border-solid">
+                    <input
+                        type="month"
+                        value={exportMonth}
+                        onChange={(e) => setExportMonth(e.target.value)}
+                        className="bg-transparent border-none text-sm font-medium text-gray-700 focus:ring-0 cursor-pointer py-1 max-w-[120px]"
+                    />
+                    <button 
+                        onClick={handleMonthExport} 
+                        disabled={exportingMonth}
+                        className="flex justify-center items-center gap-2 px-4 py-1.5 bg-[#700606] hover:bg-[#a04040] text-white shadow-sm rounded-md font-medium text-sm transition-all disabled:opacity-50"
+                    >
+                        {exportingMonth ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <ArrowDownTrayIcon className="w-4 h-4" />
+                        )}
+                        Month Export
+                    </button>
+                  </div>
                 </div>
               </div>
 

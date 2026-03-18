@@ -234,9 +234,19 @@ const TechnicianSiteAttendance = () => {
                                             {record.taskId ? (
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-medium text-indigo-700">{record.taskId.title}</span>
-                                                    {record.taskId.project?.projectName && (
-                                                        <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
-                                                    )}
+                                                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                                        {record.taskId.project?.projectName && (
+                                                            <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
+                                                        )}
+                                                        {(record.taskId.jobOrder || record.taskId.project?.jobOrder) && (
+                                                            <>
+                                                                <span className="text-gray-300 mx-1">•</span>
+                                                                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 uppercase tracking-wide">
+                                                                    JO: {record.taskId.jobOrder || record.taskId.project?.jobOrder}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <span className="text-sm text-gray-400 italic">Independent</span>

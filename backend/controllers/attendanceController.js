@@ -305,3 +305,26 @@ exports.getAllAttendance = async (req, res) => {
     res.status(500).json({ message: 'Failed to get attendance' });
   }
 };
+
+// Get monthly export for office attendance
+exports.getMonthlyExport = async (req, res) => {
+  try {
+    const { month } = req.query; // YYYY-MM
+    if (!month) {
+      return res.status(400).json({ message: 'Month is required' });
+    }
+
+    const attendanceRecords = await Attendance.find({
+      date: { $regex: `^${month}` }
+    }).populate('userId', 'username fullName email role')
+      .sort({ date: 1 });
+
+    res.json({
+      success: true,
+      attendance: attendanceRecords
+    });
+  } catch (error) {
+    console.error('Get monthly export error:', error);
+    res.status(500).json({ message: 'Failed to get monthly export' });
+  }
+};

@@ -18,14 +18,13 @@ const AdminServiceReports = () => {
 
     // Filters
     const [filterDate, setFilterDate] = useState('');
-    const [filterClient, setFilterClient] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchReports = async () => {
         try {
             setLoading(true);
             const params = {};
             if (filterDate) params.date = filterDate;
-            if (filterClient) params.clientName = filterClient;
 
             const data = await siteAttendanceService.getAllReports(params);
             if (data.success) {
@@ -41,7 +40,20 @@ const AdminServiceReports = () => {
 
     useEffect(() => {
         fetchReports();
-    }, []);
+    }, [filterDate]);
+
+    const filteredReports = reports.filter(report => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        
+        const clientMatch = report.clientDetails?.clientName?.toLowerCase().includes(query) || false;
+        const taskMatch = report.taskId?.title?.toLowerCase().includes(query) || false;
+        const jobOrderMatch = report.taskId?.jobOrder?.toLowerCase().includes(query) || report.taskId?.project?.jobOrder?.toLowerCase().includes(query) || false;
+        const technicianMatch = report.technicianId?.username?.toLowerCase().includes(query) || report.technicianId?.fullName?.toLowerCase().includes(query) || false;
+        const projectMatch = report.taskId?.project?.projectName?.toLowerCase().includes(query) || false;
+
+        return clientMatch || taskMatch || jobOrderMatch || technicianMatch || projectMatch;
+    });
 
     const handleViewReport = (report) => {
         setSelectedReport(report);
@@ -62,30 +74,29 @@ const AdminServiceReports = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Service Reports</h1>
                     <p className="text-gray-500 text-sm">View and manage field service reports</p>
                 </div>
-                <div className="grid grid-cols-2 md:flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
-                    <input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2 w-full bg-white"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Filter by Client..."
-                        value={filterClient}
-                        onChange={(e) => setFilterClient(e.target.value)}
-                        className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2 w-full bg-white"
-                    />
-                    <div className="col-span-2 md:col-span-1 flex gap-2 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto md:min-w-[400px]">
+                    <div className="relative flex-1 group">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Search client, task, JO, or tech..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            autoFocus
+                            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm shadow-sm"
+                        />
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <input
+                            type="date"
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                            className="w-full sm:w-auto border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm p-2 shadow-sm outline-none transition-all text-gray-700"
+                        />
                         <button
-                            onClick={fetchReports}
-                            className="flex-1 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-1 shadow-sm text-sm"
-                        >
-                            <MagnifyingGlassIcon className="w-5 h-5" /> Search
-                        </button>
-                        <button
-                            onClick={() => { setFilterDate(''); setFilterClient(''); fetchReports(); }}
+                            onClick={() => { setFilterDate(''); setSearchQuery(''); }}
                             className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition flex items-center justify-center shadow-sm"
+                            title="Reset Filters"
                         >
                             <ArrowPathIcon className="w-5 h-5" />
                         </button>
@@ -110,10 +121,10 @@ const AdminServiceReports = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
                                 <tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>
-                            ) : reports.length === 0 ? (
+                            ) : filteredReports.length === 0 ? (
                                 <tr><td colSpan="6" className="text-center py-8 text-gray-500">No reports found</td></tr>
                             ) : (
-                                reports.map(report => (
+                                filteredReports.map(report => (
                                     <tr 
                                         key={report._id} 
                                         onClick={() => handleViewReport(report)}
@@ -134,9 +145,19 @@ const AdminServiceReports = () => {
                                             {report.taskId ? (
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-medium text-indigo-700">{report.taskId.title}</span>
-                                                    {report.taskId.project?.projectName && (
-                                                        <span className="text-xs text-gray-500">{report.taskId.project.projectName}</span>
-                                                    )}
+                                                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                                        {report.taskId.project?.projectName && (
+                                                            <span className="text-xs text-gray-500">{report.taskId.project.projectName}</span>
+                                                        )}
+                                                        {(report.taskId.jobOrder || report.taskId.project?.jobOrder) && (
+                                                            <>
+                                                                <span className="text-gray-300 mx-1">•</span>
+                                                                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 uppercase tracking-wide">
+                                                                    JO: {report.taskId.jobOrder || report.taskId.project?.jobOrder}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <span className="text-sm text-gray-400 italic">Independent</span>

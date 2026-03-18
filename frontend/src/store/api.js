@@ -12,10 +12,14 @@ const api = axios.create({
   baseURL: getApiUrl(),
 });
 
-// Request interceptor to always read the latest token from localStorage
+// Request interceptor to always read the latest token from localStorage or sessionStorage
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    let token = localStorage.getItem('token');
+    if (!token) {
+      token = sessionStorage.getItem('token');
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

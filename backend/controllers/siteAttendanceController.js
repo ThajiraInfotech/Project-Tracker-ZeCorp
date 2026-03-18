@@ -140,11 +140,13 @@ exports.getTaskAttendance = async (req, res) => {
 // Get All Site Attendance (For Admin)
 exports.getAllAttendance = async (req, res) => {
     try {
-        const { date, userId } = req.query;
+        const { date, month, userId } = req.query;
         let query = {};
 
         if (date) {
             query.date = date;
+        } else if (month) {
+            query.date = { $regex: `^${month}` };
         }
 
         if (userId) {

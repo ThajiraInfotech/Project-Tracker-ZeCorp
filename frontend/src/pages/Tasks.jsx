@@ -792,9 +792,9 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
         {error && <div className="text-red-500">{error}</div>}
 
         {/* Show list if we have tasks (even if loading) OR if not loading and no error */}
-        {(tasks.length > 0 || (!loading && !error)) && (
+        {(filteredTasks.length > 0 || (!loading && !error)) && (
           <div className={loading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}>
-            {tasks.length > 0 ? (
+            {filteredTasks.length > 0 ? (
               <KanbanBoard
                 tasks={filteredTasks}
                 onUpdateTaskStatus={(taskId, status, progress) => handleUpdateTask({ status, progress }, taskId)}
@@ -1233,7 +1233,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
 
       {/* Empty state */}
       {
-        !loading && !error && tasks.length === 0 && (
+        !loading && !error && filteredTasks.length === 0 && (
           <div className="text-center py-12">
             <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1248,7 +1248,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
 
       {/* Tasks display */}
       {
-        !loading && !error && tasks.length > 0 && (
+        !loading && !error && filteredTasks.length > 0 && (
           viewMode === 'card' ? (
             <motion.div
               initial={{ opacity: 0 }}

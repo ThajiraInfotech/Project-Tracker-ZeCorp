@@ -26,4 +26,12 @@ router.get('/all', authMiddleware, (req, res, next) => {
   next();
 }, attendanceController.getAllAttendance);
 
+// Get monthly export (admin only)
+router.get('/monthly-export', authMiddleware, (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  next();
+}, attendanceController.getMonthlyExport);
+
 module.exports = router;

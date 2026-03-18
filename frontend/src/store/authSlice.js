@@ -108,12 +108,35 @@ export const logout = createAsyncThunk(
   }
 );
 
+// Helper function to synchronously get auth state
+const getStoredAuth = () => {
+  let token = localStorage.getItem('token');
+  let userStr = localStorage.getItem('user');
+
+  if (!token || !userStr) {
+    token = sessionStorage.getItem('token');
+    userStr = sessionStorage.getItem('user');
+  }
+
+  if (token && userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      return { user, token, isAuthenticated: true };
+    } catch (error) {
+      return { user: null, token: null, isAuthenticated: false };
+    }
+  }
+  return { user: null, token: null, isAuthenticated: false };
+};
+
+const initialAuth = getStoredAuth();
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user: null,
-    token: null,
-    isAuthenticated: false,
+    user: initialAuth.user,
+    token: initialAuth.token,
+    isAuthenticated: initialAuth.isAuthenticated,
     loading: false,
     error: null
   },

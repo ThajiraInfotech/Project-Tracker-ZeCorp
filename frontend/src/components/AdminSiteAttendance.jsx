@@ -21,6 +21,11 @@ const AdminSiteAttendance = () => {
     const [loading, setLoading] = useState(true);
     const [dateChanging, setDateChanging] = useState(false);
     const [selectedDate, setSelectedDate] = useState(getDubaiToday());
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const today = new Date();
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const [viewMode, setViewMode] = useState('date');
     const [selectedReport, setSelectedReport] = useState(null);
 
     // UI State
@@ -31,7 +36,8 @@ const AdminSiteAttendance = () => {
     const fetchAllAttendance = async () => {
         try {
             setLoading(true);
-            const data = await siteAttendanceService.getAllAttendance(selectedDate);
+            const params = viewMode === 'month' ? { month: selectedMonth } : { date: selectedDate };
+            const data = await siteAttendanceService.getAllAttendance(params);
             if (data.success) {
                 setAllAttendance(data.attendance);
             }
@@ -47,7 +53,7 @@ const AdminSiteAttendance = () => {
         if (auth.isAuthenticated && (auth.user?.role === 'admin' || auth.user?.role === 'manager')) {
             fetchAllAttendance();
         }
-    }, [auth.isAuthenticated, auth.user, selectedDate]);
+    }, [auth.isAuthenticated, auth.user, selectedDate, selectedMonth, viewMode]);
 
     // Helpers
     const formatTime = (dateString) => {
@@ -93,7 +99,7 @@ const AdminSiteAttendance = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `site-attendance-${selectedDate}.csv`;
+        a.download = `site-attendance-${viewMode === 'month' ? selectedMonth : selectedDate}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
     };
@@ -110,24 +116,38 @@ const AdminSiteAttendance = () => {
         <div className="w-full">
             {/* Header Section with Date Picker matching AdminAttendance */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div></div> {/* Spacer to push Date Picker to right if needed, or remove */}
+                <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-200 w-fit">
+                    <button
+                        onClick={() => setViewMode('date')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'date' ? 'bg-[#700606] text-white shadow' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                        Daily
+                    </button>
+                    <button
+                        onClick={() => setViewMode('month')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'month' ? 'bg-[#700606] text-white shadow' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                        Monthly
+                    </button>
+                </div>
                 <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
                     <div className="flex bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => { setSelectedDate(e.target.value); setDateChanging(true); setTimeout(() => setDateChanging(false), 500); }}
-                            className="border-none bg-transparent focus:ring-0 text-sm font-medium text-gray-700"
-                        />
+                        {viewMode === 'date' ? (
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => { setSelectedDate(e.target.value); setDateChanging(true); setTimeout(() => setDateChanging(false), 500); }}
+                                className="border-none bg-transparent focus:ring-0 text-sm font-medium text-gray-700"
+                            />
+                        ) : (
+                            <input
+                                type="month"
+                                value={selectedMonth}
+                                onChange={(e) => { setSelectedMonth(e.target.value); setDateChanging(true); setTimeout(() => setDateChanging(false), 500); }}
+                                className="border-none bg-transparent focus:ring-0 text-sm font-medium text-gray-700"
+                            />
+                        )}
                     </div>
-                    <button
-                        onClick={fetchAllAttendance}
-                        disabled={loading || dateChanging}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#700606] text-white rounded-xl hover:bg-[#5a0505] font-medium shadow-sm transition-all"
-                    >
-                        <ArrowDownTrayIcon className="w-5 h-5" />
-                        <span className="hidden md:inline">Request Data</span>
-                    </button>
                 </div>
             </div>
 
@@ -177,7 +197,7 @@ const AdminSiteAttendance = () => {
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Technician</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reference</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Site Time</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
                                 <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
@@ -204,19 +224,34 @@ const AdminSiteAttendance = () => {
                                         {record.taskId ? (
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-indigo-700">{record.taskId.title}</span>
-                                                {record.taskId.project?.projectName && (
-                                                    <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
-                                                )}
+                                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                                    {record.taskId.project?.projectName && (
+                                                        <span className="text-xs text-gray-500">{record.taskId.project.projectName}</span>
+                                                    )}
+                                                    {(record.taskId.jobOrder || record.taskId.project?.jobOrder) && (
+                                                        <>
+                                                            <span className="text-gray-300 mx-1">•</span>
+                                                            <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 uppercase tracking-wide">
+                                                                JO: {record.taskId.jobOrder || record.taskId.project?.jobOrder}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : (
                                             <span className="text-sm text-gray-400 italic">Independent</span>
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm">
-                                            <span className="font-mono text-gray-900">{formatTime(record.checkIn)}</span>
-                                            <span className="text-gray-400 mx-1">-</span>
-                                            <span className="font-mono text-gray-900">{formatTime(record.checkOut)}</span>
+                                        <div className="text-sm flex flex-col">
+                                            {viewMode === 'month' && (
+                                                <span className="text-xs font-medium text-gray-500 mb-0.5">{formatDate(record.date)}</span>
+                                            )}
+                                            <div>
+                                                <span className="font-mono text-gray-900">{formatTime(record.checkIn)}</span>
+                                                <span className="text-gray-400 mx-1">-</span>
+                                                <span className="font-mono text-gray-900">{formatTime(record.checkOut)}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
