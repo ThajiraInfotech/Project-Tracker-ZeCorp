@@ -2,10 +2,12 @@ const emailService = require('../../../utils/emailService');
 
 const send = async (recipient, templateData) => {
   try {
-    if (!recipient.email) {
-      console.warn(`EmailChannel: User ${recipient.username} has no email`);
+    if (!recipient || !recipient.email) {
+      console.warn(`[EmailChannel] Skipped — user "${recipient?.username || 'unknown'}" has no email address`);
       return false;
     }
+
+    console.log(`[EmailChannel] Sending "${templateData.type}" email to ${recipient.email}`);
 
     // Enterprise Brand Colors - ZeCorp Theme
     const BRAND_COLOR = '#700606'; // Deep Red
@@ -139,6 +141,41 @@ const send = async (recipient, templateData) => {
                 <td style="padding: 15px;">
                   <p style="margin: 0 0 5px; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Project</p>
                   <p style="margin: 0; font-size: 16px; color: #334155; font-weight: 600;">${templateData.project ? templateData.project.projectName : 'N/A'}</p>
+                </td>
+              </tr>
+            </table>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.FRONTEND_URL}${templateData.relatedLink}" style="display: inline-block; padding: 12px 24px; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">View Task Details</a>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else if (templateData.type === 'TASK_SUPERVISOR_ADDED') {
+      subject = `Supervisor Assignment: ${templateData.entityTitle}`;
+      contentBody = `
+        <tr>
+          <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 8px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+               <img src="${process.env.FRONTEND_URL}/zecorp_logo.png" alt="ZeCorp Logo" style="max-width: 150px; height: auto;" />
+            </div>
+            <h1 style="color: ${BRAND_COLOR}; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 700; margin: 0 0 20px; text-align: center;">
+              Supervisor Assignment
+            </h1>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #555555; margin: 0 0 20px;">
+              Hello <strong>${recipient.fullName || recipient.username}</strong>,<br><br>
+              You have been assigned as the <strong>Supervisor (CC)</strong> for a task.
+            </p>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 5px; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Task Title</p>
+                  <p style="margin: 0; font-size: 16px; color: #334155; font-weight: 700;">${templateData.entityTitle}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 15px;">
+                  <p style="margin: 0 0 5px; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Project</p>
+                  <p style="margin: 0; font-size: 16px; color: #334155; font-weight: 600;">${templateData.project ? (templateData.project.projectName || templateData.project) : 'N/A'}</p>
                 </td>
               </tr>
             </table>

@@ -6,60 +6,69 @@ class EmailService {
   }
 
   _createTransporter() {
-    if (process.env.EMAIL_SERVICE === 'gmail') {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD
-        }
-      });
-    } else if (process.env.SENDGRID_API_KEY) {
-      return nodemailer.createTransport({
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false,
-        auth: {
-          user: 'apikey',
-          pass: process.env.SENDGRID_API_KEY
-        }
-      });
-    } else if (process.env.EMAIL_SERVICE === 'smtp') {
-      // SMTP (Standard) - Explicit check
-      const isSecure = process.env.SMTP_PORT == 465 || process.env.SMTP_SECURE === 'true';
-      return nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.example.com',
-        port: process.env.SMTP_PORT || 587,
-        secure: isSecure, // true for 465, false for other ports
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD
-        },
-        tls: {
-          rejectUnauthorized: false // Helps with self-signed certs or strict corporate firewalls
-        }
-      });
-    } else {
-      throw new Error(`Invalid EMAIL_SERVICE configuration: ${process.env.EMAIL_SERVICE}`);
+    try {
+      if (process.env.EMAIL_SERVICE === 'gmail') {
+        return nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
+          }
+        });
+      } else if (process.env.SENDGRID_API_KEY) {
+        return nodemailer.createTransport({
+          host: 'smtp.sendgrid.net',
+          port: 587,
+          secure: false,
+          auth: {
+            user: 'apikey',
+            pass: process.env.SENDGRID_API_KEY
+          }
+        });
+      } else if (process.env.EMAIL_SERVICE === 'smtp') {
+        const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+        const isSecure = port === 465 || process.env.SMTP_SECURE === 'true';
+        return nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.example.com',
+          port,
+          secure: isSecure,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+      } else {
+        console.warn(`[EmailService] Unknown EMAIL_SERVICE: "${process.env.EMAIL_SERVICE}". Email will be disabled.`);
+        return null;
+      }
+    } catch (err) {
+      console.error('[EmailService] Failed to create transporter:', err.message);
+      return null;
     }
   }
 
   async sendEmail(to, subject, htmlContent, attachments = []) {
+    if (!this.transporter) {
+      console.warn(`[EmailService] Transporter not initialised — skipping email to ${to}`);
+      return { skipped: true };
+    }
     try {
       const mailOptions = {
         from: process.env.EMAIL_FROM || '"ZeCorp WorkFlow" <noreply@zecorp.ae>',
-        to: to,
-        subject: subject,
+        to,
+        subject,
         html: htmlContent,
-        attachments: attachments
+        attachments
       };
 
       const info = await this.transporter.sendMail(mailOptions);
       console.log('Email sent: %s', info.messageId);
       return info;
     } catch (error) {
-      console.error('Error sending email:', error);
-      // Don't throw, just log. We don't want to break the queue worker.
+      console.error('[EmailService] Error sending email to', to, ':', error.message);
       return { error: error.message };
     }
   }

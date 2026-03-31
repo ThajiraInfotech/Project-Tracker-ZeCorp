@@ -23,6 +23,7 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import TimeTracking from './pages/TimeTracking';
 import Performance from './pages/Performance';
+import NotificationsPage from './pages/NotificationsPage';
 
 // Attendance pages
 import StaffAttendance from './pages/StaffAttendance';
@@ -126,6 +127,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
 
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>

@@ -305,7 +305,7 @@ const MainLayout = () => {
         </div>
 
         {/* Page content */}
-        <main className={`flex-1 overflow-y-auto ${['/manager', '/attendance', '/staff', '/performance'].includes(location.pathname) ? 'p-0' : 'p-4'}`}>
+        <main className={`flex-1 overflow-y-auto ${['/manager', '/attendance', '/staff', '/performance', '/notifications'].includes(location.pathname) ? 'p-0' : 'p-4'}`}>
           <Outlet />
         </main>
       </div>

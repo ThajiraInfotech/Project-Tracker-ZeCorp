@@ -116,3 +116,17 @@ body {
     display: none;
   }
 }
+
+/* Notifications page: shimmer skeleton */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* Notifications page: reveal row actions on hover */
+.notif-row:hover .notif-row-actions {
+  opacity: 1 !important;
+}
+.notif-row:hover {
+  background: #f8fafc !important;
+}

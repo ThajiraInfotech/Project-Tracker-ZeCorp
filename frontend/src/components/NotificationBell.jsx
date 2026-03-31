@@ -305,7 +305,7 @@ const NotificationBell = ({ onNotificationClick }) => {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  // Could navigate to full notifications page if needed
+                  navigate('/notifications');
                 }}
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium w-full text-center"
               >
