@@ -150,6 +150,41 @@ const send = async (recipient, templateData) => {
           </td>
         </tr>
       `;
+    } else if (templateData.type === 'SUBTASK_ASSIGNED') {
+      subject = `New Subtask Assigned: ${templateData.subtaskTitle}`;
+      contentBody = `
+        <tr>
+          <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 8px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+               <img src="${process.env.FRONTEND_URL}/zecorp_logo.png" alt="ZeCorp Logo" style="max-width: 150px; height: auto;" />
+            </div>
+            <h1 style="color: ${BRAND_COLOR}; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 700; margin: 0 0 20px; text-align: center;">
+              New Subtask Assignment
+            </h1>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #555555; margin: 0 0 20px;">
+              Hello <strong>${recipient.fullName}</strong>,<br><br>
+              A new subtask has been assigned to you.
+            </p>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 5px; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Subtask Title</p>
+                  <p style="margin: 0; font-size: 16px; color: #334155; font-weight: 700;">${templateData.subtaskTitle}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 5px; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600;">Parent Task</p>
+                  <p style="margin: 0; font-size: 16px; color: #334155; font-weight: 600;">${templateData.entityTitle}</p>
+                </td>
+              </tr>
+            </table>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.FRONTEND_URL}${templateData.relatedLink}" style="display: inline-block; padding: 12px 24px; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">View Subtask Details</a>
+            </div>
+          </td>
+        </tr>
+      `;
     } else if (templateData.type === 'TASK_SUPERVISOR_ADDED') {
       subject = `Supervisor Assignment: ${templateData.entityTitle}`;
       contentBody = `

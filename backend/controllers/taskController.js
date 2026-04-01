@@ -407,6 +407,7 @@ exports.updateTask = async (req, res) => {
     // Update task
     const oldAssignedTo = task.assignedTo ? task.assignedTo.toString() : null;
     const oldCC = task.cc ? task.cc.toString() : null;
+    const oldSubtasks = task.subtasks && task.subtasks.length > 0 ? JSON.parse(JSON.stringify(task.subtasks)) : [];
     updates.forEach(update => task[update] = req.body[update]);
 
     // Auto-archive check
@@ -471,6 +472,38 @@ exports.updateTask = async (req, res) => {
           relatedLink: `/tasks?taskId=${task._id}`,
           project: projectExists
         });
+      }
+    }
+
+    // EMIT EVENT: Subtask Assigned
+    if (updates.includes('subtasks') && req.user) {
+      for (const subtask of task.subtasks) {
+        if (!subtask.assignedTo) continue;
+
+        const oldSubtask = oldSubtasks.find(st => st._id && st._id.toString() === subtask._id.toString());
+        const isNewAssignment = !oldSubtask || (oldSubtask.assignedTo?.toString() !== subtask.assignedTo.toString());
+
+        if (isNewAssignment) {
+          try {
+            const assignedUser = await User.findById(subtask.assignedTo);
+            const projectExists = task.project ? await Project.findById(task.project) : null;
+            if (assignedUser) {
+              await publishEvent('SUBTASK_ASSIGNED', {
+                entityType: 'task',
+                entityId: task._id,
+                entityTitle: task.title,
+                subtaskTitle: subtask.title,
+                assignedTo: assignedUser,
+                triggeredBy: req.user._id,
+                messageSnippet: `You have been assigned to a subtask: ${subtask.title}`,
+                relatedLink: `/tasks?taskId=${task._id}`,
+                project: projectExists
+              });
+            }
+          } catch (err) {
+            console.error('Error fetching user for subtask notification:', err);
+          }
+        }
       }
     }
 

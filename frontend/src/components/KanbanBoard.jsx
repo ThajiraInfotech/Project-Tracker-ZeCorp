@@ -35,7 +35,7 @@ const TaskCard = ({ task, onClick, onChatClick, onDelete, currentUser }) => {
   return (
     <div
       onClick={() => onClick && onClick(task)}
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab relative group"
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab relative group min-w-0"
     >
       {/* Delete button for admins */}
       {currentUser?.role === 'admin' && onDelete && (
@@ -53,39 +53,43 @@ const TaskCard = ({ task, onClick, onChatClick, onDelete, currentUser }) => {
         </button>
       )}
 
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 text-sm leading-tight pr-5">{task.title}</h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
-          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-green-100 text-green-800'
-          }`}>
-          {task.priority}
-        </span>
-        {task.subtasks && task.subtasks.length > 0 && (
-          <div className="flex flex-col ml-2 flex-shrink-0 gap-1.5 min-w-0">
-            <span 
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-700 border border-slate-200 self-start w-fit" 
-            >
-              <ClipboardDocumentListIcon className="w-3 h-3 text-slate-500" />
-              <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span>
-            </span>
-            <div className="flex flex-col gap-0.5">
-              {task.subtasks.slice(0, 2).map((st, idx) => (
-                <div key={idx} className="flex items-center gap-1 text-[9px] text-gray-500 max-w-[100px]">
-                  <div className={`w-1 h-1 rounded-full flex-shrink-0 ${st.status === 'completed' ? 'bg-emerald-500' : st.status === 'in-progress' ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                  <span className={`truncate ${st.status === 'completed' ? 'line-through text-gray-400' : ''}`} title={st.title}>
-                    {st.title}
-                  </span>
-                </div>
-              ))}
-              {task.subtasks.length > 2 && (
-                <div className="text-[9px] text-slate-400 font-medium pl-2">
-                  +{task.subtasks.length - 2} more
-                </div>
-              )}
+      <div className="flex items-start gap-3 mb-3 min-w-0">
+        <h4 className="flex-1 min-w-0 font-medium text-gray-900 text-sm leading-tight break-words">
+          {task.title}
+        </h4>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
+            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-green-100 text-green-800'
+            }`}>
+            {task.priority}
+          </span>
+          {task.subtasks && task.subtasks.length > 0 && (
+            <div className="flex flex-col items-end gap-1 min-w-0 max-w-[8.5rem]">
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-700 border border-slate-200"
+              >
+                <ClipboardDocumentListIcon className="w-3 h-3 text-slate-500" />
+                <span className="font-semibold text-slate-900">{task.subtasks.filter(st => st.status === 'completed').length}/{task.subtasks.length}</span>
+              </span>
+              <div className="flex flex-col gap-0.5 w-full">
+                {task.subtasks.slice(0, 2).map((st, idx) => (
+                  <div key={idx} className="flex items-center justify-end gap-1 text-[9px] text-gray-500 w-full">
+                    <div className={`w-1 h-1 rounded-full flex-shrink-0 ${st.status === 'completed' ? 'bg-emerald-500' : st.status === 'in-progress' ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                    <span className={`truncate ${st.status === 'completed' ? 'line-through text-gray-400' : ''}`} title={st.title}>
+                      {st.title}
+                    </span>
+                  </div>
+                ))}
+                {task.subtasks.length > 2 && (
+                  <div className="text-[9px] text-slate-400 font-medium text-right">
+                    +{task.subtasks.length - 2} more
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {/* Project name and Job Order - only show if exists */}
       {task.project?.projectName && (
@@ -201,7 +205,7 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick, onDe
         {statuses.map(status => {
           const statusTasks = getTasksByStatus(status.id);
           return (
-            <div key={status.id} className="flex-shrink-0 w-56">
+            <div key={status.id} className="flex-shrink-0 w-[17rem] md:w-72">
               <div className={`${status.color} rounded-lg p-3 border border-gray-200 h-full`}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">
@@ -212,7 +216,7 @@ const KanbanBoard = ({ tasks, onUpdateTaskStatus, onTaskClick, onChatClick, onDe
                   </span>
                 </div>
                 <Droppable id={status.id}>
-                  <div className="space-y-2 min-h-[300px] max-h-[60vh] overflow-y-auto">
+                  <div className="space-y-2 min-h-[300px] max-h-[60vh] overflow-y-auto overflow-x-hidden pr-1">
                     {statusTasks.map(task => (
                       <Draggable
                         key={task._id}

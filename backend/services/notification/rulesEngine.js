@@ -42,6 +42,11 @@ const RULES = {
         getRecipients: (data) => [data.assignedTo].filter(Boolean),
         priority: 'high'
     },
+    SUBTASK_ASSIGNED: {
+        channels: ['IN_APP', 'WHATSAPP', 'EMAIL'],
+        getRecipients: (data) => [data.assignedTo].filter(Boolean),
+        priority: 'high'
+    },
     TASK_SUPERVISOR_ADDED: {
         channels: ['IN_APP', 'WHATSAPP', 'EMAIL'],
         getRecipients: (data) => [data.cc].filter(Boolean),
