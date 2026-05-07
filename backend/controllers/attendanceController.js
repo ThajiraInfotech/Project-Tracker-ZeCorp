@@ -32,6 +32,11 @@ exports.checkIn = async (req, res) => {
 
     await attendance.save();
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('attendance_updated', { userId: req.user._id });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Checked in successfully',
@@ -128,6 +133,11 @@ exports.checkOut = async (req, res) => {
     console.log('[DEBUG] Saving attendance record...');
     await attendance.save();
     console.log('[DEBUG] Attendance saved successfully');
+
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('attendance_updated', { userId: req.user._id });
+    }
 
     res.json({
       success: true,

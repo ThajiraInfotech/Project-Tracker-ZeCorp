@@ -37,6 +37,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
 import AdminSiteAttendance from '../components/AdminSiteAttendance';
@@ -121,6 +122,18 @@ const AdminAttendance = () => {
     if (auth.isAuthenticated && auth.user?.role === 'admin') {
       fetchAllAttendance();
     }
+  }, [auth.isAuthenticated, auth.user, selectedDate]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!auth.isAuthenticated || auth.user?.role !== 'admin') return;
+    const handleUpdate = () => {
+      fetchAllAttendance();
+    };
+    socket.on('attendance_updated', handleUpdate);
+    return () => {
+      socket.off('attendance_updated', handleUpdate);
+    };
   }, [auth.isAuthenticated, auth.user, selectedDate]);
 
   // --- Actions ---

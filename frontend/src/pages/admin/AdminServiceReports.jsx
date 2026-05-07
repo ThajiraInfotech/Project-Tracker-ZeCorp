@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { socket } from '../../App';
 import siteAttendanceService from '../../services/siteAttendanceService';
 import {
     DocumentTextIcon,
@@ -40,6 +41,17 @@ const AdminServiceReports = () => {
 
     useEffect(() => {
         fetchReports();
+    }, [filterDate]);
+
+    // Real-time updates via socket
+    useEffect(() => {
+        const handleUpdate = () => {
+            fetchReports();
+        };
+        socket.on('service_report_created', handleUpdate);
+        return () => {
+            socket.off('service_report_created', handleUpdate);
+        };
     }, [filterDate]);
 
     const filteredReports = reports.filter(report => {

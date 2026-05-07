@@ -12,6 +12,7 @@ import {
   CheckCircleIcon as CheckCircleSolid,
 } from '@heroicons/react/24/solid';
 import api from '../store/api';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import { formatTimeDubai, formatDateDubai, getDubaiToday } from '../utils/dateUtils';
 import TechnicianSiteAttendance from '../components/TechnicianSiteAttendance';
@@ -101,6 +102,18 @@ const StaffAttendance = () => {
     if (auth.isAuthenticated) {
       fetchAttendance();
     }
+  }, [auth.isAuthenticated]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const handleUpdate = () => {
+      fetchAttendance();
+    };
+    socket.on('attendance_updated', handleUpdate);
+    return () => {
+      socket.off('attendance_updated', handleUpdate);
+    };
   }, [auth.isAuthenticated]);
 
 

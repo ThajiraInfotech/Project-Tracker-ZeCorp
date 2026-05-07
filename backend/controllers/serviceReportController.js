@@ -87,6 +87,11 @@ exports.submitServiceReport = async (req, res) => {
 
         await activeSite.save();
 
+        // Broadcast real-time update to all connected clients
+        if (req.io) {
+            req.io.to('global').emit('service_report_created', { reportId: report._id });
+        }
+
         res.status(201).json({
             success: true,
             message: 'Service Report submitted & site closed'

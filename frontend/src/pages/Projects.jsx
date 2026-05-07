@@ -39,6 +39,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import Pagination from '../components/Pagination';
 
@@ -388,6 +389,19 @@ const Projects = ({ isArchivedView = false, isEmbedded = false }) => {
       fetchProjects();
     }
   }, [auth.isAuthenticated, isArchivedView]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const events = ['project_created', 'project_updated', 'project_deleted'];
+    const handleUpdate = () => {
+      fetchProjects();
+    };
+    events.forEach(event => socket.on(event, handleUpdate));
+    return () => {
+      events.forEach(event => socket.off(event, handleUpdate));
+    };
+  }, [auth.isAuthenticated]);
 
   useEffect(() => {
     const fetchManagers = async () => {

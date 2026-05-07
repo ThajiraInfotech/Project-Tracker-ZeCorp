@@ -12,6 +12,7 @@ import {
     EyeIcon
 } from '@heroicons/react/24/outline';
 import siteAttendanceService from '../services/siteAttendanceService';
+import { socket } from '../App';
 import { useSelector } from 'react-redux';
 import ServiceReportForm from './ServiceReportForm';
 import ServiceReportDetailModal from './ServiceReportDetailModal';
@@ -57,6 +58,18 @@ const TechnicianSiteAttendance = () => {
 
     useEffect(() => {
         fetchHistory();
+    }, []);
+
+    // Real-time updates via socket
+    useEffect(() => {
+        const events = ['site_attendance_updated', 'service_report_created'];
+        const handleUpdate = () => {
+            fetchHistory();
+        };
+        events.forEach(event => socket.on(event, handleUpdate));
+        return () => {
+            events.forEach(event => socket.off(event, handleUpdate));
+        };
     }, []);
 
     // Timer Logic

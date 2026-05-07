@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import siteAttendanceService from '../services/siteAttendanceService';
+import { socket } from '../App';
 import {
     MagnifyingGlassIcon,
     ArrowDownTrayIcon,
@@ -54,6 +55,20 @@ const AdminSiteAttendance = () => {
             fetchAllAttendance();
         }
     }, [auth.isAuthenticated, auth.user, selectedDate, selectedMonth, viewMode]);
+
+    // Real-time updates via socket
+    useEffect(() => {
+        if (!auth.isAuthenticated) return;
+        const handleUpdate = () => {
+            fetchAllAttendance();
+        };
+        socket.on('site_attendance_updated', handleUpdate);
+        socket.on('service_report_created', handleUpdate);
+        return () => {
+            socket.off('site_attendance_updated', handleUpdate);
+            socket.off('service_report_created', handleUpdate);
+        };
+    }, [auth.isAuthenticated, selectedDate, selectedMonth, viewMode]);
 
     // Helpers
     const formatTime = (dateString) => {

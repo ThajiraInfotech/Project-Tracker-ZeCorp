@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import api from '../store/api';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import KanbanBoard from '../components/KanbanBoard';
 import ChatSidebar from '../components/ChatSidebar';
@@ -104,6 +105,19 @@ const StaffDashboard = () => {
       // Cleanup on unmount
       return () => clearInterval(interval);
     }
+  }, [user?.id]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!user?.id) return;
+    const events = ['task_created', 'task_updated', 'task_deleted'];
+    const handleUpdate = () => {
+      fetchStaffData(false); // silent refresh — no loading spinner
+    };
+    events.forEach(event => socket.on(event, handleUpdate));
+    return () => {
+      events.forEach(event => socket.off(event, handleUpdate));
+    };
   }, [user?.id]);
 
   // Time tracking function

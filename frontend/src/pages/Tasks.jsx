@@ -39,6 +39,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import api from '../store/api';
 import { fetchProjects } from '../store/projectSlice';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import TaskCreateModal from '../components/TaskCreateModal';
@@ -411,6 +412,19 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
       }
     }
   }, [auth.isAuthenticated, filterStatus, filterPriority, filterLabel, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const events = ['task_created', 'task_updated', 'task_deleted'];
+    const handleUpdate = () => {
+      fetchTasks();
+    };
+    events.forEach(event => socket.on(event, handleUpdate));
+    return () => {
+      events.forEach(event => socket.off(event, handleUpdate));
+    };
+  }, [auth.isAuthenticated]);
 
   // Sync assignedTo filter from URL
   useEffect(() => {

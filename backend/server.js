@@ -59,6 +59,9 @@ app.use((req, res, next) => {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  // Auto-join global room so all clients receive data-change broadcasts
+  socket.join('global');
+
   socket.on('join_room', (room) => {
     socket.join(room);
     console.log(`User ${socket.id} joined room: ${room}`);

@@ -62,6 +62,11 @@ exports.createProject = async (req, res) => {
       }
     }
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('project_created', { projectId: project._id });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Project created successfully',
@@ -192,6 +197,11 @@ exports.updateProject = async (req, res) => {
     }
     await project.save();
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('project_updated', { projectId: project._id });
+    }
+
     res.json({
       success: true,
       message: 'Project updated successfully',
@@ -219,7 +229,13 @@ exports.deleteProject = async (req, res) => {
     // Delete all tasks associated with this project
     await Task.deleteMany({ project: project._id });
 
+    const deletedProjectId = project._id;
     await project.deleteOne();
+
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('project_deleted', { projectId: deletedProjectId });
+    }
 
     res.json({
       success: true,

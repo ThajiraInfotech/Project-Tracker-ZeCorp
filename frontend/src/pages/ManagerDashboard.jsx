@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import api from '../store/api';
+import { socket } from '../App';
 import { toast } from 'react-toastify';
 import {
   Chart as ChartJS,
@@ -152,6 +153,22 @@ const ManagerDashboard = () => {
       }
     };
   }, [user, authLoading]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    if (!user?.id) return;
+    const events = [
+      'task_created', 'task_updated', 'task_deleted',
+      'project_created', 'project_updated', 'project_deleted'
+    ];
+    const handleUpdate = () => {
+      fetchManagerData();
+    };
+    events.forEach(event => socket.on(event, handleUpdate));
+    return () => {
+      events.forEach(event => socket.off(event, handleUpdate));
+    };
+  }, [user?.id]);
 
   // Calculate statistics
   const totalProjects = projects.length;

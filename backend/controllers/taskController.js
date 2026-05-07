@@ -138,6 +138,11 @@ exports.createTask = async (req, res) => {
       }
     }
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_created', { taskId: task._id });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Task created successfully',
@@ -523,6 +528,11 @@ exports.updateTask = async (req, res) => {
     taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
     if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_updated', { taskId: task._id });
+    }
+
     res.json({
       success: true,
       message: 'Task updated successfully',
@@ -557,11 +567,17 @@ exports.deleteTask = async (req, res) => {
     }
 
     const projectId = task.project;
+    const deletedTaskId = task._id;
     await task.deleteOne();
 
     // Update project progress and status
     if (projectId) {
       await updateProjectProgressAndStatus(projectId);
+    }
+
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_deleted', { taskId: deletedTaskId });
     }
 
     res.json({
@@ -654,6 +670,11 @@ exports.updateTaskStatus = async (req, res) => {
     taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
     if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
 
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_updated', { taskId: task._id });
+    }
+
     res.json({
       success: true,
       message: 'Task status updated successfully',
@@ -724,6 +745,11 @@ exports.updateTaskProgress = async (req, res) => {
     const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
     taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
     if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
+
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_updated', { taskId: task._id });
+    }
 
     res.json({
       success: true,
@@ -841,6 +867,11 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
     const updatedTaskIsManager = ['admin', 'manager'].includes(req.user.role);
     taskObj.readOnly = !updatedTaskIsManager && !isParentAssignee;
     if (updatedTaskIsCC && !updatedTaskIsManager) taskObj.readOnly = true;
+
+    // Broadcast real-time update to all connected clients
+    if (req.io) {
+      req.io.to('global').emit('task_updated', { taskId: task._id });
+    }
 
     res.json({
       success: true,

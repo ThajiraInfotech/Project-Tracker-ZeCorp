@@ -29,6 +29,11 @@ exports.checkIn = async (req, res) => {
 
         await siteAttendance.save();
 
+        // Broadcast real-time update to all connected clients
+        if (req.io) {
+            req.io.to('global').emit('site_attendance_updated', { userId: req.user._id });
+        }
+
         res.status(201).json({
             success: true,
             message: 'Checked in for site work successfully',
@@ -72,6 +77,11 @@ exports.checkOut = async (req, res) => {
         attendance.status = 'Completed';
 
         await attendance.save();
+
+        // Broadcast real-time update to all connected clients
+        if (req.io) {
+            req.io.to('global').emit('site_attendance_updated', { userId: req.user._id });
+        }
 
         res.json({
             success: true,

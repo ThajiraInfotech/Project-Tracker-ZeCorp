@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAdminDashboardData } from '../store/reportSlice';
 import { Link, useNavigate } from 'react-router-dom';
+import { socket } from '../App';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -58,6 +59,21 @@ const AdminDashboard = () => {
       fetchData();
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Real-time updates via socket
+  useEffect(() => {
+    const events = [
+      'task_created', 'task_updated', 'task_deleted',
+      'project_created', 'project_updated', 'project_deleted'
+    ];
+    const handleUpdate = () => {
+      fetchData();
+    };
+    events.forEach(event => socket.on(event, handleUpdate));
+    return () => {
+      events.forEach(event => socket.off(event, handleUpdate));
+    };
   }, [fetchData]);
 
   // Enhanced dashboard data with admin-specific metrics

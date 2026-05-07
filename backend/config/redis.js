@@ -8,6 +8,10 @@ const redisConfig = {
     maxRetriesPerRequest: null, // Required for BullMQ
     enableReadyCheck: false,
     retryStrategy(times) {
+        if (times > 3) {
+            console.warn('[Redis] Max connection retries reached. Stopping attempts. Background features like Notifications may be disabled.');
+            return null;
+        }
         const delay = Math.min(times * 50, 2000);
         return delay;
     },
@@ -20,12 +24,16 @@ const getRedisConnection = () => {
         connection = new Redis(redisConfig);
 
         connection.on('error', (err) => {
-            console.warn('Redis connection error (Notifications may be delayed):', err.message);
-            // We don't crash the app, just log warning
+            // Prevent spamming the full AggregateError in console
+            if (!connection._hasLoggedError) {
+                console.warn('Redis connection error (Notifications may be delayed). Ensure Redis is running on', redisConfig.host + ':' + redisConfig.port);
+                connection._hasLoggedError = true;
+            }
         });
 
         connection.on('connect', () => {
             console.log('Connected to Redis for Notification Service');
+            connection._hasLoggedError = false;
         });
     }
     return connection;
