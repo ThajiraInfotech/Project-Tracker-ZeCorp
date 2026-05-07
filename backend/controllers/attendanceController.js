@@ -100,9 +100,6 @@ exports.checkOut = async (req, res) => {
 
     // Determine status
     let status = 'Present';
-    if (totalHours < 4) {
-      status = 'Half-day';
-    }
 
     // Update record
     attendance.checkOut = checkOut;
@@ -227,24 +224,49 @@ exports.getTeamAttendance = async (req, res) => {
       date: dateParam
     }).populate('userId', 'username fullName email');
 
-    // 3. Merge: Create placeholders for missing users
+    // 3. Merge: Aggregate ALL shifts per user (supports split shifts)
     const mergedAttendance = teamUsers.map(user => {
-      const record = attendanceRecords.find(r => r.userId && r.userId._id.toString() === user._id.toString());
-      if (record) return record;
+      const userRecords = attendanceRecords
+        .filter(r => r.userId && r.userId._id.toString() === user._id.toString())
+        .sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
 
-      // Create dummy "Absent" record
+      if (userRecords.length === 0) {
+        return {
+          _id: 'temp-' + user._id,
+          userId: user,
+          date: dateParam,
+          status: 'Absent',
+          checkIn: null,
+          checkOut: null,
+          totalHours: 0,
+          regularHours: 0,
+          overtimeHours: 0,
+          dailyTotalPay: 0,
+          isTemp: true,
+          shifts: [],
+          shiftCount: 0
+        };
+      }
+
+      const totalHours   = parseFloat(userRecords.reduce((s, r) => s + (r.totalHours   || 0), 0).toFixed(2));
+      const regularHours = parseFloat(userRecords.reduce((s, r) => s + (r.regularHours || 0), 0).toFixed(2));
+      const overtimeHours= parseFloat(userRecords.reduce((s, r) => s + (r.overtimeHours|| 0), 0).toFixed(2));
+      const dailyTotalPay= parseFloat(userRecords.reduce((s, r) => s + (r.dailyTotalPay|| 0), 0).toFixed(2));
+      const aggregatedStatus = 'Present';
+
       return {
-        _id: 'temp-' + user._id, // temp ID for key prop
+        _id: userRecords[0]._id,
         userId: user,
         date: dateParam,
-        status: 'Absent',
-        checkIn: null,
-        checkOut: null,
-        totalHours: 0,
-        regularHours: 0,
-        overtimeHours: 0,
-        dailyTotalPay: 0,
-        isTemp: true // Flag for frontend if needed
+        checkIn:  userRecords[0].checkIn,
+        checkOut: userRecords[userRecords.length - 1].checkOut,
+        totalHours,
+        regularHours,
+        overtimeHours,
+        dailyTotalPay,
+        status: aggregatedStatus,
+        shifts: userRecords,
+        shiftCount: userRecords.length
       };
     });
 
@@ -286,23 +308,49 @@ exports.getAllAttendance = async (req, res) => {
       date: dateParam
     }).populate('userId', 'username fullName email');
 
-    // 3. Merge
+    // 3. Merge: Aggregate ALL shifts per user (supports split shifts)
     const mergedAttendance = allUsers.map(user => {
-      const record = attendanceRecords.find(r => r.userId && r.userId._id.toString() === user._id.toString());
-      if (record) return record;
+      const userRecords = attendanceRecords
+        .filter(r => r.userId && r.userId._id.toString() === user._id.toString())
+        .sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
+
+      if (userRecords.length === 0) {
+        return {
+          _id: 'temp-' + user._id,
+          userId: user,
+          date: dateParam,
+          status: 'Absent',
+          checkIn: null,
+          checkOut: null,
+          totalHours: 0,
+          regularHours: 0,
+          overtimeHours: 0,
+          dailyTotalPay: 0,
+          isTemp: true,
+          shifts: [],
+          shiftCount: 0
+        };
+      }
+
+      const totalHours   = parseFloat(userRecords.reduce((s, r) => s + (r.totalHours   || 0), 0).toFixed(2));
+      const regularHours = parseFloat(userRecords.reduce((s, r) => s + (r.regularHours || 0), 0).toFixed(2));
+      const overtimeHours= parseFloat(userRecords.reduce((s, r) => s + (r.overtimeHours|| 0), 0).toFixed(2));
+      const dailyTotalPay= parseFloat(userRecords.reduce((s, r) => s + (r.dailyTotalPay|| 0), 0).toFixed(2));
+      const aggregatedStatus = 'Present';
 
       return {
-        _id: 'temp-' + user._id,
+        _id: userRecords[0]._id,
         userId: user,
         date: dateParam,
-        status: 'Absent',
-        checkIn: null,
-        checkOut: null,
-        totalHours: 0,
-        regularHours: 0,
-        overtimeHours: 0,
-        dailyTotalPay: 0,
-        isTemp: true
+        checkIn:  userRecords[0].checkIn,
+        checkOut: userRecords[userRecords.length - 1].checkOut,
+        totalHours,
+        regularHours,
+        overtimeHours,
+        dailyTotalPay,
+        status: aggregatedStatus,
+        shifts: userRecords,
+        shiftCount: userRecords.length
       };
     });
 

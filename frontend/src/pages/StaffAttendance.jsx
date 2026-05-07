@@ -20,9 +20,11 @@ import TechnicianSiteAttendance from '../components/TechnicianSiteAttendance';
 const StaffAttendance = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
+  const [todayStatus, setTodayStatus] = useState('Pending');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('office'); // 'office' or 'site'
+  const [expandedRow, setExpandedRow] = useState(null); // date of expanded row
 
   // Date state for filtering
   const getCurrentMonth = () => {
@@ -50,13 +52,14 @@ const StaffAttendance = () => {
           .filter(r => !r.checkOut)
           .sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn))[0];
 
-        // Find today's record
+        // Find today's overall status
         const today = getDubaiToday();
-        const todayRec = records.find(r => r.date === today);
+        const hasTodayRecord = records.some(r => r.date === today);
 
         // We only care about "todayRecord" if it's ACTIVE.
         // If it's completed, we want to allow a new Check In.
         setTodayRecord(activeSession || null);
+        setTodayStatus(hasTodayRecord ? 'Present' : 'Absent');
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -127,6 +130,35 @@ const StaffAttendance = () => {
     // record.date is YYYY-MM-DD
     return record.date.startsWith(selectedMonth);
   });
+
+  // Group history by date for split shifts
+  const groupedHistory = Object.values(filteredHistory.reduce((acc, record) => {
+    if (!acc[record.date]) {
+      acc[record.date] = {
+        id: record.date,
+        date: record.date,
+        checkIn: record.checkIn,
+        checkOut: record.checkOut,
+        status: record.status,
+        totalHours: record.totalHours || 0,
+        shifts: [record],
+        shiftCount: 1
+      };
+    } else {
+      acc[record.date].shifts.push(record);
+      acc[record.date].shiftCount += 1;
+      acc[record.date].totalHours += (record.totalHours || 0);
+      
+      // Update first checkIn and last checkOut
+      if (new Date(record.checkIn) < new Date(acc[record.date].checkIn)) {
+          acc[record.date].checkIn = record.checkIn;
+      }
+      if (!acc[record.date].checkOut || (record.checkOut && new Date(record.checkOut) > new Date(acc[record.date].checkOut))) {
+          acc[record.date].checkOut = record.checkOut;
+      }
+    }
+    return acc;
+  }, {})).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const isTechnician = auth.user?.role === 'technician';
 
@@ -203,7 +235,7 @@ const StaffAttendance = () => {
                           Check In Now
                         </span>
                       </button>
-                    ) : !todayRecord?.checkOut ? (
+                    ) : (
                       <button
                         onClick={handleCheckOut}
                         disabled={loading || actionLoading}
@@ -215,8 +247,6 @@ const StaffAttendance = () => {
                           Check Out
                         </span>
                       </button>
-                    ) : (
-                      null
                     )}
                   </div>
                 </div>
@@ -225,17 +255,16 @@ const StaffAttendance = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
                     <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
-                    <p className={`text-lg font-bold mt-1 ${todayRecord?.status === 'Present' ? 'text-green-600' :
-                      todayRecord?.status === 'Half-day' ? 'text-yellow-600' :
-                        todayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
+                    <p className={`text-lg font-bold mt-1 ${todayStatus === 'Present' ? 'text-green-600' :
+                        todayStatus === 'Absent' ? 'text-red-600' : 'text-gray-400'
                       }`}>
-                      {todayRecord?.status || 'Pending'}
+                      {todayStatus}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
                     <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
                     <p className="text-lg font-bold text-gray-900 mt-1">
-                      {todayRecord?.checkIn ? 'Started' : 'Not Started'}
+                      {todayStatus === 'Present' ? 'Started' : 'Not Started'}
                     </p>
                   </div>
                 </div>
@@ -270,41 +299,74 @@ const StaffAttendance = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredHistory.length > 0 ? (
-                          filteredHistory.map((record, index) => (
-                            <motion.tr
-                              key={record._id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className="hover:bg-gray-50/80 transition-colors group"
-                            >
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-[#700606]/10 group-hover:text-[#700606] transition-colors">
-                                    <CalendarDaysIcon className="w-5 h-5" />
-                                  </div>
-                                  <span className="text-sm font-semibold text-gray-900">
-                                    {formatDate(record.date)}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm">
-                                  <p className="font-medium text-gray-900">{record.checkIn ? formatTime(record.checkIn) : '-'}</p>
-                                  <p className="text-xs text-gray-500">{record.checkOut ? formatTime(record.checkOut) : 'Active'}</p>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
-                                  record.status === 'Half-day' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                    record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
-                                  }`}>
-                                  {record.status}
-                                </span>
-                              </td>
-                            </motion.tr>
-                          ))
+                        {groupedHistory.length > 0 ? (
+                          groupedHistory.map((record, index) => {
+                            const isExpanded = expandedRow === record.date;
+                            const hasMultipleShifts = record.shiftCount > 1;
+
+                            return (
+                              <React.Fragment key={record.id}>
+                                <motion.tr
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  onClick={() => hasMultipleShifts && setExpandedRow(isExpanded ? null : record.date)}
+                                  className={`transition-colors group ${hasMultipleShifts ? 'cursor-pointer hover:bg-gray-100' : 'hover:bg-gray-50'}`}
+                                >
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-[#700606]/10 group-hover:text-[#700606] transition-colors">
+                                        <CalendarDaysIcon className="w-5 h-5" />
+                                      </div>
+                                      <div>
+                                          <span className="text-sm font-semibold text-gray-900">
+                                            {formatDate(record.date)}
+                                          </span>
+                                          {hasMultipleShifts && (
+                                            <span className="ml-2 px-1.5 py-0.5 bg-gray-200 text-gray-700 text-[10px] font-bold rounded-full">
+                                              {record.shiftCount} Shifts
+                                            </span>
+                                          )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm">
+                                      <p className="font-medium text-gray-900">
+                                          {record.checkIn ? formatTime(record.checkIn) : '-'} – {record.checkOut ? formatTime(record.checkOut) : 'Active'}
+                                          {hasMultipleShifts && (
+                                              <span className="ml-2 text-gray-400 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                                          )}
+                                      </p>
+                                      {record.totalHours > 0 && <p className="text-xs text-gray-500">{record.totalHours.toFixed(2)} hrs total</p>}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                                      }`}>
+                                      {record.status}
+                                    </span>
+                                  </td>
+                                </motion.tr>
+
+                                {/* Expandable Sub-rows */}
+                                {isExpanded && record.shifts.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn)).map((shift, si) => (
+                                    <tr key={shift._id} className="bg-gray-50/50 border-l-2 border-gray-300">
+                                        <td className="pl-16 py-3 text-xs text-gray-500 font-semibold">Shift {si + 1}</td>
+                                        <td className="px-6 py-3">
+                                            <span className="text-sm text-gray-600 font-mono">
+                                                {formatTime(shift.checkIn)} – {shift.checkOut ? formatTime(shift.checkOut) : 'Active'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <span className="text-xs text-gray-500">{shift.totalHours || 0} hrs</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })
                         ) : (
                           <tr>
                             <td colSpan="3" className="px-6 py-12 text-center text-gray-400">

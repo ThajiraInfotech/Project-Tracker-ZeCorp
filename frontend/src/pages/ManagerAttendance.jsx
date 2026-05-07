@@ -29,9 +29,13 @@ const ManagerAttendance = () => {
   // Personal Attendance State
   const [myAttendanceHistory, setMyAttendanceHistory] = useState([]);
   const [myTodayRecord, setMyTodayRecord] = useState(null);
+  const [myTodayStatus, setMyTodayStatus] = useState('Pending');
   const [myLoading, setMyLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [expandedRow, setExpandedRow] = useState(null); // date of expanded row
+  
+  const auth = useSelector((state) => state.auth);
   
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -50,7 +54,6 @@ const ManagerAttendance = () => {
   // Personal History Filter
   const [mySelectedMonth, setMySelectedMonth] = useState(getCurrentMonth());
 
-  const auth = useSelector((state) => state.auth);
 
   // --- Clock Logic ---
   useEffect(() => {
@@ -79,16 +82,17 @@ const ManagerAttendance = () => {
         const records = response.data.attendance;
         setMyAttendanceHistory(records);
 
-        // Find active sessionLogic
+        // Find active session
         const activeSession = records
           .filter(r => !r.checkOut)
           .sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn))[0];
 
-        // Find today's record
+        // Find today's overall status
         const today = getDubaiToday();
-        const todayRec = records.find(r => r.date === today);
+        const hasTodayRecord = records.some(r => r.date === today);
 
-        setMyTodayRecord(activeSession || todayRec);
+        setMyTodayRecord(activeSession || null);
+        setMyTodayStatus(hasTodayRecord ? 'Present' : 'Absent');
       }
     } catch (error) {
       console.error('Error fetching my attendance:', error);
@@ -158,11 +162,38 @@ const ManagerAttendance = () => {
     return formatDateDubai(dateString);
   };
 
-  // --- Filtering (Personal History) ---
   const myFilteredHistory = myAttendanceHistory.filter(record => {
     if (!record.date) return false;
     return record.date.startsWith(mySelectedMonth);
   });
+
+  // Group history by date for split shifts
+  const groupedMyHistory = Object.values(myFilteredHistory.reduce((acc, record) => {
+    if (!acc[record.date]) {
+      acc[record.date] = {
+        id: record.date,
+        date: record.date,
+        checkIn: record.checkIn,
+        checkOut: record.checkOut,
+        status: record.status,
+        totalHours: record.totalHours || 0,
+        shifts: [record],
+        shiftCount: 1
+      };
+    } else {
+      acc[record.date].shifts.push(record);
+      acc[record.date].shiftCount += 1;
+      acc[record.date].totalHours += (record.totalHours || 0);
+      
+      if (new Date(record.checkIn) < new Date(acc[record.date].checkIn)) {
+          acc[record.date].checkIn = record.checkIn;
+      }
+      if (!acc[record.date].checkOut || (record.checkOut && new Date(record.checkOut) > new Date(acc[record.date].checkOut))) {
+          acc[record.date].checkOut = record.checkOut;
+      }
+    }
+    return acc;
+  }, {})).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-50 via-white to-gray-100 font-sans">
@@ -240,7 +271,7 @@ const ManagerAttendance = () => {
 
                 {/* Buttons */}
                 <div className="flex gap-4">
-                  {!myTodayRecord?.checkIn ? (
+                  {!myTodayRecord ? (
                     <button
                       onClick={handleCheckIn}
                       disabled={myLoading || actionLoading}
@@ -252,7 +283,7 @@ const ManagerAttendance = () => {
                         Check In Now
                       </span>
                     </button>
-                  ) : !myTodayRecord?.checkOut ? (
+                  ) : (
                     <button
                       onClick={handleCheckOut}
                       disabled={myLoading || actionLoading}
@@ -264,11 +295,6 @@ const ManagerAttendance = () => {
                         Check Out
                       </span>
                     </button>
-                  ) : (
-                    <div className="px-8 py-4 bg-green-50 text-green-700 rounded-2xl font-bold border border-green-200 flex items-center gap-2">
-                      <CheckCircleSolid className="w-6 h-6" />
-                      Shift Completed
-                    </div>
                   )}
                 </div>
               </div>
@@ -277,17 +303,16 @@ const ManagerAttendance = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100 relative z-10 max-w-lg mx-auto">
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
                   <p className="text-xs text-gray-500 font-semibold uppercase">Status</p>
-                  <p className={`text-lg font-bold mt-1 ${myTodayRecord?.status === 'Present' ? 'text-green-600' :
-                    myTodayRecord?.status === 'Half-day' ? 'text-yellow-600' :
-                      myTodayRecord?.status === 'Absent' ? 'text-red-600' : 'text-gray-400'
+                  <p className={`text-lg font-bold mt-1 ${myTodayStatus === 'Present' ? 'text-green-600' :
+                      myTodayStatus === 'Absent' ? 'text-red-600' : 'text-gray-400'
                     }`}>
-                    {myTodayRecord?.status || 'Pending'}
+                    {myTodayStatus}
                   </p>
                 </div>
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
                   <p className="text-xs text-gray-500 font-semibold uppercase">Shift</p>
                   <p className="text-lg font-bold text-gray-900 mt-1">
-                    {myTodayRecord?.checkIn ? 'Started' : 'Not Started'}
+                    {myTodayStatus === 'Present' ? 'Started' : 'Not Started'}
                   </p>
                 </div>
               </div>
@@ -323,20 +348,61 @@ const ManagerAttendance = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {myFilteredHistory.map((record) => (
-                        <tr key={record._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-3 text-sm font-medium text-gray-900">{formatDate(record.date)}</td>
-                          <td className="px-6 py-3 text-sm text-gray-600 font-mono">
-                            {record.checkIn ? formatTime(record.checkIn) : '-'} - {record.checkOut ? formatTime(record.checkOut) : '-'}
-                          </td>
-                          <td className="px-6 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                              {record.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {myFilteredHistory.length === 0 && (
+                      {groupedMyHistory.length > 0 ? (
+                        groupedMyHistory.map((record, index) => {
+                          const isExpanded = expandedRow === record.date;
+                          const hasMultipleShifts = record.shiftCount > 1;
+
+                          return (
+                            <React.Fragment key={record.id}>
+                              <tr
+                                onClick={() => hasMultipleShifts && setExpandedRow(isExpanded ? null : record.date)}
+                                className={`transition-colors group ${hasMultipleShifts ? 'cursor-pointer hover:bg-gray-100' : 'hover:bg-gray-50'}`}
+                              >
+                                <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                                  <div className="flex items-center">
+                                    {formatDate(record.date)}
+                                    {hasMultipleShifts && (
+                                      <span className="ml-2 px-1.5 py-0.5 bg-gray-200 text-gray-700 text-[10px] font-bold rounded-full">
+                                        {record.shiftCount} Shifts
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 text-sm text-gray-600 font-mono">
+                                  {record.checkIn ? formatTime(record.checkIn) : '-'} – {record.checkOut ? formatTime(record.checkOut) : 'Active'}
+                                  {hasMultipleShifts && (
+                                      <span className="ml-2 text-gray-400 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                                  )}
+                                  {record.totalHours > 0 && <span className="ml-2 text-xs text-gray-500 font-sans">({record.totalHours.toFixed(2)}h)</span>}
+                                </td>
+                                <td className="px-6 py-3">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                                      record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                                    }`}>
+                                    {record.status}
+                                  </span>
+                                </td>
+                              </tr>
+                              
+                              {/* Expandable Sub-rows */}
+                              {isExpanded && record.shifts.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn)).map((shift, si) => (
+                                <tr key={shift._id} className="bg-gray-50/50 border-l-2 border-gray-300">
+                                    <td className="pl-10 py-2 text-xs text-gray-500 font-semibold">Shift {si + 1}</td>
+                                    <td className="px-6 py-2">
+                                        <span className="text-sm text-gray-600 font-mono">
+                                            {formatTime(shift.checkIn)} – {shift.checkOut ? formatTime(shift.checkOut) : 'Active'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-2">
+                                        <span className="text-xs text-gray-500">{shift.totalHours || 0} hrs</span>
+                                    </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })
+                      ) : (
                         <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">No records found for {mySelectedMonth}.</td></tr>
                       )}
                     </tbody>

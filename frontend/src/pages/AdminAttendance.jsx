@@ -78,7 +78,7 @@ const AdminAttendance = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-
+  const [expandedRow, setExpandedRow] = useState(null); // userId of expanded row
   // Month export state
   const [exportMonth, setExportMonth] = useState(getCurrentMonth());
   const [exportingMonth, setExportingMonth] = useState(false);
@@ -461,55 +461,109 @@ const AdminAttendance = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredRecords.map((record, index) => (
-                      <motion.tr
-                        key={record._id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50 group"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                              {record.userId?.fullName?.charAt(0) || 'U'}
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">{record.userId?.fullName || record.userId?.username || 'Unknown'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm">
-                            <span className="font-mono text-gray-900">{formatTime(record.checkIn)}</span>
-                            <span className="text-gray-400 mx-1">-</span>
-                            <span className="font-mono text-gray-900">{formatTime(record.checkOut)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
-                            record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' :
-                              'bg-yellow-50 text-yellow-700 border-yellow-200'
-                            }`}>
-                            {record.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {record.totalHours || 0}h
-                          {record.overtimeHours > 0 && <span className="ml-1 text-xs text-purple-600 font-medium">(+{record.overtimeHours} OT)</span>}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                          AED {record.dailyTotalPay || 0}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => openStaffModal(record)}
-                            className="text-gray-400 hover:text-[#700606] transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                            title="View History"
+                    {filteredRecords.map((record, index) => {
+                      const userId = record.userId?._id;
+                      const isExpanded = expandedRow === String(userId);
+                      const hasMultipleShifts = record.shiftCount > 1;
+
+                      return (
+                        <React.Fragment key={record._id}>
+                          <motion.tr
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => hasMultipleShifts && setExpandedRow(isExpanded ? null : String(userId))}
+                            className={`group transition-colors ${
+                              hasMultipleShifts
+                                ? 'cursor-pointer hover:bg-indigo-50/40'
+                                : 'hover:bg-gray-50'
+                            }`}
                           >
-                            <EyeIcon className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </motion.tr>
-                    ))}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
+                                  {record.userId?.fullName?.charAt(0) || 'U'}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-900">{record.userId?.fullName || record.userId?.username || 'Unknown'}</span>
+                                  {hasMultipleShifts && (
+                                    <span className="ml-2 px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-200">
+                                      {record.shiftCount} Shifts
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm">
+                                <span className="font-mono text-gray-900">{formatTime(record.checkIn)}</span>
+                                <span className="text-gray-400 mx-1">–</span>
+                                <span className="font-mono text-gray-900">{formatTime(record.checkOut)}</span>
+                                {hasMultipleShifts && (
+                                  <span className="ml-2 text-indigo-400 text-xs">
+                                    {isExpanded ? '▲' : '▼'}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                                record.status === 'Absent' ? 'bg-red-50 text-red-700 border-red-200' :
+                                  'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                }`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {record.totalHours || 0}h
+                              {record.overtimeHours > 0 && <span className="ml-1 text-xs text-purple-600 font-medium">(+{record.overtimeHours} OT)</span>}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                              AED {record.dailyTotalPay || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openStaffModal(record); }}
+                                className="text-gray-400 hover:text-[#700606] transition-colors p-2 hover:bg-gray-100 rounded-lg"
+                                title="View History"
+                              >
+                                <EyeIcon className="w-5 h-5" />
+                              </button>
+                            </td>
+                          </motion.tr>
+
+                          {/* Expandable shift sub-rows */}
+                          {isExpanded && record.shifts?.map((shift, si) => (
+                            <tr key={shift._id} className="bg-indigo-50/30 border-l-4 border-indigo-300">
+                              <td className="pl-16 pr-4 py-2 text-xs text-indigo-600 font-semibold">
+                                Shift {si + 1}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className="font-mono text-xs text-gray-700">
+                                  {formatTime(shift.checkIn)} – {shift.checkOut ? formatTime(shift.checkOut) : <span className="text-blue-500">Active</span>}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${
+                                  shift.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' :
+                                  shift.status === 'Absent'  ? 'bg-red-50 text-red-700 border-red-200' :
+                                                               'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                }`}>
+                                  {shift.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2 text-xs text-gray-600">
+                                {shift.totalHours || 0}h
+                              </td>
+                              <td className="px-4 py-2 text-xs text-gray-700 font-medium">
+                                AED {shift.dailyTotalPay || 0}
+                              </td>
+                              <td />
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
                     {filteredRecords.length === 0 && !loading && (
                       <tr>
                         <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
