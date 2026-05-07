@@ -108,6 +108,19 @@ exports.checkOut = async (req, res) => {
     attendance.overtimeHours = parseFloat(overtimeHours.toFixed(2));
     attendance.status = status;
 
+    // Calculate previous hours for split shifts (only for staff/manager)
+    let previouslyWorkedHoursToday = 0;
+    if (['staff', 'manager'].includes(req.user.role)) {
+      const todayRecords = await Attendance.find({
+        userId: req.user._id,
+        date: attendance.date,
+        _id: { $ne: attendance._id },
+        checkOut: { $ne: null }
+      });
+      previouslyWorkedHoursToday = todayRecords.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      console.log(`[DEBUG] Previously worked hours today for ${req.user.role}: ${previouslyWorkedHoursToday}`);
+    }
+
     // Payroll Calculation
     if (process.env.ENABLE_PAYROLL === 'true') {
       try {
@@ -115,7 +128,8 @@ exports.checkOut = async (req, res) => {
         const payroll = calculatePayroll({
           checkIn: attendance.checkIn,
           checkOut: checkOut,
-          salaryPerHour: req.user.salaryPerHour || 0
+          salaryPerHour: req.user.salaryPerHour || 0,
+          previouslyWorkedHoursToday: previouslyWorkedHoursToday
         });
 
         attendance.dailyRegularPay = payroll.regularPay;

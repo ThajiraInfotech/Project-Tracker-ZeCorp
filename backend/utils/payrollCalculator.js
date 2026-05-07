@@ -1,4 +1,4 @@
-const calculatePayroll = ({ checkIn, checkOut, salaryPerHour }) => {
+const calculatePayroll = ({ checkIn, checkOut, salaryPerHour, previouslyWorkedHoursToday = 0 }) => {
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
@@ -6,11 +6,8 @@ const calculatePayroll = ({ checkIn, checkOut, salaryPerHour }) => {
     const diffMs = checkOutDate - checkInDate;
     const totalHours = diffMs / (1000 * 60 * 60);
 
-    // If total hours <= 10, everything is regular (Simple Case)
-    // NOTE: Even if hours fall in "OT Slots" (e.g. 18-20), if total is say 2 hours, 
-    // the user rule "Overtime applies ONLY if total worked hours > 10" implies 
-    // these are just Regular hours (paid 1x).
-    if (totalHours <= 10) {
+    // If total hours + previous hours <= 10, everything is regular (Simple Case)
+    if (totalHours + previouslyWorkedHoursToday <= 10) {
         return {
             regularHours: Number(totalHours.toFixed(2)),
             overtimeHours: 0,
@@ -81,26 +78,26 @@ const calculatePayroll = ({ checkIn, checkOut, salaryPerHour }) => {
     // 2. If we still haven't reached 10h, we fill from the rest (Outside hours).
     // 3. Any hours left over are OT.
 
-    let regularHoursCount = 0;
+    let regularHoursCount = previouslyWorkedHoursToday;
     const REGULAR_LIMIT = 10;
 
     // Pass 1: Consume "Inside Window" hours
     for (let seg of segments) {
         if (seg.isInsideWindow) {
-            if (regularHoursCount + seg.hours <= REGULAR_LIMIT) {
+            const needed = REGULAR_LIMIT - regularHoursCount;
+            if (needed >= seg.hours) {
                 seg.type = 'REGULAR';
                 regularHoursCount += seg.hours;
+            } else if (needed > 0) {
+                // Split this segment
+                const otPart = seg.hours - needed;
+                const regPart = needed;
+                regularHoursCount += regPart;
+                seg.type = 'SPLIT';
+                seg.regHours = regPart;
+                seg.otHours = otPart;
             } else {
-                // Determine split (partial segment)
-                const needed = REGULAR_LIMIT - regularHoursCount;
-                if (needed > 0) {
-                    // Split this segment? 
-                    // Actually, if we are "Inside Window", we are usually contiguous 08-18 (10h).
-                    // So we rarely split inside window unless shift > 10h INSIDE window (impossible).
-                    // But strictly speaking:
-                    seg.type = 'REGULAR'; // Just take it. (It won't overflow 10h because window is 10h)
-                    regularHoursCount += seg.hours;
-                }
+                seg.type = 'OT';
             }
         }
     }
@@ -121,8 +118,6 @@ const calculatePayroll = ({ checkIn, checkOut, salaryPerHour }) => {
                 // We treat the Reg part as Regular
                 regularHoursCount += regPart;
 
-                // How to store? Just mark pay.
-                // We'll calculate Pay directly.
                 seg.type = 'SPLIT';
                 seg.regHours = regPart;
                 seg.otHours = otPart;
