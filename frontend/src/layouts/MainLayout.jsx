@@ -157,21 +157,26 @@ const MainLayout = () => {
                     User Workspaces
                   </div>
                   <div className="mt-2 space-y-1">
-                    {sidebarUsers.map((u) => (
-                      u.role === 'manager' ? (
-                        <div key={u._id} className="group flex flex-col px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200">
+                    {sidebarUsers.map((u) => {
+                      const searchParams = new URLSearchParams(location.search);
+                      const isActiveTasks = location.pathname === '/tasks' && searchParams.get('assignedTo') === u._id;
+                      const isActiveManagerProjects = location.pathname === '/projects' && searchParams.get('manager') === u._id;
+                      const isManagerActive = isActiveTasks || isActiveManagerProjects;
+
+                      return u.role === 'manager' ? (
+                        <div key={u._id} className={`group flex flex-col px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isManagerActive ? 'bg-blue-50 border border-blue-100 shadow-sm' : 'hover:bg-slate-100 border border-transparent'}`}>
                           <div className="flex items-center">
                             <UserAvatar user={u} size="xs" className="mr-3" />
                             <div className="flex flex-col">
-                              <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
-                              <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                              <span className={`line-clamp-1 ${isManagerActive ? 'text-blue-800 font-bold' : 'text-slate-700 group-hover:text-slate-900'}`}>{u.fullName}</span>
+                              <span className={`text-[10px] capitalize ${isManagerActive ? 'text-blue-600' : 'text-slate-500'}`}>{u.role}</span>
                             </div>
                           </div>
                           <div className="flex items-center mt-2 ml-9 space-x-3">
                             <Link
                               to={`/projects?manager=${u._id}`}
                               onClick={() => setSidebarOpen(false)}
-                              className="text-xs text-slate-500 hover:text-blue-600 font-medium flex items-center transition-colors"
+                              className={`text-xs font-medium flex items-center transition-colors ${isActiveManagerProjects ? 'text-blue-700 font-bold bg-blue-100 px-1.5 py-0.5 rounded' : 'text-slate-500 hover:text-blue-600'}`}
                             >
                               <FolderIcon className="w-3 h-3 mr-1" />
                               Projects
@@ -179,7 +184,7 @@ const MainLayout = () => {
                             <Link
                               to={`/tasks?assignedTo=${u._id}`}
                               onClick={() => setSidebarOpen(false)}
-                              className="text-xs text-slate-500 hover:text-blue-600 font-medium flex items-center transition-colors"
+                              className={`text-xs font-medium flex items-center transition-colors ${isActiveTasks ? 'text-blue-700 font-bold bg-blue-100 px-1.5 py-0.5 rounded' : 'text-slate-500 hover:text-blue-600'}`}
                             >
                               <ClipboardDocumentListIcon className="w-3 h-3 mr-1" />
                               Tasks
@@ -191,16 +196,16 @@ const MainLayout = () => {
                           key={u._id}
                           to={`/tasks?assignedTo=${u._id}`}
                           onClick={() => setSidebarOpen(false)}
-                          className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200"
+                          className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActiveTasks ? 'bg-blue-50 border border-blue-100 shadow-sm' : 'hover:bg-slate-100 border border-transparent'}`}
                         >
                           <UserAvatar user={u} size="xs" className="mr-3" />
                           <div className="flex flex-col">
-                            <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
-                            <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                            <span className={`line-clamp-1 ${isActiveTasks ? 'text-blue-800 font-bold' : 'text-slate-700 group-hover:text-slate-900'}`}>{u.fullName}</span>
+                            <span className={`text-[10px] capitalize ${isActiveTasks ? 'text-blue-600' : 'text-slate-500'}`}>{u.role}</span>
                           </div>
                         </Link>
-                      )
-                    ))}
+                      );
+                    })}
                     {sidebarUsers.length === 0 && (
                       <div className="px-3 py-2 text-xs text-slate-400 italic">No users found</div>
                     )}
