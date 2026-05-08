@@ -105,7 +105,7 @@ server.listen(PORT, async () => {
   // Initialize Notification System
   const { initWorker } = require('./services/notification/worker');
   const { initScheduler } = require('./infrastructure/scheduler');
-  initWorker();
+  initWorker(io);
   initScheduler();
 });
 

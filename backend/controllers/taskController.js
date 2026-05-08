@@ -936,6 +936,34 @@ exports.addComment = async (req, res) => {
       // Don't fail comment creation if notification fails
     });
 
+    // Auto-notify task assignees
+    try {
+      const populatedForNotification = await Task.findById(req.params.id)
+        .populate('assignedTo')
+        .populate('cc')
+        .populate('project');
+        
+      let managerUser = null;
+      if (populatedForNotification.project && populatedForNotification.project.manager) {
+        managerUser = await User.findById(populatedForNotification.project.manager);
+      }
+
+      await publishEvent('TASK_COMMENT_ADDED', {
+        entityType: 'task',
+        entityId: req.params.id,
+        entityTitle: task.title,
+        messageSnippet: `New comment on task "${task.title}": ${text ? text.substring(0, 100) : 'Attachment added'}${text && text.length > 100 ? '...' : ''}`,
+        relatedLink: `/tasks?taskId=${task._id}`,
+        commenterId: req.user._id.toString(),
+        triggeredBy: req.user._id,
+        assignedTo: populatedForNotification.assignedTo,
+        cc: populatedForNotification.cc,
+        manager: managerUser
+      });
+    } catch (notifyErr) {
+      console.error('Failed to auto-notify on task comment:', notifyErr);
+    }
+
     // EMIT SOCKET EVENT
     if (req.io) {
       req.io.to(`task_${req.params.id}`).emit('receive_message', newComment);

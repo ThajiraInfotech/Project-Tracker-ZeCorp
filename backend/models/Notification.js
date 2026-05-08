@@ -21,7 +21,8 @@ const notificationSchema = new mongoose.Schema({
       'project_delayed', 'PROJECT_DELAYED',
       'added_to_team', 'ADDED_TO_TEAM',
       'task_supervisor_added', 'TASK_SUPERVISOR_ADDED',
-      'subtask_assigned', 'SUBTASK_ASSIGNED'
+      'subtask_assigned', 'SUBTASK_ASSIGNED',
+      'TASK_COMMENT_ADDED'
     ],
     default: 'mention',
     required: true

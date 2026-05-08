@@ -158,18 +158,48 @@ const MainLayout = () => {
                   </div>
                   <div className="mt-2 space-y-1">
                     {sidebarUsers.map((u) => (
-                      <Link
-                        key={u._id}
-                        to={u.role === 'manager' ? `/projects?manager=${u._id}` : `/tasks?assignedTo=${u._id}`}
-                        onClick={() => setSidebarOpen(false)}
-                        className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200"
-                      >
-                        <UserAvatar user={u} size="xs" className="mr-3" />
-                        <div className="flex flex-col">
-                          <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
-                          <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                      u.role === 'manager' ? (
+                        <div key={u._id} className="group flex flex-col px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200">
+                          <div className="flex items-center">
+                            <UserAvatar user={u} size="xs" className="mr-3" />
+                            <div className="flex flex-col">
+                              <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
+                              <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center mt-2 ml-9 space-x-3">
+                            <Link
+                              to={`/projects?manager=${u._id}`}
+                              onClick={() => setSidebarOpen(false)}
+                              className="text-xs text-slate-500 hover:text-blue-600 font-medium flex items-center transition-colors"
+                            >
+                              <FolderIcon className="w-3 h-3 mr-1" />
+                              Projects
+                            </Link>
+                            <Link
+                              to={`/tasks?assignedTo=${u._id}`}
+                              onClick={() => setSidebarOpen(false)}
+                              className="text-xs text-slate-500 hover:text-blue-600 font-medium flex items-center transition-colors"
+                            >
+                              <ClipboardDocumentListIcon className="w-3 h-3 mr-1" />
+                              Tasks
+                            </Link>
+                          </div>
                         </div>
-                      </Link>
+                      ) : (
+                        <Link
+                          key={u._id}
+                          to={`/tasks?assignedTo=${u._id}`}
+                          onClick={() => setSidebarOpen(false)}
+                          className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 transition-all duration-200"
+                        >
+                          <UserAvatar user={u} size="xs" className="mr-3" />
+                          <div className="flex flex-col">
+                            <span className="text-slate-700 group-hover:text-slate-900 line-clamp-1">{u.fullName}</span>
+                            <span className="text-[10px] text-slate-500 capitalize">{u.role}</span>
+                          </div>
+                        </Link>
+                      )
                     ))}
                     {sidebarUsers.length === 0 && (
                       <div className="px-3 py-2 text-xs text-slate-400 italic">No users found</div>

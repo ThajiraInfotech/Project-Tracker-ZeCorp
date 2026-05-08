@@ -6,8 +6,10 @@ const whatsappChannel = require('./channels/whatsappChannel');
 const inAppChannel = require('./channels/inAppChannel');
 
 let worker = null;
+let ioInstance = null;
 
-const initWorker = () => {
+const initWorker = (io) => {
+    if (io) ioInstance = io;
     if (worker) return worker;
 
     try {
@@ -66,7 +68,7 @@ const initWorker = () => {
                                     link: payload.relatedLink,
                                     mentionedBy: payload.triggeredBy // Pass the actor
                                 };
-                                const success = await inAppChannel.send(recipient, inAppData);
+                                const success = await inAppChannel.send(recipient, inAppData, ioInstance);
                                 console.log(`[Worker] IN_APP Sent: ${success}`);
                                 break;
                         }

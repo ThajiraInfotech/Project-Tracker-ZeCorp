@@ -66,6 +66,23 @@ const RULES = {
         channels: ['IN_APP', 'WHATSAPP', 'EMAIL'], // Escalation
         getRecipients: (data) => [data.assignedTo, data.cc].filter(Boolean),
         priority: 'critical'
+    },
+    TASK_COMMENT_ADDED: {
+        channels: ['IN_APP'], // Avoid email/whatsapp spam for comments, just in-app
+        getRecipients: (data) => {
+            const recipients = [];
+            if (data.assignedTo && data.assignedTo._id && data.assignedTo._id.toString() !== data.commenterId) {
+                recipients.push(data.assignedTo);
+            }
+            if (data.cc && data.cc._id && data.cc._id.toString() !== data.commenterId) {
+                recipients.push(data.cc);
+            }
+            if (data.manager && data.manager._id && data.manager._id.toString() !== data.commenterId) {
+                recipients.push(data.manager);
+            }
+            return recipients;
+        },
+        priority: 'medium'
     }
 };
 
