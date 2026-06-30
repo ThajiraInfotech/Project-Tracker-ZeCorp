@@ -415,14 +415,18 @@ exports.updateTask = async (req, res) => {
     const oldSubtasks = task.subtasks && task.subtasks.length > 0 ? JSON.parse(JSON.stringify(task.subtasks)) : [];
     updates.forEach(update => task[update] = req.body[update]);
 
-    // Auto-archive check
+    // On completion: record completedAt but do NOT immediately archive.
+    // A nightly scheduler job will archive tasks 3 days after completion.
     if (task.status === 'completed') {
-      task.isArchived = true;
-      task.archivedAt = new Date();
+      if (!task.completedAt) task.completedAt = new Date();
     } else if (task.isArchived && task.status !== 'completed') {
-      // Un-archive if status changed from completed
+      // Un-archive if status changed back from completed
       task.isArchived = false;
       task.archivedAt = undefined;
+      task.completedAt = undefined;
+    } else if (task.status !== 'completed') {
+      // Clear completedAt if moved away from completed
+      task.completedAt = undefined;
     }
 
     syncProgressWithStatus(task);
@@ -636,14 +640,15 @@ exports.updateTaskStatus = async (req, res) => {
       }
     }
 
-    // Auto-archive check
+    // On completion: record completedAt but do NOT immediately archive.
+    // A nightly scheduler job will archive tasks 3 days after completion.
     if (task.status === 'completed') {
-      task.isArchived = true;
-      task.archivedAt = new Date();
+      if (!task.completedAt) task.completedAt = new Date();
     } else {
-      // Un-archive if status changed from completed (implicit in status change)
+      // Un-archive and clear completedAt if moved away from completed
       task.isArchived = false;
       task.archivedAt = undefined;
+      task.completedAt = undefined;
     }
 
     syncProgressWithStatus(task);
@@ -837,13 +842,16 @@ exports.updateTaskStatusAndProgress = async (req, res) => {
       syncProgressWithStatus(task);
     }
 
-    // Auto-archive check
+    // On completion: record completedAt but do NOT immediately archive.
+    // A nightly scheduler job will archive tasks 3 days after completion.
     if (task.status === 'completed') {
-      task.isArchived = true;
-      task.archivedAt = new Date();
+      if (!task.completedAt) task.completedAt = new Date();
     } else if (task.isArchived && task.status !== 'completed') {
       task.isArchived = false;
       task.archivedAt = undefined;
+      task.completedAt = undefined;
+    } else if (task.status !== 'completed') {
+      task.completedAt = undefined;
     }
     await task.save();
 

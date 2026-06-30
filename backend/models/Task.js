@@ -124,6 +124,9 @@ const taskSchema = new mongoose.Schema({
   },
   archivedAt: {
     type: Date
+  },
+  completedAt: {
+    type: Date
   }
 }, {
   timestamps: true,
@@ -144,5 +147,6 @@ taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ status: 1 });
 taskSchema.index({ label: 1 });
 taskSchema.index({ deadline: 1 });
+taskSchema.index({ completedAt: 1 }); // for 3-day archive scheduler
 
 module.exports = mongoose.model('Task', taskSchema);
