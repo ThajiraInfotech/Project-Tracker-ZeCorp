@@ -39,6 +39,7 @@ const StaffDashboard = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const [tasks, setTasks] = useState([]);
+  const [archivedTasks, setArchivedTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,23 +64,27 @@ const StaffDashboard = () => {
     try {
       if (showLoading) setLoading(true);
 
-      // Fetch tasks assigned to this user
-      const tasksResponse = await api.get('/tasks');
-      const allTasks = tasksResponse.data.tasks;
-      setTasks(allTasks);
+      // Fetch active (non-archived) tasks + archived tasks in parallel
+      // Archived tasks are needed to show accurate completed task counts
+      const [tasksResponse, archivedResponse, projectsResponse, attendanceResponse] = await Promise.all([
+        api.get('/tasks'),
+        api.get('/tasks', { params: { archived: 'true' } }),
+        api.get('/projects'),
+        api.get('/attendance/me')
+      ]);
 
-      // Fetch projects for context
-      const projectsResponse = await api.get('/projects');
-      const allProjects = projectsResponse.data.projects;
+      const allTasks = tasksResponse.data.tasks || [];
+      const archived = archivedResponse.data.tasks || [];
+      setTasks(allTasks);
+      setArchivedTasks(archived);
+
       // Filter projects that have tasks assigned to this user
-      const projectIds = allTasks.map(task => task.project?._id || task.project).filter(Boolean);
+      const allProjects = projectsResponse.data.projects || [];
+      const projectIds = [...allTasks, ...archived].map(task => task.project?._id || task.project).filter(Boolean);
       const staffProjects = allProjects.filter(project => projectIds.includes(project._id));
       setProjects(staffProjects);
 
-      // Fetch attendance for this user
-      const attendanceResponse = await api.get('/attendance/me');
-      const staffAttendance = attendanceResponse.data.attendance;
-      setAttendance(staffAttendance);
+      setAttendance(attendanceResponse.data.attendance || []);
 
     } catch (err) {
       console.error('Error fetching staff data:', err);
@@ -166,8 +171,11 @@ const StaffDashboard = () => {
   };
 
   // Calculate statistics
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  // Include archived tasks for completed count (completed tasks are auto-archived)
+  const allTasksCombined = [...tasks, ...archivedTasks];
+  const totalTasks = allTasksCombined.length;
+  const completedTasks = archivedTasks.filter(t => t.status === 'completed').length
+    + tasks.filter(t => t.status === 'completed').length;
   const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
   const overdueTasks = tasks.filter(t => t.isOverdue).length;
 
