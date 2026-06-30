@@ -873,7 +873,7 @@ exports.getManagerDashboardData = async (req, res) => {
 // Get admin dashboard data with enhanced metrics
 exports.getAdminDashboardData = async (req, res) => {
   try {
-    const { timeContext = 'today' } = req.query;
+    const { timeContext = 'all' } = req.query;
 
     // Calculate date range based on timeContext
     const now = new Date();
@@ -899,10 +899,9 @@ exports.getAdminDashboardData = async (req, res) => {
       startDate.setDate(now.getDate() - 30);
       startDate.setHours(0, 0, 0, 0);
     } else {
-      // Default to today
-      startDate = new Date(now);
-      startDate.setHours(0, 0, 0, 0);
-      endDate = new Date(startDate);
+      // 'all' — from the very beginning to now (no date restriction)
+      startDate = new Date('2000-01-01T00:00:00.000Z');
+      endDate = new Date(now);
       endDate.setHours(23, 59, 59, 999);
     }
 
@@ -926,10 +925,11 @@ exports.getAdminDashboardData = async (req, res) => {
     }).populate('project', 'projectName');
 
     // Get completed tasks count for the period
-    const completedTasksCount = await Task.countDocuments({
-      status: 'completed',
-      completionDate: { $gte: startDate, $lte: endDate }
-    });
+    // For 'all' timeContext, count ALL completed tasks regardless of completionDate
+    const completedTasksQuery = timeContext === 'all'
+      ? { status: 'completed' }
+      : { status: 'completed', completionDate: { $gte: startDate, $lte: endDate } };
+    const completedTasksCount = await Task.countDocuments(completedTasksQuery);
 
     // Get projects data
     const projects = await Project.find();

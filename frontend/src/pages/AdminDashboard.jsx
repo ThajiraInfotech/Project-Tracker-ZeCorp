@@ -38,7 +38,7 @@ const AdminDashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [timeContext, setTimeContext] = useState('today');
+  const [timeContext, setTimeContext] = useState('all');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -355,6 +355,15 @@ const AdminDashboard = () => {
         <div className="flex items-center justify-center space-x-4">
           <span className="text-sm font-medium text-gray-700">Time Context:</span>
           <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'all'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+              onClick={() => setTimeContext('all')}
+            >
+              All Time
+            </button>
             <button
               className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 ${timeContext === 'today'
                 ? 'bg-white text-blue-600 shadow-sm'

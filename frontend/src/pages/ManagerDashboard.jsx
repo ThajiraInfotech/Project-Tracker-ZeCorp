@@ -42,7 +42,7 @@ const ManagerDashboard = () => {
   const [dataSource, setDataSource] = useState('loading'); // 'api', 'fallback', 'loading'
   const [userLoadingTimeout, setUserLoadingTimeout] = useState(null);
 
-  const [timeContext, setTimeContext] = useState('today');
+  const [timeContext, setTimeContext] = useState('all');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -394,6 +394,15 @@ const ManagerDashboard = () => {
         <div className="flex flex-col md:flex-row items-center justify-center space-y-3 md:space-y-0 md:space-x-4">
           <span className="text-sm font-medium text-gray-700">Time Context:</span>
           <div className="flex bg-gray-100 rounded-lg p-1 w-full md:w-auto overflow-x-auto">
+            <button
+              className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 whitespace-nowrap ${timeContext === 'all'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+                }`}
+              onClick={() => setTimeContext('all')}
+            >
+              All Time
+            </button>
             <button
               className={`flex-1 md:flex-none px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 whitespace-nowrap ${timeContext === 'today'
                 ? 'bg-white text-blue-600 shadow-sm'
