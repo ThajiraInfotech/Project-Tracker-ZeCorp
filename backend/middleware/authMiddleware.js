@@ -19,9 +19,8 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // Update last login time
-    user.lastLogin = new Date();
-    await user.save();
+    // Update last login time (use updateOne to avoid triggering validators on partial doc)
+    await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
 
     req.user = user;
     next();

@@ -343,7 +343,8 @@ exports.resetUserPassword = async (req, res) => {
       return res.status(400).json({ message: passwordError });
     }
 
-    const user = await User.findById(req.params.id);
+    // Must select +password so Mongoose tracks the field correctly for the pre-save hook
+    const user = await User.findById(req.params.id).select('+password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -352,14 +353,18 @@ exports.resetUserPassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // Send notification email
+    // Send notification email — non-fatal if SMTP fails
     if (user.email) {
-      await emailService.sendEmail(
-        user.email,
-        'Your Password Has Been Reset',
-        `<p>Your password has been reset by an administrator.</p>
-         <p>If you did not request this change, please contact support immediately.</p>`
-      );
+      try {
+        await emailService.sendEmail(
+          user.email,
+          'Your Password Has Been Reset',
+          `<p>Your password has been reset by an administrator.</p>
+           <p>If you did not request this change, please contact support immediately.</p>`
+        );
+      } catch (emailErr) {
+        console.error('Password reset email failed (non-fatal):', emailErr.message);
+      }
     }
 
     res.json({
@@ -373,7 +378,7 @@ exports.resetUserPassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Reset user password error:', error);
-    res.status(500).json({ message: 'Failed to reset user password' });
+    res.status(500).json({ message: 'Failed to reset user password', error: error.message });
   }
 };
 
