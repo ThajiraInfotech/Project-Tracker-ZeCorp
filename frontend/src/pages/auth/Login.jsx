@@ -43,17 +43,16 @@ const Login = () => {
           navigate('/admin');
         } else if (userRole === 'manager') {
           navigate('/manager');
-        } else if (userRole === 'staff') {
+        } else if (userRole === 'staff' || userRole === 'technician' || userRole === 'finance') {
           navigate('/staff');
         } else {
-          // Default redirect if role is not recognized
           navigate('/');
         }
       } else {
         toast.error(result?.message || 'Login failed');
       }
     } catch (error) {
-      toast.error(error || 'Login failed');
+      // Toast already shown in authSlice — avoid duplicate "Login failed" popups
     } finally {
       setLoading(false);
     }

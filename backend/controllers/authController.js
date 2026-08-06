@@ -112,10 +112,33 @@ exports.register = async (req, res) => {
 // Login user
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const rawUsername = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = req.body.password;
 
-    // Find user
-    const user = await User.findOne({ username }).select('+password');
+    if (!rawUsername || typeof password !== 'string' || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required'
+      });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error('Login error: JWT_SECRET is not configured');
+      return res.status(500).json({
+        success: false,
+        message: 'Login temporarily unavailable'
+      });
+    }
+
+    // Exact match first, then case-insensitive (mobile autofill / capitalization)
+    let user = await User.findOne({ username: rawUsername }).select('+password');
+    if (!user) {
+      const escaped = rawUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      user = await User.findOne({
+        username: { $regex: new RegExp(`^${escaped}$`, 'i') }
+      }).select('+password');
+    }
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -141,12 +164,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate token
+    // Generate token BEFORE any DB write so auth succeeds even if lastLogin update fails
     const token = generateToken(user._id);
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    // Use updateOne instead of user.save() — full save re-runs validators and can
+    // reject login after a valid password (e.g. legacy phone/department data)
+    try {
+      await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
+    } catch (updateErr) {
+      console.error('Failed to update lastLogin after successful auth:', updateErr.message);
+    }
 
     res.json({
       success: true,

@@ -40,8 +40,13 @@ export const login = createAsyncThunk(
         return rejectWithValue(response.data?.message || 'Login failed - no token received');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      // Network/timeouts have no response — was showing generic "Login failed"
+      const message = error.response?.data?.message
+        || (!error.response
+          ? 'Unable to reach server. Please check your connection and try again.'
+          : 'Login failed');
+      toast.error(message);
+      return rejectWithValue(message);
     }
   }
 );
