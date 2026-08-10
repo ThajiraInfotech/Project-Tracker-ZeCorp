@@ -85,6 +85,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/system-settings', systemSettingRoutes);
+app.use('/api/task-labels', require('./routes/taskLabelRoutes'));
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/expenses', require('./routes/expenseRoutes'));
 app.use('/api/site-attendance', require('./routes/siteAttendanceRoutes'));

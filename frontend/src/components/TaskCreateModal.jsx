@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../store/api';
 import { toast } from 'react-toastify';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
-import { getLabelStyle } from '../utils/labelUtils';
+import { getLabelStyle, DEFAULT_TASK_LABELS } from '../utils/labelUtils';
 
 const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCreated, projects, task, userRole, defaultProjectId }) => {
   const [formData, setFormData] = useState({
@@ -17,6 +17,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
     project: (project && project._id) ? project._id : ''
   });
   const [loading, setLoading] = useState(false);
+  const [availableLabels, setAvailableLabels] = useState(DEFAULT_TASK_LABELS);
   const INDEPENDENT_PROJECT_ID = 'independent';
   const INDEPENDENT_PROJECT = { _id: INDEPENDENT_PROJECT_ID, projectName: 'Independent Task (No Project)', jobOrder: '' };
 
@@ -47,6 +48,21 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
       fetchProjects();
     }
   }, [isOpen, project, projects]);
+
+  // Load admin-managed labels when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchLabels = async () => {
+      try {
+        const response = await api.get('/task-labels');
+        const names = (response.data.labels || []).map((l) => l.name);
+        if (names.length > 0) setAvailableLabels(names);
+      } catch (error) {
+        console.error('Failed to fetch task labels:', error);
+      }
+    };
+    fetchLabels();
+  }, [isOpen]);
 
   // Update filtered projects when availableProjects or searchTerm changes
   useEffect(() => {
@@ -326,7 +342,7 @@ const TaskCreateModal = ({ isOpen, onClose, project, staff, managers, onTaskCrea
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Label</label>
             <div className="flex flex-wrap gap-2">
-              {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => {
+              {availableLabels.map((label) => {
                 const style = getLabelStyle(label);
                 const isSelected = formData.label === label;
                 return (

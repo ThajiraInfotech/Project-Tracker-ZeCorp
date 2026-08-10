@@ -46,6 +46,7 @@ import TaskCreateModal from '../components/TaskCreateModal';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import KanbanBoard from '../components/KanbanBoard';
 import LabelBadge from '../components/LabelBadge';
+import { DEFAULT_TASK_LABELS } from '../utils/labelUtils';
 
 import Pagination from '../components/Pagination';
 
@@ -68,6 +69,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all');
   const [filterPriority, setFilterPriority] = useState(searchParams.get('priority') || 'all');
   const [filterLabel, setFilterLabel] = useState(searchParams.get('label') || 'all');
+  const [availableLabels, setAvailableLabels] = useState(DEFAULT_TASK_LABELS);
   const [filterProject, setFilterProject] = useState(projectId || 'all');
   const [filterAssignedTo, setFilterAssignedTo] = useState(searchParams.get('assignedTo') || '');
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', or 'kanban'
@@ -412,6 +414,21 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
       }
     }
   }, [auth.isAuthenticated, filterStatus, filterPriority, filterLabel, filterProject, searchQuery, dateRange, searchParams]); // Added searchParams dependency
+
+  // Load admin-managed labels for filter dropdown
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const fetchLabels = async () => {
+      try {
+        const response = await api.get('/task-labels');
+        const names = (response.data.labels || []).map((l) => l.name);
+        if (names.length > 0) setAvailableLabels(names);
+      } catch (error) {
+        console.error('Failed to fetch task labels:', error);
+      }
+    };
+    fetchLabels();
+  }, [auth.isAuthenticated]);
 
   // Real-time updates via socket
   useEffect(() => {
@@ -1077,7 +1094,7 @@ const Tasks = ({ projectId = null, isEmbedded = false, isArchivedView = false })
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#700606] focus:border-transparent"
                     >
                       <option value="all">All Labels</option>
-                      {['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'].map((label) => (
+                      {availableLabels.map((label) => (
                         <option key={label} value={label}>{label}</option>
                       ))}
                     </select>

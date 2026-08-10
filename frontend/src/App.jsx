@@ -43,6 +43,7 @@ import UserManagement from './pages/admin/UserManagement';
 import SystemSettings from './pages/admin/SystemSettings';
 import AttendanceExceptions from './pages/admin/AttendanceExceptions';
 import AdminServiceReports from './pages/admin/AdminServiceReports';
+import TaskLabels from './pages/admin/TaskLabels';
 
 
 
@@ -146,6 +147,12 @@ function App() {
           <Route path="/admin/settings" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <SystemSettings />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/task-labels" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <TaskLabels />
             </ProtectedRoute>
           } />
 

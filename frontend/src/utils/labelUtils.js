@@ -1,3 +1,21 @@
+export const DEFAULT_TASK_LABELS = [
+  'QUOTE',
+  'Design',
+  'site visit',
+  'Installation',
+  'Invoice',
+  'Procurement',
+  'meeting',
+  'service',
+  'Delivery',
+  'ADMIN',
+  'OPERATIONS',
+  'CONCEPT DESIGN',
+  'MEP DESIGN',
+  'AMC',
+  'CO-ORDINATION',
+];
+
 export const getLabelStyle = (label) => {
     if (!label) return null;
 
@@ -33,6 +51,12 @@ export const getLabelStyle = (label) => {
         'meeting': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-600' },
         'service': { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-200', dot: 'bg-rose-600' },
         'delivery': { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-200', dot: 'bg-cyan-600' },
+        'admin': { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200', dot: 'bg-slate-600' },
+        'operations': { bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-200', dot: 'bg-teal-600' },
+        'concept design': { bg: 'bg-violet-100', text: 'text-violet-800', border: 'border-violet-200', dot: 'bg-violet-600' },
+        'mep design': { bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-200', dot: 'bg-sky-600' },
+        'amc': { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-600' },
+        'co-ordination': { bg: 'bg-fuchsia-100', text: 'text-fuchsia-800', border: 'border-fuchsia-200', dot: 'bg-fuchsia-600' },
     };
 
     if (specificMappings[lowerLabel]) {

@@ -24,7 +24,8 @@ import {
   ExclamationCircleIcon,
   ClockIcon,
   ChartBarIcon,
-  MapPinIcon
+  MapPinIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 
 const MainLayout = () => {
@@ -82,6 +83,7 @@ const MainLayout = () => {
   const adminNavigation = [
     { name: 'User Management', href: '/admin/users', icon: UserIcon },
     { name: 'Service Reports', href: '/admin/service-reports', icon: DocumentChartBarIcon },
+    { name: 'Task Labels', href: '/admin/task-labels', icon: TagIcon },
     { name: 'System Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 

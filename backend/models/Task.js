@@ -44,7 +44,7 @@ const taskSchema = new mongoose.Schema({
   },
   label: {
     type: String,
-    enum: ['QUOTE', 'Design', 'site visit', 'Installation', 'Invoice', 'Procurement', 'meeting', 'service', 'Delivery'],
+    trim: true,
   },
   progress: {
     type: Number,
